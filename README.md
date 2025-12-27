@@ -36,17 +36,17 @@ midi_bytes = tempera.emitter_1 (volume=100, grain_density=50, octave=64)
 Run all tests:
 
 ```bash
-uv run python -m unittest test_tempera
+uv run python -m unittest
 ```
 
 Run tests with verbose output:
 
 ```bash
-uv run python -m unittest test_tempera -v
+uv run python -m unittest -v
 ```
 
 Run a specific test:
 
 ```bash
-uv run python -m unittest test_tempera.TestTempera.test_adsr_attack
+uv run python -m unittest test_tempera_global.TestTemperaGlobal.test_adsr_attack
 ```

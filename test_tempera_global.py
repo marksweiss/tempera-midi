@@ -7,10 +7,6 @@ from midi_constants import (
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
     TRACK_1_VOLUME, TRACK_2_VOLUME, TRACK_3_VOLUME, TRACK_4_VOLUME,
     TRACK_5_VOLUME, TRACK_6_VOLUME, TRACK_7_VOLUME, TRACK_8_VOLUME,
-    EMITTER_1_VOLUME, EMITTER_1_GRAIN_DENSITY, EMITTER_1_OCTAVE,
-    EMITTER_2_VOLUME, EMITTER_2_GRAIN_PAN,
-    EMITTER_3_VOLUME, EMITTER_3_SPRAY_X,
-    EMITTER_4_VOLUME, EMITTER_4_EFFECTS_SEND,
 )
 
 
@@ -48,18 +44,6 @@ class TestTemperaGlobal(unittest.TestCase):
 
     def test_track_volume_no_args_returns_empty(self):
         self.assertEqual(self.tempera.track_volume(), b'')
-
-    def test_emitter_1_no_args_returns_empty(self):
-        self.assertEqual(self.tempera.emitter_1(), b'')
-
-    def test_emitter_2_no_args_returns_empty(self):
-        self.assertEqual(self.tempera.emitter_2(), b'')
-
-    def test_emitter_3_no_args_returns_empty(self):
-        self.assertEqual(self.tempera.emitter_3(), b'')
-
-    def test_emitter_4_no_args_returns_empty(self):
-        self.assertEqual(self.tempera.emitter_4(), b'')
 
     # Test ADSR
     def test_adsr_attack(self):
@@ -200,64 +184,6 @@ class TestTemperaGlobal(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-    # Test Emitter 1
-    def test_emitter_1_volume(self):
-        result = self.tempera.emitter_1(volume=100)
-        expected = _cc_bytes(EMITTER_1_VOLUME, 100)
-        self.assertEqual(result, expected)
-
-    def test_emitter_1_grain_density(self):
-        result = self.tempera.emitter_1(grain_density=64)
-        expected = _cc_bytes(EMITTER_1_GRAIN_DENSITY, 64)
-        self.assertEqual(result, expected)
-
-    def test_emitter_1_octave(self):
-        result = self.tempera.emitter_1(octave=64)
-        expected = _cc_bytes(EMITTER_1_OCTAVE, 64)
-        self.assertEqual(result, expected)
-
-    def test_emitter_1_multiple_params(self):
-        result = self.tempera.emitter_1(volume=100, grain_density=50, octave=64)
-        expected = (
-            _cc_bytes(EMITTER_1_VOLUME, 100) +
-            _cc_bytes(EMITTER_1_GRAIN_DENSITY, 50) +
-            _cc_bytes(EMITTER_1_OCTAVE, 64)
-        )
-        self.assertEqual(result, expected)
-
-    # Test Emitter 2
-    def test_emitter_2_volume(self):
-        result = self.tempera.emitter_2(volume=80)
-        expected = _cc_bytes(EMITTER_2_VOLUME, 80)
-        self.assertEqual(result, expected)
-
-    def test_emitter_2_grain_pan(self):
-        result = self.tempera.emitter_2(grain_pan=64)
-        expected = _cc_bytes(EMITTER_2_GRAIN_PAN, 64)
-        self.assertEqual(result, expected)
-
-    # Test Emitter 3
-    def test_emitter_3_volume(self):
-        result = self.tempera.emitter_3(volume=60)
-        expected = _cc_bytes(EMITTER_3_VOLUME, 60)
-        self.assertEqual(result, expected)
-
-    def test_emitter_3_spray_x(self):
-        result = self.tempera.emitter_3(spray_x=32)
-        expected = _cc_bytes(EMITTER_3_SPRAY_X, 32)
-        self.assertEqual(result, expected)
-
-    # Test Emitter 4
-    def test_emitter_4_volume(self):
-        result = self.tempera.emitter_4(volume=40)
-        expected = _cc_bytes(EMITTER_4_VOLUME, 40)
-        self.assertEqual(result, expected)
-
-    def test_emitter_4_effects_send(self):
-        result = self.tempera.emitter_4(effects_send=100)
-        expected = _cc_bytes(EMITTER_4_EFFECTS_SEND, 100)
-        self.assertEqual(result, expected)
-
     # Test channel parameter via constructor
     def test_adsr_with_channel(self):
         tempera = TemperaGlobal(channel=5)
@@ -269,12 +195,6 @@ class TestTemperaGlobal(unittest.TestCase):
         tempera = TemperaGlobal(channel=10)
         result = tempera.reverb(size=100)
         expected = _cc_bytes(REVERB_SIZE, 100, channel=10)
-        self.assertEqual(result, expected)
-
-    def test_emitter_1_with_channel(self):
-        tempera = TemperaGlobal(channel=15)
-        result = tempera.emitter_1(volume=127)
-        expected = _cc_bytes(EMITTER_1_VOLUME, 127, channel=15)
         self.assertEqual(result, expected)
 
     # Test value clamping (values > 127 should be masked to 7 bits)
