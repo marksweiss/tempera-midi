@@ -142,7 +142,7 @@ EMITTER_4_CC_MAP = {
 }
 
 
-class Tempera:
+class TemperaGlobal:
     MIDI_CC_STATUS = 0xB0
     MIDI_PC_STATUS = 0xC0
     MIDI_CLOCK = 0xF8
@@ -153,7 +153,7 @@ class Tempera:
         self.channel = channel
 
     def _cc(self, cc: int, value: int) -> bytes:
-        return bytes([Tempera.MIDI_CC_STATUS | (self.channel & 0x0F), cc & 0x7F, value & 0x7F])
+        return bytes([TemperaGlobal.MIDI_CC_STATUS | (self.channel & 0x0F), cc & 0x7F, value & 0x7F])
 
     def _build_messages(self, params: dict, cc_map: dict) -> bytes:
         result = bytearray()
@@ -312,16 +312,16 @@ class Tempera:
         return self._build_messages(params, EMITTER_4_CC_MAP)
 
     def change_canvas(self, program: int) -> bytes:
-        return bytes([Tempera.MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
+        return bytes([TemperaGlobal.MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
 
     @staticmethod
     def clock() -> bytes:
-        return bytes([Tempera.MIDI_CLOCK])
+        return bytes([TemperaGlobal.MIDI_CLOCK])
 
     @staticmethod
     def start() -> bytes:
-        return bytes([Tempera.MIDI_START])
+        return bytes([TemperaGlobal.MIDI_START])
 
     @staticmethod
     def stop() -> bytes:
-        return bytes([Tempera.MIDI_STOP])
+        return bytes([TemperaGlobal.MIDI_STOP])

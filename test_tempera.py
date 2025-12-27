@@ -1,5 +1,5 @@
 import unittest
-from tempera import Tempera
+from tempera_global import TemperaGlobal
 from midi_constants import (
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
     REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
@@ -14,22 +14,23 @@ from midi_constants import (
 )
 
 
-class TestTempera(unittest.TestCase):
+def _cc_bytes(cc: int, value: int, channel: int = 1) -> bytes:
+    """Helper to create expected CC message bytes."""
+    return bytes([0xB0 | (channel & 0x0F), cc & 0x7F, value & 0x7F])
+
+
+class TestTemperaGlobal(unittest.TestCase):
 
     def setUp(self):
         # Default instance uses channel 1
-        self.tempera = Tempera()
-
-    def _cc_bytes(self, cc: int, value: int, channel: int = 1) -> bytes:
-        """Helper to create expected CC message bytes."""
-        return bytes([0xB0 | (channel & 0x0F), cc & 0x7F, value & 0x7F])
+        self.tempera = TemperaGlobal()
 
     # Test default channel
     def test_default_channel_is_1(self):
         self.assertEqual(self.tempera.channel, 1)
 
     def test_custom_channel(self):
-        tempera = Tempera(channel=5)
+        tempera = TemperaGlobal(channel=5)
         self.assertEqual(tempera.channel, 5)
 
     # Test empty calls return empty bytes
@@ -63,229 +64,229 @@ class TestTempera(unittest.TestCase):
     # Test ADSR
     def test_adsr_attack(self):
         result = self.tempera.adsr(attack=64)
-        expected = self._cc_bytes(ADSR_ATTACK, 64)
+        expected = _cc_bytes(ADSR_ATTACK, 64)
         self.assertEqual(result, expected)
 
     def test_adsr_decay(self):
         result = self.tempera.adsr(decay=100)
-        expected = self._cc_bytes(ADSR_DECAY, 100)
+        expected = _cc_bytes(ADSR_DECAY, 100)
         self.assertEqual(result, expected)
 
     def test_adsr_sustain(self):
         result = self.tempera.adsr(sustain=80)
-        expected = self._cc_bytes(ADSR_SUSTAIN, 80)
+        expected = _cc_bytes(ADSR_SUSTAIN, 80)
         self.assertEqual(result, expected)
 
     def test_adsr_release(self):
         result = self.tempera.adsr(release=50)
-        expected = self._cc_bytes(ADSR_RELEASE, 50)
+        expected = _cc_bytes(ADSR_RELEASE, 50)
         self.assertEqual(result, expected)
 
     def test_adsr_multiple_params(self):
         result = self.tempera.adsr(attack=10, decay=20, sustain=30, release=40)
         expected = (
-            self._cc_bytes(ADSR_ATTACK, 10) +
-            self._cc_bytes(ADSR_DECAY, 20) +
-            self._cc_bytes(ADSR_SUSTAIN, 30) +
-            self._cc_bytes(ADSR_RELEASE, 40)
+            _cc_bytes(ADSR_ATTACK, 10) +
+            _cc_bytes(ADSR_DECAY, 20) +
+            _cc_bytes(ADSR_SUSTAIN, 30) +
+            _cc_bytes(ADSR_RELEASE, 40)
         )
         self.assertEqual(result, expected)
 
     # Test Reverb
     def test_reverb_size(self):
         result = self.tempera.reverb(size=127)
-        expected = self._cc_bytes(REVERB_SIZE, 127)
+        expected = _cc_bytes(REVERB_SIZE, 127)
         self.assertEqual(result, expected)
 
     def test_reverb_color(self):
         result = self.tempera.reverb(color=64)
-        expected = self._cc_bytes(REVERB_COLOR, 64)
+        expected = _cc_bytes(REVERB_COLOR, 64)
         self.assertEqual(result, expected)
 
     def test_reverb_mix(self):
         result = self.tempera.reverb(mix=32)
-        expected = self._cc_bytes(REVERB_MIX, 32)
+        expected = _cc_bytes(REVERB_MIX, 32)
         self.assertEqual(result, expected)
 
     def test_reverb_multiple_params(self):
         result = self.tempera.reverb(size=100, color=50, mix=25)
         expected = (
-            self._cc_bytes(REVERB_SIZE, 100) +
-            self._cc_bytes(REVERB_COLOR, 50) +
-            self._cc_bytes(REVERB_MIX, 25)
+            _cc_bytes(REVERB_SIZE, 100) +
+            _cc_bytes(REVERB_COLOR, 50) +
+            _cc_bytes(REVERB_MIX, 25)
         )
         self.assertEqual(result, expected)
 
     # Test Delay
     def test_delay_feedback(self):
         result = self.tempera.delay(feedback=60)
-        expected = self._cc_bytes(DELAY_FEEDBACK, 60)
+        expected = _cc_bytes(DELAY_FEEDBACK, 60)
         self.assertEqual(result, expected)
 
     def test_delay_time(self):
         result = self.tempera.delay(time=80)
-        expected = self._cc_bytes(DELAY_TIME, 80)
+        expected = _cc_bytes(DELAY_TIME, 80)
         self.assertEqual(result, expected)
 
     def test_delay_color(self):
         result = self.tempera.delay(color=40)
-        expected = self._cc_bytes(DELAY_COLOR, 40)
+        expected = _cc_bytes(DELAY_COLOR, 40)
         self.assertEqual(result, expected)
 
     def test_delay_mix(self):
         result = self.tempera.delay(mix=90)
-        expected = self._cc_bytes(DELAY_MIX, 90)
+        expected = _cc_bytes(DELAY_MIX, 90)
         self.assertEqual(result, expected)
 
     def test_delay_multiple_params(self):
         result = self.tempera.delay(feedback=10, time=20, color=30, mix=40)
         expected = (
-            self._cc_bytes(DELAY_FEEDBACK, 10) +
-            self._cc_bytes(DELAY_TIME, 20) +
-            self._cc_bytes(DELAY_COLOR, 30) +
-            self._cc_bytes(DELAY_MIX, 40)
+            _cc_bytes(DELAY_FEEDBACK, 10) +
+            _cc_bytes(DELAY_TIME, 20) +
+            _cc_bytes(DELAY_COLOR, 30) +
+            _cc_bytes(DELAY_MIX, 40)
         )
         self.assertEqual(result, expected)
 
     # Test Chorus
     def test_chorus_depth(self):
         result = self.tempera.chorus(depth=70)
-        expected = self._cc_bytes(CHORUS_DEPTH, 70)
+        expected = _cc_bytes(CHORUS_DEPTH, 70)
         self.assertEqual(result, expected)
 
     def test_chorus_speed(self):
         result = self.tempera.chorus(speed=45)
-        expected = self._cc_bytes(CHORUS_SPEED, 45)
+        expected = _cc_bytes(CHORUS_SPEED, 45)
         self.assertEqual(result, expected)
 
     def test_chorus_flange(self):
         result = self.tempera.chorus(flange=55)
-        expected = self._cc_bytes(CHORUS_FLANGE, 55)
+        expected = _cc_bytes(CHORUS_FLANGE, 55)
         self.assertEqual(result, expected)
 
     def test_chorus_mix(self):
         result = self.tempera.chorus(mix=65)
-        expected = self._cc_bytes(CHORUS_MIX, 65)
+        expected = _cc_bytes(CHORUS_MIX, 65)
         self.assertEqual(result, expected)
 
     def test_chorus_multiple_params(self):
         result = self.tempera.chorus(depth=10, speed=20, flange=30, mix=40)
         expected = (
-            self._cc_bytes(CHORUS_DEPTH, 10) +
-            self._cc_bytes(CHORUS_SPEED, 20) +
-            self._cc_bytes(CHORUS_FLANGE, 30) +
-            self._cc_bytes(CHORUS_MIX, 40)
+            _cc_bytes(CHORUS_DEPTH, 10) +
+            _cc_bytes(CHORUS_SPEED, 20) +
+            _cc_bytes(CHORUS_FLANGE, 30) +
+            _cc_bytes(CHORUS_MIX, 40)
         )
         self.assertEqual(result, expected)
 
     # Test Track Volume
     def test_track_volume_track_1(self):
         result = self.tempera.track_volume(track_1=100)
-        expected = self._cc_bytes(TRACK_1_VOLUME, 100)
+        expected = _cc_bytes(TRACK_1_VOLUME, 100)
         self.assertEqual(result, expected)
 
     def test_track_volume_track_8(self):
         result = self.tempera.track_volume(track_8=50)
-        expected = self._cc_bytes(TRACK_8_VOLUME, 50)
+        expected = _cc_bytes(TRACK_8_VOLUME, 50)
         self.assertEqual(result, expected)
 
     def test_track_volume_multiple_tracks(self):
         result = self.tempera.track_volume(track_1=100, track_2=90, track_3=80, track_4=70)
         expected = (
-            self._cc_bytes(TRACK_1_VOLUME, 100) +
-            self._cc_bytes(TRACK_2_VOLUME, 90) +
-            self._cc_bytes(TRACK_3_VOLUME, 80) +
-            self._cc_bytes(TRACK_4_VOLUME, 70)
+            _cc_bytes(TRACK_1_VOLUME, 100) +
+            _cc_bytes(TRACK_2_VOLUME, 90) +
+            _cc_bytes(TRACK_3_VOLUME, 80) +
+            _cc_bytes(TRACK_4_VOLUME, 70)
         )
         self.assertEqual(result, expected)
 
     # Test Emitter 1
     def test_emitter_1_volume(self):
         result = self.tempera.emitter_1(volume=100)
-        expected = self._cc_bytes(EMITTER_1_VOLUME, 100)
+        expected = _cc_bytes(EMITTER_1_VOLUME, 100)
         self.assertEqual(result, expected)
 
     def test_emitter_1_grain_density(self):
         result = self.tempera.emitter_1(grain_density=64)
-        expected = self._cc_bytes(EMITTER_1_GRAIN_DENSITY, 64)
+        expected = _cc_bytes(EMITTER_1_GRAIN_DENSITY, 64)
         self.assertEqual(result, expected)
 
     def test_emitter_1_octave(self):
         result = self.tempera.emitter_1(octave=64)
-        expected = self._cc_bytes(EMITTER_1_OCTAVE, 64)
+        expected = _cc_bytes(EMITTER_1_OCTAVE, 64)
         self.assertEqual(result, expected)
 
     def test_emitter_1_multiple_params(self):
         result = self.tempera.emitter_1(volume=100, grain_density=50, octave=64)
         expected = (
-            self._cc_bytes(EMITTER_1_VOLUME, 100) +
-            self._cc_bytes(EMITTER_1_GRAIN_DENSITY, 50) +
-            self._cc_bytes(EMITTER_1_OCTAVE, 64)
+            _cc_bytes(EMITTER_1_VOLUME, 100) +
+            _cc_bytes(EMITTER_1_GRAIN_DENSITY, 50) +
+            _cc_bytes(EMITTER_1_OCTAVE, 64)
         )
         self.assertEqual(result, expected)
 
     # Test Emitter 2
     def test_emitter_2_volume(self):
         result = self.tempera.emitter_2(volume=80)
-        expected = self._cc_bytes(EMITTER_2_VOLUME, 80)
+        expected = _cc_bytes(EMITTER_2_VOLUME, 80)
         self.assertEqual(result, expected)
 
     def test_emitter_2_grain_pan(self):
         result = self.tempera.emitter_2(grain_pan=64)
-        expected = self._cc_bytes(EMITTER_2_GRAIN_PAN, 64)
+        expected = _cc_bytes(EMITTER_2_GRAIN_PAN, 64)
         self.assertEqual(result, expected)
 
     # Test Emitter 3
     def test_emitter_3_volume(self):
         result = self.tempera.emitter_3(volume=60)
-        expected = self._cc_bytes(EMITTER_3_VOLUME, 60)
+        expected = _cc_bytes(EMITTER_3_VOLUME, 60)
         self.assertEqual(result, expected)
 
     def test_emitter_3_spray_x(self):
         result = self.tempera.emitter_3(spray_x=32)
-        expected = self._cc_bytes(EMITTER_3_SPRAY_X, 32)
+        expected = _cc_bytes(EMITTER_3_SPRAY_X, 32)
         self.assertEqual(result, expected)
 
     # Test Emitter 4
     def test_emitter_4_volume(self):
         result = self.tempera.emitter_4(volume=40)
-        expected = self._cc_bytes(EMITTER_4_VOLUME, 40)
+        expected = _cc_bytes(EMITTER_4_VOLUME, 40)
         self.assertEqual(result, expected)
 
     def test_emitter_4_effects_send(self):
         result = self.tempera.emitter_4(effects_send=100)
-        expected = self._cc_bytes(EMITTER_4_EFFECTS_SEND, 100)
+        expected = _cc_bytes(EMITTER_4_EFFECTS_SEND, 100)
         self.assertEqual(result, expected)
 
     # Test channel parameter via constructor
     def test_adsr_with_channel(self):
-        tempera = Tempera(channel=5)
+        tempera = TemperaGlobal(channel=5)
         result = tempera.adsr(attack=64)
-        expected = self._cc_bytes(ADSR_ATTACK, 64, channel=5)
+        expected = _cc_bytes(ADSR_ATTACK, 64, channel=5)
         self.assertEqual(result, expected)
 
     def test_reverb_with_channel(self):
-        tempera = Tempera(channel=10)
+        tempera = TemperaGlobal(channel=10)
         result = tempera.reverb(size=100)
-        expected = self._cc_bytes(REVERB_SIZE, 100, channel=10)
+        expected = _cc_bytes(REVERB_SIZE, 100, channel=10)
         self.assertEqual(result, expected)
 
     def test_emitter_1_with_channel(self):
-        tempera = Tempera(channel=15)
+        tempera = TemperaGlobal(channel=15)
         result = tempera.emitter_1(volume=127)
-        expected = self._cc_bytes(EMITTER_1_VOLUME, 127, channel=15)
+        expected = _cc_bytes(EMITTER_1_VOLUME, 127, channel=15)
         self.assertEqual(result, expected)
 
     # Test value clamping (values > 127 should be masked to 7 bits)
     def test_value_masked_to_7_bits(self):
         result = self.tempera.adsr(attack=200)  # 200 & 0x7F = 72
-        expected = self._cc_bytes(ADSR_ATTACK, 200)  # _cc_bytes also masks
+        expected = _cc_bytes(ADSR_ATTACK, 200)  # _cc_bytes also masks
         self.assertEqual(result, expected)
         self.assertEqual(result[2], 200 & 0x7F)
 
     # Test channel clamping (channel > 15 should be masked to 4 bits)
     def test_channel_masked_to_4_bits(self):
-        tempera = Tempera(channel=20)  # 20 & 0x0F = 4
+        tempera = TemperaGlobal(channel=20)  # 20 & 0x0F = 4
         result = tempera.adsr(attack=64)
         self.assertEqual(result[0], 0xB0 | (20 & 0x0F))
 
@@ -306,7 +307,7 @@ class TestTempera(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_change_canvas_with_channel(self):
-        tempera = Tempera(channel=10)
+        tempera = TemperaGlobal(channel=10)
         result = tempera.change_canvas(42)
         expected = bytes([0xC0 | 10, 42])
         self.assertEqual(result, expected)
@@ -314,6 +315,19 @@ class TestTempera(unittest.TestCase):
     def test_change_canvas_program_masked_to_7_bits(self):
         result = self.tempera.change_canvas(200)  # 200 & 0x7F = 72
         self.assertEqual(result[1], 200 & 0x7F)
+
+    # Test clock, start, stop (MIDI real-time messages - static methods)
+    def test_clock(self):
+        result = TemperaGlobal.clock()
+        self.assertEqual(result, bytes([0xF8]))
+
+    def test_start(self):
+        result = TemperaGlobal.start()
+        self.assertEqual(result, bytes([0xFA]))
+
+    def test_stop(self):
+        result = TemperaGlobal.stop()
+        self.assertEqual(result, bytes([0xFC]))
 
 
 if __name__ == '__main__':
