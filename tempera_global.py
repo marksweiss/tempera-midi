@@ -145,6 +145,9 @@ EMITTER_4_CC_MAP = {
 class Tempera:
     MIDI_CC_STATUS = 0xB0
     MIDI_PC_STATUS = 0xC0
+    MIDI_CLOCK = 0xF8
+    MIDI_START = 0xFA
+    MIDI_STOP = 0xFC
 
     def __init__(self, channel: int = 1):
         self.channel = channel
@@ -310,3 +313,15 @@ class Tempera:
 
     def change_canvas(self, program: int) -> bytes:
         return bytes([Tempera.MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
+
+    @staticmethod
+    def clock() -> bytes:
+        return bytes([Tempera.MIDI_CLOCK])
+
+    @staticmethod
+    def start() -> bytes:
+        return bytes([Tempera.MIDI_START])
+
+    @staticmethod
+    def stop() -> bytes:
+        return bytes([Tempera.MIDI_STOP])
