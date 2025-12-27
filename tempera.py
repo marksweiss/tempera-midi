@@ -27,6 +27,120 @@ from midi_constants import (
     EMITTER_4_TONE_FILTER_WIDTH, EMITTER_4_TONE_FILTER_CENTER, EMITTER_4_EFFECTS_SEND,
 )
 
+ADSR_CC_MAP = {
+    'attack': ADSR_ATTACK,
+    'decay': ADSR_DECAY,
+    'sustain': ADSR_SUSTAIN,
+    'release': ADSR_RELEASE,
+}
+
+REVERB_CC_MAP = {
+    'size': REVERB_SIZE,
+    'color': REVERB_COLOR,
+    'mix': REVERB_MIX,
+}
+
+DELAY_CC_MAP = {
+    'feedback': DELAY_FEEDBACK,
+    'time': DELAY_TIME,
+    'color': DELAY_COLOR,
+    'mix': DELAY_MIX,
+}
+
+CHORUS_CC_MAP = {
+    'depth': CHORUS_DEPTH,
+    'speed': CHORUS_SPEED,
+    'flange': CHORUS_FLANGE,
+    'mix': CHORUS_MIX,
+}
+
+TRACK_VOLUME_CC_MAP = {
+    'track_1': TRACK_1_VOLUME,
+    'track_2': TRACK_2_VOLUME,
+    'track_3': TRACK_3_VOLUME,
+    'track_4': TRACK_4_VOLUME,
+    'track_5': TRACK_5_VOLUME,
+    'track_6': TRACK_6_VOLUME,
+    'track_7': TRACK_7_VOLUME,
+    'track_8': TRACK_8_VOLUME,
+}
+
+EMITTER_1_CC_MAP = {
+    'volume': EMITTER_1_VOLUME,
+    'grain_length_cell': EMITTER_1_GRAIN_LENGTH_CELL,
+    'grain_length_note': EMITTER_1_GRAIN_LENGTH_NOTE,
+    'grain_density': EMITTER_1_GRAIN_DENSITY,
+    'grain_shape': EMITTER_1_GRAIN_SHAPE,
+    'grain_shape_attack': EMITTER_1_GRAIN_SHAPE_ATTACK,
+    'grain_pan': EMITTER_1_GRAIN_PAN,
+    'grain_tune_spread': EMITTER_1_GRAIN_TUNE_SPREAD,
+    'octave': EMITTER_1_OCTAVE,
+    'relative_x': EMITTER_1_RELATIVE_X,
+    'relative_y': EMITTER_1_RELATIVE_Y,
+    'spray_x': EMITTER_1_SPRAY_X,
+    'spray_y': EMITTER_1_SPRAY_Y,
+    'tone_filter_width': EMITTER_1_TONE_FILTER_WIDTH,
+    'tone_filter_center': EMITTER_1_TONE_FILTER_CENTER,
+    'effects_send': EMITTER_1_EFFECTS_SEND,
+}
+
+EMITTER_2_CC_MAP = {
+    'volume': EMITTER_2_VOLUME,
+    'grain_length_cell': EMITTER_2_GRAIN_LENGTH_CELL,
+    'grain_length_note': EMITTER_2_GRAIN_LENGTH_NOTE,
+    'grain_density': EMITTER_2_GRAIN_DENSITY,
+    'grain_shape': EMITTER_2_GRAIN_SHAPE,
+    'grain_shape_attack': EMITTER_2_GRAIN_SHAPE_ATTACK,
+    'grain_pan': EMITTER_2_GRAIN_PAN,
+    'grain_tune_spread': EMITTER_2_GRAIN_TUNE_SPREAD,
+    'octave': EMITTER_2_OCTAVE,
+    'relative_x': EMITTER_2_RELATIVE_X,
+    'relative_y': EMITTER_2_RELATIVE_Y,
+    'spray_x': EMITTER_2_SPRAY_X,
+    'spray_y': EMITTER_2_SPRAY_Y,
+    'tone_filter_width': EMITTER_2_TONE_FILTER_WIDTH,
+    'tone_filter_center': EMITTER_2_TONE_FILTER_CENTER,
+    'effects_send': EMITTER_2_EFFECTS_SEND,
+}
+
+EMITTER_3_CC_MAP = {
+    'volume': EMITTER_3_VOLUME,
+    'grain_length_cell': EMITTER_3_GRAIN_LENGTH_CELL,
+    'grain_length_note': EMITTER_3_GRAIN_LENGTH_NOTE,
+    'grain_density': EMITTER_3_GRAIN_DENSITY,
+    'grain_shape': EMITTER_3_GRAIN_SHAPE,
+    'grain_shape_attack': EMITTER_3_GRAIN_SHAPE_ATTACK,
+    'grain_pan': EMITTER_3_GRAIN_PAN,
+    'grain_tune_spread': EMITTER_3_GRAIN_TUNE_SPREAD,
+    'octave': EMITTER_3_OCTAVE,
+    'relative_x': EMITTER_3_RELATIVE_X,
+    'relative_y': EMITTER_3_RELATIVE_Y,
+    'spray_x': EMITTER_3_SPRAY_X,
+    'spray_y': EMITTER_3_SPRAY_Y,
+    'tone_filter_width': EMITTER_3_TONE_FILTER_WIDTH,
+    'tone_filter_center': EMITTER_3_TONE_FILTER_CENTER,
+    'effects_send': EMITTER_3_EFFECTS_SEND,
+}
+
+EMITTER_4_CC_MAP = {
+    'volume': EMITTER_4_VOLUME,
+    'grain_length_cell': EMITTER_4_GRAIN_LENGTH_CELL,
+    'grain_length_note': EMITTER_4_GRAIN_LENGTH_NOTE,
+    'grain_density': EMITTER_4_GRAIN_DENSITY,
+    'grain_shape': EMITTER_4_GRAIN_SHAPE,
+    'grain_shape_attack': EMITTER_4_GRAIN_SHAPE_ATTACK,
+    'grain_pan': EMITTER_4_GRAIN_PAN,
+    'grain_tune_spread': EMITTER_4_GRAIN_TUNE_SPREAD,
+    'octave': EMITTER_4_OCTAVE,
+    'relative_x': EMITTER_4_RELATIVE_X,
+    'relative_y': EMITTER_4_RELATIVE_Y,
+    'spray_x': EMITTER_4_SPRAY_X,
+    'spray_y': EMITTER_4_SPRAY_Y,
+    'tone_filter_width': EMITTER_4_TONE_FILTER_WIDTH,
+    'tone_filter_center': EMITTER_4_TONE_FILTER_CENTER,
+    'effects_send': EMITTER_4_EFFECTS_SEND,
+}
+
 
 class Tempera:
     MIDI_CC_STATUS = 0xB0
@@ -34,6 +148,13 @@ class Tempera:
     @staticmethod
     def _cc(cc: int, value: int, channel: int = 0) -> bytes:
         return bytes([Tempera.MIDI_CC_STATUS | (channel & 0x0F), cc & 0x7F, value & 0x7F])
+
+    @staticmethod
+    def _build_messages(params: dict, cc_map: dict, channel: int) -> bytes:
+        result = bytearray()
+        for name, value in params.items():
+            result.extend(Tempera._cc(cc_map[name], value, channel))
+        return bytes(result)
 
     @staticmethod
     def adsr(
@@ -44,16 +165,8 @@ class Tempera:
         release: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if attack is not None:
-            result.extend(Tempera._cc(ADSR_ATTACK, attack, channel))
-        if decay is not None:
-            result.extend(Tempera._cc(ADSR_DECAY, decay, channel))
-        if sustain is not None:
-            result.extend(Tempera._cc(ADSR_SUSTAIN, sustain, channel))
-        if release is not None:
-            result.extend(Tempera._cc(ADSR_RELEASE, release, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, ADSR_CC_MAP, channel)
 
     @staticmethod
     def reverb(
@@ -63,14 +176,8 @@ class Tempera:
         mix: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if size is not None:
-            result.extend(Tempera._cc(REVERB_SIZE, size, channel))
-        if color is not None:
-            result.extend(Tempera._cc(REVERB_COLOR, color, channel))
-        if mix is not None:
-            result.extend(Tempera._cc(REVERB_MIX, mix, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, REVERB_CC_MAP, channel)
 
     @staticmethod
     def delay(
@@ -81,16 +188,8 @@ class Tempera:
         mix: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if feedback is not None:
-            result.extend(Tempera._cc(DELAY_FEEDBACK, feedback, channel))
-        if time is not None:
-            result.extend(Tempera._cc(DELAY_TIME, time, channel))
-        if color is not None:
-            result.extend(Tempera._cc(DELAY_COLOR, color, channel))
-        if mix is not None:
-            result.extend(Tempera._cc(DELAY_MIX, mix, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, DELAY_CC_MAP, channel)
 
     @staticmethod
     def chorus(
@@ -101,16 +200,8 @@ class Tempera:
         mix: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if depth is not None:
-            result.extend(Tempera._cc(CHORUS_DEPTH, depth, channel))
-        if speed is not None:
-            result.extend(Tempera._cc(CHORUS_SPEED, speed, channel))
-        if flange is not None:
-            result.extend(Tempera._cc(CHORUS_FLANGE, flange, channel))
-        if mix is not None:
-            result.extend(Tempera._cc(CHORUS_MIX, mix, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, CHORUS_CC_MAP, channel)
 
     @staticmethod
     def track_volume(
@@ -125,24 +216,8 @@ class Tempera:
         track_8: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if track_1 is not None:
-            result.extend(Tempera._cc(TRACK_1_VOLUME, track_1, channel))
-        if track_2 is not None:
-            result.extend(Tempera._cc(TRACK_2_VOLUME, track_2, channel))
-        if track_3 is not None:
-            result.extend(Tempera._cc(TRACK_3_VOLUME, track_3, channel))
-        if track_4 is not None:
-            result.extend(Tempera._cc(TRACK_4_VOLUME, track_4, channel))
-        if track_5 is not None:
-            result.extend(Tempera._cc(TRACK_5_VOLUME, track_5, channel))
-        if track_6 is not None:
-            result.extend(Tempera._cc(TRACK_6_VOLUME, track_6, channel))
-        if track_7 is not None:
-            result.extend(Tempera._cc(TRACK_7_VOLUME, track_7, channel))
-        if track_8 is not None:
-            result.extend(Tempera._cc(TRACK_8_VOLUME, track_8, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, TRACK_VOLUME_CC_MAP, channel)
 
     @staticmethod
     def emitter_1(
@@ -165,40 +240,8 @@ class Tempera:
         effects_send: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if volume is not None:
-            result.extend(Tempera._cc(EMITTER_1_VOLUME, volume, channel))
-        if grain_length_cell is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_LENGTH_CELL, grain_length_cell, channel))
-        if grain_length_note is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_LENGTH_NOTE, grain_length_note, channel))
-        if grain_density is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_DENSITY, grain_density, channel))
-        if grain_shape is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_SHAPE, grain_shape, channel))
-        if grain_shape_attack is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_SHAPE_ATTACK, grain_shape_attack, channel))
-        if grain_pan is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_PAN, grain_pan, channel))
-        if grain_tune_spread is not None:
-            result.extend(Tempera._cc(EMITTER_1_GRAIN_TUNE_SPREAD, grain_tune_spread, channel))
-        if octave is not None:
-            result.extend(Tempera._cc(EMITTER_1_OCTAVE, octave, channel))
-        if relative_x is not None:
-            result.extend(Tempera._cc(EMITTER_1_RELATIVE_X, relative_x, channel))
-        if relative_y is not None:
-            result.extend(Tempera._cc(EMITTER_1_RELATIVE_Y, relative_y, channel))
-        if spray_x is not None:
-            result.extend(Tempera._cc(EMITTER_1_SPRAY_X, spray_x, channel))
-        if spray_y is not None:
-            result.extend(Tempera._cc(EMITTER_1_SPRAY_Y, spray_y, channel))
-        if tone_filter_width is not None:
-            result.extend(Tempera._cc(EMITTER_1_TONE_FILTER_WIDTH, tone_filter_width, channel))
-        if tone_filter_center is not None:
-            result.extend(Tempera._cc(EMITTER_1_TONE_FILTER_CENTER, tone_filter_center, channel))
-        if effects_send is not None:
-            result.extend(Tempera._cc(EMITTER_1_EFFECTS_SEND, effects_send, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, EMITTER_1_CC_MAP, channel)
 
     @staticmethod
     def emitter_2(
@@ -221,40 +264,8 @@ class Tempera:
         effects_send: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if volume is not None:
-            result.extend(Tempera._cc(EMITTER_2_VOLUME, volume, channel))
-        if grain_length_cell is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_LENGTH_CELL, grain_length_cell, channel))
-        if grain_length_note is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_LENGTH_NOTE, grain_length_note, channel))
-        if grain_density is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_DENSITY, grain_density, channel))
-        if grain_shape is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_SHAPE, grain_shape, channel))
-        if grain_shape_attack is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_SHAPE_ATTACK, grain_shape_attack, channel))
-        if grain_pan is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_PAN, grain_pan, channel))
-        if grain_tune_spread is not None:
-            result.extend(Tempera._cc(EMITTER_2_GRAIN_TUNE_SPREAD, grain_tune_spread, channel))
-        if octave is not None:
-            result.extend(Tempera._cc(EMITTER_2_OCTAVE, octave, channel))
-        if relative_x is not None:
-            result.extend(Tempera._cc(EMITTER_2_RELATIVE_X, relative_x, channel))
-        if relative_y is not None:
-            result.extend(Tempera._cc(EMITTER_2_RELATIVE_Y, relative_y, channel))
-        if spray_x is not None:
-            result.extend(Tempera._cc(EMITTER_2_SPRAY_X, spray_x, channel))
-        if spray_y is not None:
-            result.extend(Tempera._cc(EMITTER_2_SPRAY_Y, spray_y, channel))
-        if tone_filter_width is not None:
-            result.extend(Tempera._cc(EMITTER_2_TONE_FILTER_WIDTH, tone_filter_width, channel))
-        if tone_filter_center is not None:
-            result.extend(Tempera._cc(EMITTER_2_TONE_FILTER_CENTER, tone_filter_center, channel))
-        if effects_send is not None:
-            result.extend(Tempera._cc(EMITTER_2_EFFECTS_SEND, effects_send, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, EMITTER_2_CC_MAP, channel)
 
     @staticmethod
     def emitter_3(
@@ -277,40 +288,8 @@ class Tempera:
         effects_send: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if volume is not None:
-            result.extend(Tempera._cc(EMITTER_3_VOLUME, volume, channel))
-        if grain_length_cell is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_LENGTH_CELL, grain_length_cell, channel))
-        if grain_length_note is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_LENGTH_NOTE, grain_length_note, channel))
-        if grain_density is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_DENSITY, grain_density, channel))
-        if grain_shape is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_SHAPE, grain_shape, channel))
-        if grain_shape_attack is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_SHAPE_ATTACK, grain_shape_attack, channel))
-        if grain_pan is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_PAN, grain_pan, channel))
-        if grain_tune_spread is not None:
-            result.extend(Tempera._cc(EMITTER_3_GRAIN_TUNE_SPREAD, grain_tune_spread, channel))
-        if octave is not None:
-            result.extend(Tempera._cc(EMITTER_3_OCTAVE, octave, channel))
-        if relative_x is not None:
-            result.extend(Tempera._cc(EMITTER_3_RELATIVE_X, relative_x, channel))
-        if relative_y is not None:
-            result.extend(Tempera._cc(EMITTER_3_RELATIVE_Y, relative_y, channel))
-        if spray_x is not None:
-            result.extend(Tempera._cc(EMITTER_3_SPRAY_X, spray_x, channel))
-        if spray_y is not None:
-            result.extend(Tempera._cc(EMITTER_3_SPRAY_Y, spray_y, channel))
-        if tone_filter_width is not None:
-            result.extend(Tempera._cc(EMITTER_3_TONE_FILTER_WIDTH, tone_filter_width, channel))
-        if tone_filter_center is not None:
-            result.extend(Tempera._cc(EMITTER_3_TONE_FILTER_CENTER, tone_filter_center, channel))
-        if effects_send is not None:
-            result.extend(Tempera._cc(EMITTER_3_EFFECTS_SEND, effects_send, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, EMITTER_3_CC_MAP, channel)
 
     @staticmethod
     def emitter_4(
@@ -333,37 +312,5 @@ class Tempera:
         effects_send: int = None,
         channel: int = 0
     ) -> bytes:
-        result = bytearray()
-        if volume is not None:
-            result.extend(Tempera._cc(EMITTER_4_VOLUME, volume, channel))
-        if grain_length_cell is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_LENGTH_CELL, grain_length_cell, channel))
-        if grain_length_note is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_LENGTH_NOTE, grain_length_note, channel))
-        if grain_density is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_DENSITY, grain_density, channel))
-        if grain_shape is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_SHAPE, grain_shape, channel))
-        if grain_shape_attack is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_SHAPE_ATTACK, grain_shape_attack, channel))
-        if grain_pan is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_PAN, grain_pan, channel))
-        if grain_tune_spread is not None:
-            result.extend(Tempera._cc(EMITTER_4_GRAIN_TUNE_SPREAD, grain_tune_spread, channel))
-        if octave is not None:
-            result.extend(Tempera._cc(EMITTER_4_OCTAVE, octave, channel))
-        if relative_x is not None:
-            result.extend(Tempera._cc(EMITTER_4_RELATIVE_X, relative_x, channel))
-        if relative_y is not None:
-            result.extend(Tempera._cc(EMITTER_4_RELATIVE_Y, relative_y, channel))
-        if spray_x is not None:
-            result.extend(Tempera._cc(EMITTER_4_SPRAY_X, spray_x, channel))
-        if spray_y is not None:
-            result.extend(Tempera._cc(EMITTER_4_SPRAY_Y, spray_y, channel))
-        if tone_filter_width is not None:
-            result.extend(Tempera._cc(EMITTER_4_TONE_FILTER_WIDTH, tone_filter_width, channel))
-        if tone_filter_center is not None:
-            result.extend(Tempera._cc(EMITTER_4_TONE_FILTER_CENTER, tone_filter_center, channel))
-        if effects_send is not None:
-            result.extend(Tempera._cc(EMITTER_4_EFFECTS_SEND, effects_send, channel))
-        return bytes(result)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
+        return Tempera._build_messages(params, EMITTER_4_CC_MAP, channel)
