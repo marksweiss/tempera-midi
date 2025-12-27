@@ -145,66 +145,63 @@ EMITTER_4_CC_MAP = {
 class Tempera:
     MIDI_CC_STATUS = 0xB0
 
-    @staticmethod
-    def _cc(cc: int, value: int, channel: int = 0) -> bytes:
-        return bytes([Tempera.MIDI_CC_STATUS | (channel & 0x0F), cc & 0x7F, value & 0x7F])
+    def __init__(self, channel: int = 1):
+        self.channel = channel
 
-    @staticmethod
-    def _build_messages(params: dict, cc_map: dict, channel: int) -> bytes:
+    def _cc(self, cc: int, value: int) -> bytes:
+        return bytes([Tempera.MIDI_CC_STATUS | (self.channel & 0x0F), cc & 0x7F, value & 0x7F])
+
+    def _build_messages(self, params: dict, cc_map: dict) -> bytes:
         result = bytearray()
         for name, value in params.items():
-            result.extend(Tempera._cc(cc_map[name], value, channel))
+            result.extend(self._cc(cc_map[name], value))
         return bytes(result)
 
-    @staticmethod
     def adsr(
+        self,
         *,
         attack: int = None,
         decay: int = None,
         sustain: int = None,
-        release: int = None,
-        channel: int = 0
+        release: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, ADSR_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, ADSR_CC_MAP)
 
-    @staticmethod
     def reverb(
+        self,
         *,
         size: int = None,
         color: int = None,
-        mix: int = None,
-        channel: int = 0
+        mix: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, REVERB_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, REVERB_CC_MAP)
 
-    @staticmethod
     def delay(
+        self,
         *,
         feedback: int = None,
         time: int = None,
         color: int = None,
-        mix: int = None,
-        channel: int = 0
+        mix: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, DELAY_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, DELAY_CC_MAP)
 
-    @staticmethod
     def chorus(
+        self,
         *,
         depth: int = None,
         speed: int = None,
         flange: int = None,
-        mix: int = None,
-        channel: int = 0
+        mix: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, CHORUS_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, CHORUS_CC_MAP)
 
-    @staticmethod
     def track_volume(
+        self,
         *,
         track_1: int = None,
         track_2: int = None,
@@ -213,14 +210,13 @@ class Tempera:
         track_5: int = None,
         track_6: int = None,
         track_7: int = None,
-        track_8: int = None,
-        channel: int = 0
+        track_8: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, TRACK_VOLUME_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, TRACK_VOLUME_CC_MAP)
 
-    @staticmethod
     def emitter_1(
+        self,
         *,
         volume: int = None,
         grain_length_cell: int = None,
@@ -237,14 +233,13 @@ class Tempera:
         spray_y: int = None,
         tone_filter_width: int = None,
         tone_filter_center: int = None,
-        effects_send: int = None,
-        channel: int = 0
+        effects_send: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, EMITTER_1_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, EMITTER_1_CC_MAP)
 
-    @staticmethod
     def emitter_2(
+        self,
         *,
         volume: int = None,
         grain_length_cell: int = None,
@@ -261,14 +256,13 @@ class Tempera:
         spray_y: int = None,
         tone_filter_width: int = None,
         tone_filter_center: int = None,
-        effects_send: int = None,
-        channel: int = 0
+        effects_send: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, EMITTER_2_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, EMITTER_2_CC_MAP)
 
-    @staticmethod
     def emitter_3(
+        self,
         *,
         volume: int = None,
         grain_length_cell: int = None,
@@ -285,14 +279,13 @@ class Tempera:
         spray_y: int = None,
         tone_filter_width: int = None,
         tone_filter_center: int = None,
-        effects_send: int = None,
-        channel: int = 0
+        effects_send: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, EMITTER_3_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, EMITTER_3_CC_MAP)
 
-    @staticmethod
     def emitter_4(
+        self,
         *,
         volume: int = None,
         grain_length_cell: int = None,
@@ -309,8 +302,7 @@ class Tempera:
         spray_y: int = None,
         tone_filter_width: int = None,
         tone_filter_center: int = None,
-        effects_send: int = None,
-        channel: int = 0
+        effects_send: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'channel'}
-        return Tempera._build_messages(params, EMITTER_4_CC_MAP, channel)
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self._build_messages(params, EMITTER_4_CC_MAP)

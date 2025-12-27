@@ -15,17 +15,20 @@ uv sync
 ```python
 from tempera import Tempera
 
+# Create instance with default channel (1)
+tempera = Tempera()
+
+# Or specify a MIDI channel (0-15)
+tempera = Tempera(channel=5)
+
 # Generate MIDI CC bytes for ADSR parameters
-midi_bytes = Tempera.adsr(attack=64, decay=100, sustain=80, release=50)
+midi_bytes = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
 
 # Generate MIDI CC bytes for reverb
-midi_bytes = Tempera.reverb(size=100, mix=64)
+midi_bytes = tempera.reverb(size=100, mix=64)
 
 # Generate MIDI CC bytes for emitter 1
-midi_bytes = Tempera.emitter_1(volume=100, grain_density=50, octave=64)
-
-# Specify a MIDI channel (0-15, default is 0)
-midi_bytes = Tempera.adsr(attack=64, channel=5)
+midi_bytes = tempera.emitter_1(volume=100, grain_density=50, octave=64)
 ```
 
 ## Running Tests
