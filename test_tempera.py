@@ -289,6 +289,32 @@ class TestTempera(unittest.TestCase):
         result = tempera.adsr(attack=64)
         self.assertEqual(result[0], 0xB0 | (20 & 0x0F))
 
+    # Test change_canvas (Program Change)
+    def test_change_canvas(self):
+        result = self.tempera.change_canvas(1)
+        expected = bytes([0xC0 | 1, 1])  # PC status + channel 1, program 1
+        self.assertEqual(result, expected)
+
+    def test_change_canvas_different_program(self):
+        result = self.tempera.change_canvas(64)
+        expected = bytes([0xC0 | 1, 64])
+        self.assertEqual(result, expected)
+
+    def test_change_canvas_max_program(self):
+        result = self.tempera.change_canvas(127)
+        expected = bytes([0xC0 | 1, 127])
+        self.assertEqual(result, expected)
+
+    def test_change_canvas_with_channel(self):
+        tempera = Tempera(channel=10)
+        result = tempera.change_canvas(42)
+        expected = bytes([0xC0 | 10, 42])
+        self.assertEqual(result, expected)
+
+    def test_change_canvas_program_masked_to_7_bits(self):
+        result = self.tempera.change_canvas(200)  # 200 & 0x7F = 72
+        self.assertEqual(result[1], 200 & 0x7F)
+
 
 if __name__ == '__main__':
     unittest.main()
