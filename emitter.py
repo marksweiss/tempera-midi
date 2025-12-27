@@ -98,142 +98,55 @@ EMITTER_4_CC_MAP = {
     'effects_send': EMITTER_4_EFFECTS_SEND,
 }
 
+EMITTER_CC_MAPS = {
+    1: EMITTER_1_CC_MAP,
+    2: EMITTER_2_CC_MAP,
+    3: EMITTER_3_CC_MAP,
+    4: EMITTER_4_CC_MAP,
+}
+
 
 class Emitter:
-    def __init__(self, channel: int = 1):
-        self.channel = channel
-
-    def emitter(
-        self,
-        emitter: int,
-        *,
-        volume: int = None,
-        grain_length_cell: int = None,
-        grain_length_note: int = None,
-        grain_density: int = None,
-        grain_shape: int = None,
-        grain_shape_attack: int = None,
-        grain_pan: int = None,
-        grain_tune_spread: int = None,
-        octave: int = None,
-        relative_x: int = None,
-        relative_y: int = None,
-        spray_x: int = None,
-        spray_y: int = None,
-        tone_filter_width: int = None,
-        tone_filter_center: int = None,
-        effects_send: int = None
-    ) -> bytes:
+    def __init__(self, emitter: int = 1, channel: int = 1):
         if emitter < 1 or emitter > 4:
             raise ValueError(f"emitter must be in range 1..4, got {emitter}")
-        method = getattr(self, f'_emitter_{emitter}')
-        return method(
-            volume=volume,
-            grain_length_cell=grain_length_cell,
-            grain_length_note=grain_length_note,
-            grain_density=grain_density,
-            grain_shape=grain_shape,
-            grain_shape_attack=grain_shape_attack,
-            grain_pan=grain_pan,
-            grain_tune_spread=grain_tune_spread,
-            octave=octave,
-            relative_x=relative_x,
-            relative_y=relative_y,
-            spray_x=spray_x,
-            spray_y=spray_y,
-            tone_filter_width=tone_filter_width,
-            tone_filter_center=tone_filter_center,
-            effects_send=effects_send
-        )
+        self.emitter_num = emitter
+        self.channel = channel
 
-    def _emitter_1(
+    def _cc_map(self) -> dict:
+        return EMITTER_CC_MAPS[self.emitter_num]
+
+    def volume(self, value: int) -> bytes:
+        return build_messages({'volume': value}, self._cc_map(), self.channel)
+
+    def grain(
         self,
         *,
-        volume: int = None,
-        grain_length_cell: int = None,
-        grain_length_note: int = None,
-        grain_density: int = None,
-        grain_shape: int = None,
-        grain_shape_attack: int = None,
-        grain_pan: int = None,
-        grain_tune_spread: int = None,
-        octave: int = None,
-        relative_x: int = None,
-        relative_y: int = None,
-        spray_x: int = None,
-        spray_y: int = None,
-        tone_filter_width: int = None,
-        tone_filter_center: int = None,
-        effects_send: int = None
+        length_cell: int = None,
+        length_note: int = None,
+        density: int = None,
+        shape: int = None,
+        shape_attack: int = None,
+        pan: int = None,
+        tune_spread: int = None
     ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, EMITTER_1_CC_MAP, self.channel)
+        params = {f'grain_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
+        return build_messages(params, self._cc_map(), self.channel)
 
-    def _emitter_2(
-        self,
-        *,
-        volume: int = None,
-        grain_length_cell: int = None,
-        grain_length_note: int = None,
-        grain_density: int = None,
-        grain_shape: int = None,
-        grain_shape_attack: int = None,
-        grain_pan: int = None,
-        grain_tune_spread: int = None,
-        octave: int = None,
-        relative_x: int = None,
-        relative_y: int = None,
-        spray_x: int = None,
-        spray_y: int = None,
-        tone_filter_width: int = None,
-        tone_filter_center: int = None,
-        effects_send: int = None
-    ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, EMITTER_2_CC_MAP, self.channel)
+    def octave(self, value: int) -> bytes:
+        return build_messages({'octave': value}, self._cc_map(), self.channel)
 
-    def _emitter_3(
-        self,
-        *,
-        volume: int = None,
-        grain_length_cell: int = None,
-        grain_length_note: int = None,
-        grain_density: int = None,
-        grain_shape: int = None,
-        grain_shape_attack: int = None,
-        grain_pan: int = None,
-        grain_tune_spread: int = None,
-        octave: int = None,
-        relative_x: int = None,
-        relative_y: int = None,
-        spray_x: int = None,
-        spray_y: int = None,
-        tone_filter_width: int = None,
-        tone_filter_center: int = None,
-        effects_send: int = None
-    ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, EMITTER_3_CC_MAP, self.channel)
+    def relative(self, *, x: int = None, y: int = None) -> bytes:
+        params = {f'relative_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
+        return build_messages(params, self._cc_map(), self.channel)
 
-    def _emitter_4(
-        self,
-        *,
-        volume: int = None,
-        grain_length_cell: int = None,
-        grain_length_note: int = None,
-        grain_density: int = None,
-        grain_shape: int = None,
-        grain_shape_attack: int = None,
-        grain_pan: int = None,
-        grain_tune_spread: int = None,
-        octave: int = None,
-        relative_x: int = None,
-        relative_y: int = None,
-        spray_x: int = None,
-        spray_y: int = None,
-        tone_filter_width: int = None,
-        tone_filter_center: int = None,
-        effects_send: int = None
-    ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, EMITTER_4_CC_MAP, self.channel)
+    def spray(self, *, x: int = None, y: int = None) -> bytes:
+        params = {f'spray_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
+        return build_messages(params, self._cc_map(), self.channel)
+
+    def tone_filter(self, *, width: int = None, center: int = None) -> bytes:
+        params = {f'tone_filter_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
+        return build_messages(params, self._cc_map(), self.channel)
+
+    def effects_send(self, value: int) -> bytes:
+        return build_messages({'effects_send': value}, self._cc_map(), self.channel)
