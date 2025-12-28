@@ -1,10 +1,14 @@
 from constants import (
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
-    REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
+    MODWHEEL, REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
 )
 from utils import build_messages
+
+MODWHEEL_CC_MAP = {
+    'modwheel': MODWHEEL,
+}
 
 ADSR_CC_MAP = {
     'attack': ADSR_ATTACK,
@@ -42,6 +46,14 @@ class TemperaGlobal:
 
     def __init__(self, channel: int = 1):
         self.channel = channel
+
+    def modwheel(
+            self,
+            *,
+            modwheel: int = None,
+    ) -> bytes:
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return build_messages(params, MODWHEEL_CC_MAP, self.channel)
 
     def adsr(
         self,

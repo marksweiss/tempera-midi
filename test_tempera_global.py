@@ -1,6 +1,7 @@
 import unittest
 from tempera_global import TemperaGlobal
 from constants import (
+    MODWHEEL,
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
     REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
@@ -40,6 +41,30 @@ class TestTemperaGlobal(unittest.TestCase):
     def test_chorus_no_args_returns_empty(self):
         self.assertEqual(self.tempera.chorus(), b'')
 
+    def test_modwheel_no_args_returns_empty(self):
+        self.assertEqual(self.tempera.modwheel(), b'')
+
+    # Test Modwheel
+    def test_modwheel(self):
+        result = self.tempera.modwheel(modwheel=64)
+        expected = _cc_bytes(MODWHEEL, 64)
+        self.assertEqual(result, expected)
+
+    def test_modwheel_min_value(self):
+        result = self.tempera.modwheel(modwheel=0)
+        expected = _cc_bytes(MODWHEEL, 0)
+        self.assertEqual(result, expected)
+
+    def test_modwheel_max_value(self):
+        result = self.tempera.modwheel(modwheel=127)
+        expected = _cc_bytes(MODWHEEL, 127)
+        self.assertEqual(result, expected)
+
+    def test_modwheel_with_channel(self):
+        tempera = TemperaGlobal(channel=5)
+        result = tempera.modwheel(modwheel=100)
+        expected = _cc_bytes(MODWHEEL, 100, channel=5)
+        self.assertEqual(result, expected)
 
     # Test ADSR
     def test_adsr_attack(self):
