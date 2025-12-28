@@ -22,11 +22,11 @@ class TestTemperaGlobal(unittest.TestCase):
 
     # Test default channel
     def test_default_channel_is_1(self):
-        self.assertEqual(self.tempera.channel, 1)
+        self.assertEqual(self.tempera.midi_channel, 1)
 
     def test_custom_channel(self):
-        tempera = TemperaGlobal(channel=5)
-        self.assertEqual(tempera.channel, 5)
+        tempera = TemperaGlobal(midi_channel=5)
+        self.assertEqual(tempera.midi_channel, 5)
 
     # Test empty calls return empty bytes
     def test_adsr_no_args_returns_empty(self):
@@ -61,7 +61,7 @@ class TestTemperaGlobal(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_modwheel_with_channel(self):
-        tempera = TemperaGlobal(channel=5)
+        tempera = TemperaGlobal(midi_channel=5)
         result = tempera.modwheel(modwheel=100)
         expected = _cc_bytes(MODWHEEL, 100, channel=5)
         self.assertEqual(result, expected)
@@ -186,13 +186,13 @@ class TestTemperaGlobal(unittest.TestCase):
 
     # Test channel parameter via constructor
     def test_adsr_with_channel(self):
-        tempera = TemperaGlobal(channel=5)
+        tempera = TemperaGlobal(midi_channel=5)
         result = tempera.adsr(attack=64)
         expected = _cc_bytes(ADSR_ATTACK, 64, channel=5)
         self.assertEqual(result, expected)
 
     def test_reverb_with_channel(self):
-        tempera = TemperaGlobal(channel=10)
+        tempera = TemperaGlobal(midi_channel=10)
         result = tempera.reverb(size=100)
         expected = _cc_bytes(REVERB_SIZE, 100, channel=10)
         self.assertEqual(result, expected)
@@ -206,7 +206,7 @@ class TestTemperaGlobal(unittest.TestCase):
 
     # Test channel clamping (channel > 15 should be masked to 4 bits)
     def test_channel_masked_to_4_bits(self):
-        tempera = TemperaGlobal(channel=20)  # 20 & 0x0F = 4
+        tempera = TemperaGlobal(midi_channel=20)  # 20 & 0x0F = 4
         result = tempera.adsr(attack=64)
         self.assertEqual(result[0], 0xB0 | (20 & 0x0F))
 
@@ -227,7 +227,7 @@ class TestTemperaGlobal(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_change_canvas_with_channel(self):
-        tempera = TemperaGlobal(channel=10)
+        tempera = TemperaGlobal(midi_channel=10)
         result = tempera.change_canvas(42)
         expected = bytes([0xC0 | 10, 42])
         self.assertEqual(result, expected)

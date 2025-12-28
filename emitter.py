@@ -106,20 +106,29 @@ EMITTER_CC_MAPS = {
     4: EMITTER_4_CC_MAP,
 }
 
+"""
+Emitter class for controlling individual emitters on the Tempera.
 
+"""
 class Emitter:
-    def __init__(self, emitter: int = 1, channel: int = 1):
+    def __init__(self, emitter: int = 1, midi_channel: int = 1):
         if emitter < 1 or emitter > 4:
             raise ValueError(f"emitter must be in range 1..4, got {emitter}")
         self.emitter_num = emitter
-        self.channel = channel
+        self.midi_channel = midi_channel
 
     def _cc_map(self) -> dict:
         return EMITTER_CC_MAPS[self.emitter_num]
 
+    """
+    Change Emitter Volume
+    """
     def volume(self, value: int) -> bytes:
-        return build_messages({'volume': value}, self._cc_map(), self.channel)
+        return build_messages({'volume': value}, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Grain Parameters
+    """
     def grain(
         self,
         *,
@@ -132,41 +141,65 @@ class Emitter:
         tune_spread: int = None
     ) -> bytes:
         params = {f'grain_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.channel)
+        return build_messages(params, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Octave
+    """
     def octave(self, value: int) -> bytes:
-        return build_messages({'octave': value}, self._cc_map(), self.channel)
+        return build_messages({'octave': value}, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
+    """
     def relative_position(self, *, x: int = None, y: int = None) -> bytes:
         params = {f'relative_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.channel)
+        return build_messages(params, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Spray along X and Y axes. Applies to a placement for the Emitter in a given Cell.
+    """
     def spray(self, *, x: int = None, y: int = None) -> bytes:
         params = {f'spray_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.channel)
+        return build_messages(params, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Filter width and center
+    """
     def tone_filter(self, *, width: int = None, center: int = None) -> bytes:
         params = {f'tone_filter_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.channel)
+        return build_messages(params, self._cc_map(), self.midi_channel)
 
+    """
+    Change Emitter Effects Send
+    """
     def effects_send(self, value: int) -> bytes:
-        return build_messages({'effects_send': value}, self._cc_map(), self.channel)
+        return build_messages({'effects_send': value}, self._cc_map(), self.midi_channel)
 
+    """
+    Set Emitter as Active
+    """
     def set_active(self) -> bytes:
-        return cc(ACTIVE_EMITTER, self.emitter_num - 1, self.channel)
+        return cc(ACTIVE_EMITTER, self.emitter_num - 1, self.midi_channel)
 
+    """
+    Remove Emitter placement in a given Cell in a given Column
+    """
     def remove_from_cell(self, column: int, cell: int) -> bytes:
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
-        return cc(REMOVE_EMITTER_FROM_CELL, value, self.channel)
+        return cc(REMOVE_EMITTER_FROM_CELL, value, self.midi_channel)
 
+    """
+    Place Emitter in a given Cell in a given Column
+    """
     def place_in_cell(self, column: int, cell: int) -> bytes:
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
-        return cc(PLACE_EMITTER_IN_CELL, value, self.channel)
+        return cc(PLACE_EMITTER_IN_CELL, value, self.midi_channel)

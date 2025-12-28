@@ -39,18 +39,27 @@ CHORUS_CC_MAP = {
 }
 
 
+"""
+Global controls for the Tempera, modwheel, envelope, effects, canvas control and clock
+"""
 class TemperaGlobal:
-    def __init__(self, channel: int = 1):
-        self.channel = channel
+    def __init__(self, midi_channel: int = 1):
+        self.midi_channel = midi_channel
 
+    """
+    Change Modwheel
+    """
     def modwheel(
             self,
             *,
             modwheel: int = None,
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, MODWHEEL_CC_MAP, self.channel)
+        return build_messages(params, MODWHEEL_CC_MAP, self.midi_channel)
 
+    """
+    Change ADSR envelope parameters
+    """
     def adsr(
         self,
         *,
@@ -60,8 +69,11 @@ class TemperaGlobal:
         release: int = None
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, ADSR_CC_MAP, self.channel)
+        return build_messages(params, ADSR_CC_MAP, self.midi_channel)
 
+    """
+    Change Reverb parameters
+    """
     def reverb(
         self,
         *,
@@ -70,8 +82,11 @@ class TemperaGlobal:
         mix: int = None
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, REVERB_CC_MAP, self.channel)
+        return build_messages(params, REVERB_CC_MAP, self.midi_channel)
 
+    """
+    Change Delay parameters
+    """
     def delay(
         self,
         *,
@@ -81,8 +96,11 @@ class TemperaGlobal:
         mix: int = None
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, DELAY_CC_MAP, self.channel)
+        return build_messages(params, DELAY_CC_MAP, self.midi_channel)
 
+    """
+    Change Chorus parameters
+    """
     def chorus(
         self,
         *,
@@ -92,19 +110,31 @@ class TemperaGlobal:
         mix: int = None
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, CHORUS_CC_MAP, self.channel)
+        return build_messages(params, CHORUS_CC_MAP, self.midi_channel)
 
+    """
+    Change Canvas
+    """
     def change_canvas(self, program: int) -> bytes:
-        return bytes([MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
+        return bytes([MIDI_PC_STATUS | (self.midi_channel & 0x0F), program & 0x7F])
 
+    """
+    Send MIDI Clock message
+    """
     @staticmethod
     def clock() -> bytes:
         return bytes([MIDI_CLOCK])
 
+    """
+    Send MIDI Start message
+    """
     @staticmethod
     def start() -> bytes:
         return bytes([MIDI_START])
 
+    """
+    Send MIDI Stop message
+    """
     @staticmethod
     def stop() -> bytes:
         return bytes([MIDI_STOP])

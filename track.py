@@ -16,21 +16,26 @@ TRACK_VOLUME_CC_MAP = {
 }
 
 
+"""
+Track class for controlling individual Tracks (Columns) on the Tempera
+"""
 class Track:
-    def __init__(self, track: int = 1, channel: int = 1):
+    def __init__(self, track: int = 1, midi_channel: int = 1):
         if track < 1 or track > 8:
             raise ValueError(f"track must be in range 1..8, got {track}")
         self.track_num = track
-        self.channel = channel
+        self.midi_channel = midi_channel
 
+    """
+    Change Track Volume
+    """
     def volume(self, value: int) -> bytes:
         return build_messages({f'track_{self.track_num}_volume': value},
-                              TRACK_VOLUME_CC_MAP, self.channel)
+                              TRACK_VOLUME_CC_MAP, self.midi_channel)
 
+    """
+    Set Recording on for Track. Recording starts when audio threshold set in Settings is reached.
+    """
     def record_on(self) -> bytes:
         note = 100 + (self.track_num - 1)
-        return note_on(note, 127, self.channel)
-
-    def record_off(self) -> bytes:
-        note = 100 + (self.track_num - 1)
-        return note_off(note, 0, self.channel)
+        return note_on(note, 127, self.midi_channel)

@@ -20,20 +20,20 @@ class TestTrack(unittest.TestCase):
         self.assertEqual(self.track.track_num, 1)
 
     def test_default_channel_is_1(self):
-        self.assertEqual(self.track.channel, 1)
+        self.assertEqual(self.track.midi_channel, 1)
 
     def test_custom_track(self):
         track = Track(track=5)
         self.assertEqual(track.track_num, 5)
 
     def test_custom_channel(self):
-        track = Track(channel=10)
-        self.assertEqual(track.channel, 10)
+        track = Track(midi_channel=10)
+        self.assertEqual(track.midi_channel, 10)
 
     def test_custom_track_and_channel(self):
-        track = Track(track=3, channel=8)
+        track = Track(track=3, midi_channel=8)
         self.assertEqual(track.track_num, 3)
-        self.assertEqual(track.channel, 8)
+        self.assertEqual(track.midi_channel, 8)
 
     # Test track validation in constructor
     def test_track_0_raises_value_error(self):
@@ -101,7 +101,7 @@ class TestTrack(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_volume_with_channel(self):
-        track = Track(track=1, channel=15)
+        track = Track(track=1, midi_channel=15)
         result = track.volume(127)
         expected = cc(TRACK_1_VOLUME, 127, channel=15)
         self.assertEqual(result, expected)
@@ -126,34 +126,9 @@ class TestTrack(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_record_on_with_channel(self):
-        track = Track(track=1, channel=5)
+        track = Track(track=1, midi_channel=5)
         result = track.record_on()
         expected = bytes([0x90 | 5, 100, 127])
-        self.assertEqual(result, expected)
-
-    # Test record_off()
-    def test_record_off_track_1(self):
-        track = Track(track=1)
-        result = track.record_off()
-        expected = bytes([0x80 | CHANNEL, 100, 0])  # note = 100 + (1-1) = 100
-        self.assertEqual(result, expected)
-
-    def test_record_off_track_2(self):
-        track = Track(track=2)
-        result = track.record_off()
-        expected = bytes([0x80 | CHANNEL, 101, 0])  # note = 100 + (2-1) = 101
-        self.assertEqual(result, expected)
-
-    def test_record_off_track_8(self):
-        track = Track(track=8)
-        result = track.record_off()
-        expected = bytes([0x80 | CHANNEL, 107, 0])  # note = 100 + (8-1) = 107
-        self.assertEqual(result, expected)
-
-    def test_record_off_with_channel(self):
-        track = Track(track=1, channel=5)
-        result = track.record_off()
-        expected = bytes([0x80 | 5, 100, 0])
         self.assertEqual(result, expected)
 
 

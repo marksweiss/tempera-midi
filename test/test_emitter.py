@@ -27,20 +27,20 @@ class TestEmitter(unittest.TestCase):
         self.assertEqual(self.emitter.emitter_num, 1)
 
     def test_default_channel_is_1(self):
-        self.assertEqual(self.emitter.channel, 1)
+        self.assertEqual(self.emitter.midi_channel, 1)
 
     def test_custom_emitter(self):
         emitter = Emitter(emitter=3)
         self.assertEqual(emitter.emitter_num, 3)
 
     def test_custom_channel(self):
-        emitter = Emitter(channel=5)
-        self.assertEqual(emitter.channel, 5)
+        emitter = Emitter(midi_channel=5)
+        self.assertEqual(emitter.midi_channel, 5)
 
     def test_custom_emitter_and_channel(self):
-        emitter = Emitter(emitter=2, channel=10)
+        emitter = Emitter(emitter=2, midi_channel=10)
         self.assertEqual(emitter.emitter_num, 2)
-        self.assertEqual(emitter.channel, 10)
+        self.assertEqual(emitter.midi_channel, 10)
 
     # Test emitter validation in constructor
     def test_emitter_0_raises_value_error(self):
@@ -83,7 +83,7 @@ class TestEmitter(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_volume_with_channel(self):
-        emitter = Emitter(emitter=1, channel=15)
+        emitter = Emitter(emitter=1, midi_channel=15)
         result = emitter.volume(127)
         expected = cc(EMITTER_1_VOLUME, 127, channel=15)
         self.assertEqual(result, expected)
@@ -236,7 +236,7 @@ class TestEmitter(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_set_active_with_channel(self):
-        emitter = Emitter(emitter=2, channel=10)
+        emitter = Emitter(emitter=2, midi_channel=10)
         result = emitter.set_active()
         expected = cc(ACTIVE_EMITTER, 1, channel=10)
         self.assertEqual(result, expected)
@@ -263,7 +263,7 @@ class TestEmitter(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_remove_from_cell_with_channel(self):
-        emitter = Emitter(emitter=1, channel=5)
+        emitter = Emitter(emitter=1, midi_channel=5)
         result = emitter.remove_from_cell(column=3, cell=4)
         expected = cc(REMOVE_EMITTER_FROM_CELL, 19, channel=5)  # ((3-1)*8) + (4-1) = 19
         self.assertEqual(result, expected)
@@ -310,7 +310,7 @@ class TestEmitter(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_place_in_cell_with_channel(self):
-        emitter = Emitter(emitter=1, channel=5)
+        emitter = Emitter(emitter=1, midi_channel=5)
         result = emitter.place_in_cell(column=3, cell=4)
         expected = cc(PLACE_EMITTER_IN_CELL, 19, channel=5)  # ((3-1)*8) + (4-1) = 19
         self.assertEqual(result, expected)
