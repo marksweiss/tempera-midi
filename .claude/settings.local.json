@@ -12,7 +12,9 @@
       "Bash(uv python pin:*)",
       "Bash(python -m unittest:*)",
       "Bash(python3:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(chmod:*)",
+      "Bash(.git/hooks/pre-commit)"
     ]
   }
 }

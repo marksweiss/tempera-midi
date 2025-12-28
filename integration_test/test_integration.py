@@ -134,7 +134,7 @@ class TestTemperaGlobalIntegration(MidiIntegrationTestBase):
         raw_bytes = tempera.modwheel(modwheel=100)
         messages = self.parse_and_send(raw_bytes)
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].midi_channel, 5)
+        self.assertEqual(messages[0].channel, 5)
 
 
 class TestEmitterIntegration(MidiIntegrationTestBase):
@@ -232,7 +232,7 @@ class TestEmitterIntegration(MidiIntegrationTestBase):
         raw_bytes = emitter.volume(100)
         messages = self.parse_and_send(raw_bytes)
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].midi_channel, 10)
+        self.assertEqual(messages[0].channel, 10)
 
 
 class TestTrackIntegration(MidiIntegrationTestBase):
@@ -304,7 +304,7 @@ class TestTrackIntegration(MidiIntegrationTestBase):
         raw_bytes = track.record_on()
         messages = self.parse_and_send(raw_bytes)
         self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].midi_channel, 15)
+        self.assertEqual(messages[0].channel, 15)
 
 
 def find_tempera_port():

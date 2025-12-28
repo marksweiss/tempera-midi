@@ -148,3 +148,13 @@ To list available MIDI ports on your system:
 ```bash
 uv run python -c "import mido; print(mido.get_output_names())"
 ```
+
+## Generating Docs
+
+Documentation is auto-generated from docstrings using pdoc. To regenerate:
+
+```bash
+uv run pdoc ./tempera_global.py ./emitter.py ./track.py ./utils.py ./constants.py -o docs/
+```
+
+Docs are also regenerated automatically by the pre-commit hook.
