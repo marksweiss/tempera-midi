@@ -9,7 +9,10 @@
       "Bash(uv sync:*)",
       "Bash(uv python install:*)",
       "Bash(uv venv:*)",
-      "Bash(uv python pin:*)"
+      "Bash(uv python pin:*)",
+      "Bash(python -m unittest:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ]
   }
 }

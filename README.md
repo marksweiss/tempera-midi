@@ -91,17 +91,17 @@ midi_bytes = track.record_off()
 Run all tests:
 
 ```bash
-uv run python -m unittest
+uv run python -m unittest discover test
 ```
 
 Run tests with verbose output:
 
 ```bash
-uv run python -m unittest -v
+uv run python -m unittest discover test -v
 ```
 
 Run a specific test:
 
 ```bash
-uv run python -m unittest test_tempera_global.TestTemperaGlobal.test_adsr_attack
+uv run python -m unittest test.test_tempera_global.TestTemperaGlobal.test_adsr_attack
 ```
