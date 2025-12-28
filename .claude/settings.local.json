@@ -14,7 +14,8 @@
       "Bash(python3:*)",
       "Bash(grep:*)",
       "Bash(chmod:*)",
-      "Bash(.git/hooks/pre-commit)"
+      "Bash(.git/hooks/pre-commit)",
+      "Bash(uv run:*)"
     ]
   }
 }

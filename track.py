@@ -16,10 +16,15 @@ TRACK_VOLUME_CC_MAP = {
 }
 
 
-"""
-Track class for controlling individual Tracks (Columns) on the Tempera
-"""
 class Track:
+    """
+    Controls for an individual Tempera track (column).
+
+    Args:
+        track: Track number (1-8).
+        midi_channel: MIDI channel (1-16). Default is 1.
+    """
+
     def __init__(self, track: int = 1, midi_channel: int = 1):
         if track < 1 or track > 8:
             raise ValueError(f"track must be in range 1..8, got {track}")

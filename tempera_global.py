@@ -39,10 +39,14 @@ CHORUS_CC_MAP = {
 }
 
 
-"""
-Global controls for the Tempera, modwheel, envelope, effects, canvas control and clock
-"""
 class TemperaGlobal:
+    """
+    Global controls for the Tempera: modwheel, envelope, effects, canvas and clock.
+
+    Args:
+        midi_channel: MIDI channel (1-16). Default is 1.
+    """
+
     def __init__(self, midi_channel: int = 1):
         self.midi_channel = midi_channel
 
@@ -112,11 +116,9 @@ class TemperaGlobal:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return build_messages(params, CHORUS_CC_MAP, self.midi_channel)
 
-    """
-    Change Canvas
-    """
     def change_canvas(self, program: int) -> bytes:
-        return bytes([MIDI_PC_STATUS | (self.midi_channel & 0x0F), program & 0x7F])
+        """Change the active canvas via MIDI Program Change."""
+        return bytes([MIDI_PC_STATUS | ((self.midi_channel - 1) & 0x0F), program & 0x7F])
 
     """
     Send MIDI Clock message

@@ -110,25 +110,25 @@ class TestTrack(unittest.TestCase):
     def test_record_on_track_1(self):
         track = Track(track=1)
         result = track.record_on()
-        expected = bytes([0x90 | CHANNEL, 100, 127])  # note = 100 + (1-1) = 100
+        expected = bytes([0x90 | (CHANNEL - 1), 100, 127])  # note = 100 + (1-1) = 100
         self.assertEqual(result, expected)
 
     def test_record_on_track_2(self):
         track = Track(track=2)
         result = track.record_on()
-        expected = bytes([0x90 | CHANNEL, 101, 127])  # note = 100 + (2-1) = 101
+        expected = bytes([0x90 | (CHANNEL - 1), 101, 127])  # note = 100 + (2-1) = 101
         self.assertEqual(result, expected)
 
     def test_record_on_track_8(self):
         track = Track(track=8)
         result = track.record_on()
-        expected = bytes([0x90 | CHANNEL, 107, 127])  # note = 100 + (8-1) = 107
+        expected = bytes([0x90 | (CHANNEL - 1), 107, 127])  # note = 100 + (8-1) = 107
         self.assertEqual(result, expected)
 
     def test_record_on_with_channel(self):
         track = Track(track=1, midi_channel=5)
         result = track.record_on()
-        expected = bytes([0x90 | 5, 100, 127])
+        expected = bytes([0x90 | 4, 100, 127])  # Channel 5 = byte 4
         self.assertEqual(result, expected)
 
 

@@ -106,11 +106,15 @@ EMITTER_CC_MAPS = {
     4: EMITTER_4_CC_MAP,
 }
 
-"""
-Emitter class for controlling individual emitters on the Tempera.
-
-"""
 class Emitter:
+    """
+    Controls for an individual Tempera emitter.
+
+    Args:
+        emitter: Emitter number (1-4).
+        midi_channel: MIDI channel (1-16). Default is 1.
+    """
+
     def __init__(self, emitter: int = 1, midi_channel: int = 1):
         if emitter < 1 or emitter > 4:
             raise ValueError(f"emitter must be in range 1..4, got {emitter}")

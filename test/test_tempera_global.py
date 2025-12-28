@@ -10,8 +10,8 @@ from constants import (
 
 
 def _cc_bytes(cc: int, value: int, channel: int = 1) -> bytes:
-    """Helper to create expected CC message bytes."""
-    return bytes([0xB0 | (channel & 0x0F), cc & 0x7F, value & 0x7F])
+    """Helper to create expected CC message bytes. Channel is 1-16."""
+    return bytes([0xB0 | ((channel - 1) & 0x0F), cc & 0x7F, value & 0x7F])
 
 
 class TestTemperaGlobal(unittest.TestCase):
@@ -204,32 +204,32 @@ class TestTemperaGlobal(unittest.TestCase):
         self.assertEqual(result, expected)
         self.assertEqual(result[2], 200 & 0x7F)
 
-    # Test channel clamping (channel > 15 should be masked to 4 bits)
+    # Test channel clamping (channel > 16 should be masked to 4 bits)
     def test_channel_masked_to_4_bits(self):
-        tempera = TemperaGlobal(midi_channel=20)  # 20 & 0x0F = 4
+        tempera = TemperaGlobal(midi_channel=20)  # (20 - 1) & 0x0F = 3
         result = tempera.adsr(attack=64)
-        self.assertEqual(result[0], 0xB0 | (20 & 0x0F))
+        self.assertEqual(result[0], 0xB0 | ((20 - 1) & 0x0F))
 
     # Test change_canvas (Program Change)
     def test_change_canvas(self):
         result = self.tempera.change_canvas(1)
-        expected = bytes([0xC0 | 1, 1])  # PC status + channel 1, program 1
+        expected = bytes([0xC0 | 0, 1])  # PC status + channel 1 (byte 0), program 1
         self.assertEqual(result, expected)
 
     def test_change_canvas_different_program(self):
         result = self.tempera.change_canvas(64)
-        expected = bytes([0xC0 | 1, 64])
+        expected = bytes([0xC0 | 0, 64])
         self.assertEqual(result, expected)
 
     def test_change_canvas_max_program(self):
         result = self.tempera.change_canvas(127)
-        expected = bytes([0xC0 | 1, 127])
+        expected = bytes([0xC0 | 0, 127])
         self.assertEqual(result, expected)
 
     def test_change_canvas_with_channel(self):
         tempera = TemperaGlobal(midi_channel=10)
         result = tempera.change_canvas(42)
-        expected = bytes([0xC0 | 10, 42])
+        expected = bytes([0xC0 | 9, 42])  # Channel 10 = byte 9
         self.assertEqual(result, expected)
 
     def test_change_canvas_program_masked_to_7_bits(self):
