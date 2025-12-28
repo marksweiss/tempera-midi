@@ -6,7 +6,10 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:pypi.org)",
-      "Bash(uv sync:*)"
+      "Bash(uv sync:*)",
+      "Bash(uv python install:*)",
+      "Bash(uv venv:*)",
+      "Bash(uv python pin:*)"
     ]
   }
 }
