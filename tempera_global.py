@@ -3,6 +3,7 @@ from constants import (
     MODWHEEL, REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
+    MIDI_PC_STATUS, MIDI_CLOCK, MIDI_START, MIDI_STOP,
 )
 from utils import build_messages
 
@@ -39,11 +40,6 @@ CHORUS_CC_MAP = {
 
 
 class TemperaGlobal:
-    MIDI_PC_STATUS = 0xC0
-    MIDI_CLOCK = 0xF8
-    MIDI_START = 0xFA
-    MIDI_STOP = 0xFC
-
     def __init__(self, channel: int = 1):
         self.channel = channel
 
@@ -99,16 +95,16 @@ class TemperaGlobal:
         return build_messages(params, CHORUS_CC_MAP, self.channel)
 
     def change_canvas(self, program: int) -> bytes:
-        return bytes([TemperaGlobal.MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
+        return bytes([MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])
 
     @staticmethod
     def clock() -> bytes:
-        return bytes([TemperaGlobal.MIDI_CLOCK])
+        return bytes([MIDI_CLOCK])
 
     @staticmethod
     def start() -> bytes:
-        return bytes([TemperaGlobal.MIDI_START])
+        return bytes([MIDI_START])
 
     @staticmethod
     def stop() -> bytes:
-        return bytes([TemperaGlobal.MIDI_STOP])
+        return bytes([MIDI_STOP])

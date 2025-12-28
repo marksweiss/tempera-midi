@@ -1,3 +1,8 @@
+MIDI_PC_STATUS = 0xC0
+MIDI_CLOCK = 0xF8
+MIDI_START = 0xFA
+MIDI_STOP = 0xFC
+
 # Tempera MIDI CC Internal Parameters
 # From https://docs.beetlecrab.audio/tempera/midi.html
 
