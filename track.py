@@ -2,7 +2,7 @@ from constants import (
     TRACK_1_VOLUME, TRACK_2_VOLUME, TRACK_3_VOLUME, TRACK_4_VOLUME,
     TRACK_5_VOLUME, TRACK_6_VOLUME, TRACK_7_VOLUME, TRACK_8_VOLUME,
 )
-from utils import build_messages
+from utils import build_messages, note_on, note_off
 
 TRACK_VOLUME_CC_MAP = {
     'track_1_volume': TRACK_1_VOLUME,
@@ -17,9 +17,6 @@ TRACK_VOLUME_CC_MAP = {
 
 
 class Track:
-    MIDI_NOTE_ON = 0x90
-    MIDI_NOTE_OFF = 0x80
-
     def __init__(self, track: int = 1, channel: int = 1):
         if track < 1 or track > 8:
             raise ValueError(f"track must be in range 1..8, got {track}")
@@ -32,8 +29,8 @@ class Track:
 
     def record_on(self) -> bytes:
         note = 100 + (self.track_num - 1)
-        return bytes([Track.MIDI_NOTE_ON | (self.channel & 0x0F), note & 0x7F, 127])
+        return note_on(note, 127, self.channel)
 
     def record_off(self) -> bytes:
         note = 100 + (self.track_num - 1)
-        return bytes([Track.MIDI_NOTE_OFF | (self.channel & 0x0F), note & 0x7F, 0])
+        return note_off(note, 0, self.channel)
