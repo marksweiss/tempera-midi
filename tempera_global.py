@@ -1,10 +1,8 @@
-from midi_constants import (
+from constants import (
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
     REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
-    TRACK_1_VOLUME, TRACK_2_VOLUME, TRACK_3_VOLUME, TRACK_4_VOLUME,
-    TRACK_5_VOLUME, TRACK_6_VOLUME, TRACK_7_VOLUME, TRACK_8_VOLUME,
 )
 from utils import build_messages
 
@@ -33,17 +31,6 @@ CHORUS_CC_MAP = {
     'speed': CHORUS_SPEED,
     'flange': CHORUS_FLANGE,
     'mix': CHORUS_MIX,
-}
-
-TRACK_VOLUME_CC_MAP = {
-    'track_1': TRACK_1_VOLUME,
-    'track_2': TRACK_2_VOLUME,
-    'track_3': TRACK_3_VOLUME,
-    'track_4': TRACK_4_VOLUME,
-    'track_5': TRACK_5_VOLUME,
-    'track_6': TRACK_6_VOLUME,
-    'track_7': TRACK_7_VOLUME,
-    'track_8': TRACK_8_VOLUME,
 }
 
 
@@ -98,21 +85,6 @@ class TemperaGlobal:
     ) -> bytes:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return build_messages(params, CHORUS_CC_MAP, self.channel)
-
-    def track_volume(
-        self,
-        *,
-        track_1: int = None,
-        track_2: int = None,
-        track_3: int = None,
-        track_4: int = None,
-        track_5: int = None,
-        track_6: int = None,
-        track_7: int = None,
-        track_8: int = None
-    ) -> bytes:
-        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, TRACK_VOLUME_CC_MAP, self.channel)
 
     def change_canvas(self, program: int) -> bytes:
         return bytes([TemperaGlobal.MIDI_PC_STATUS | (self.channel & 0x0F), program & 0x7F])

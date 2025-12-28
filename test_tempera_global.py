@@ -1,12 +1,10 @@
 import unittest
 from tempera_global import TemperaGlobal
-from midi_constants import (
+from constants import (
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
     REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
-    TRACK_1_VOLUME, TRACK_2_VOLUME, TRACK_3_VOLUME, TRACK_4_VOLUME,
-    TRACK_5_VOLUME, TRACK_6_VOLUME, TRACK_7_VOLUME, TRACK_8_VOLUME,
 )
 
 
@@ -42,8 +40,6 @@ class TestTemperaGlobal(unittest.TestCase):
     def test_chorus_no_args_returns_empty(self):
         self.assertEqual(self.tempera.chorus(), b'')
 
-    def test_track_volume_no_args_returns_empty(self):
-        self.assertEqual(self.tempera.track_volume(), b'')
 
     # Test ADSR
     def test_adsr_attack(self):
@@ -160,27 +156,6 @@ class TestTemperaGlobal(unittest.TestCase):
             _cc_bytes(CHORUS_SPEED, 20) +
             _cc_bytes(CHORUS_FLANGE, 30) +
             _cc_bytes(CHORUS_MIX, 40)
-        )
-        self.assertEqual(result, expected)
-
-    # Test Track Volume
-    def test_track_volume_track_1(self):
-        result = self.tempera.track_volume(track_1=100)
-        expected = _cc_bytes(TRACK_1_VOLUME, 100)
-        self.assertEqual(result, expected)
-
-    def test_track_volume_track_8(self):
-        result = self.tempera.track_volume(track_8=50)
-        expected = _cc_bytes(TRACK_8_VOLUME, 50)
-        self.assertEqual(result, expected)
-
-    def test_track_volume_multiple_tracks(self):
-        result = self.tempera.track_volume(track_1=100, track_2=90, track_3=80, track_4=70)
-        expected = (
-            _cc_bytes(TRACK_1_VOLUME, 100) +
-            _cc_bytes(TRACK_2_VOLUME, 90) +
-            _cc_bytes(TRACK_3_VOLUME, 80) +
-            _cc_bytes(TRACK_4_VOLUME, 70)
         )
         self.assertEqual(result, expected)
 

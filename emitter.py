@@ -1,4 +1,5 @@
-from midi_constants import (
+from constants import (
+    ACTIVE_EMITTER, PLACE_EMITTER_IN_CELL, REMOVE_EMITTER_FROM_CELL,
     EMITTER_1_VOLUME, EMITTER_1_GRAIN_LENGTH_CELL, EMITTER_1_GRAIN_LENGTH_NOTE,
     EMITTER_1_GRAIN_DENSITY, EMITTER_1_GRAIN_SHAPE, EMITTER_1_GRAIN_SHAPE_ATTACK,
     EMITTER_1_GRAIN_PAN, EMITTER_1_GRAIN_TUNE_SPREAD, EMITTER_1_OCTAVE,
@@ -20,7 +21,7 @@ from midi_constants import (
     EMITTER_4_RELATIVE_X, EMITTER_4_RELATIVE_Y, EMITTER_4_SPRAY_X, EMITTER_4_SPRAY_Y,
     EMITTER_4_TONE_FILTER_WIDTH, EMITTER_4_TONE_FILTER_CENTER, EMITTER_4_EFFECTS_SEND,
 )
-from utils import build_messages
+from utils import build_messages, cc
 
 EMITTER_1_CC_MAP = {
     'volume': EMITTER_1_VOLUME,
@@ -136,7 +137,7 @@ class Emitter:
     def octave(self, value: int) -> bytes:
         return build_messages({'octave': value}, self._cc_map(), self.channel)
 
-    def relative(self, *, x: int = None, y: int = None) -> bytes:
+    def relative_position(self, *, x: int = None, y: int = None) -> bytes:
         params = {f'relative_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
         return build_messages(params, self._cc_map(), self.channel)
 
@@ -150,3 +151,22 @@ class Emitter:
 
     def effects_send(self, value: int) -> bytes:
         return build_messages({'effects_send': value}, self._cc_map(), self.channel)
+
+    def set_active(self) -> bytes:
+        return cc(ACTIVE_EMITTER, self.emitter_num - 1, self.channel)
+
+    def remove_from_cell(self, column: int, cell: int) -> bytes:
+        if column < 1 or column > 8:
+            raise ValueError(f"column must be in range 1..8, got {column}")
+        if cell < 1 or cell > 8:
+            raise ValueError(f"cell must be in range 1..8, got {cell}")
+        value = ((column - 1) * 8) + (cell - 1)
+        return cc(REMOVE_EMITTER_FROM_CELL, value, self.channel)
+
+    def place_in_cell(self, column: int, cell: int) -> bytes:
+        if column < 1 or column > 8:
+            raise ValueError(f"column must be in range 1..8, got {column}")
+        if cell < 1 or cell > 8:
+            raise ValueError(f"cell must be in range 1..8, got {cell}")
+        value = ((column - 1) * 8) + (cell - 1)
+        return cc(PLACE_EMITTER_IN_CELL, value, self.channel)
