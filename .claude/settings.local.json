@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:docs.beetlecrab.audio)",
-      "Bash(uv run python:*)"
+      "Bash(uv run python:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pypi.org)",
+      "Bash(uv sync:*)"
     ]
   }
 }
