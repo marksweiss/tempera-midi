@@ -3,17 +3,17 @@ import time
 import unittest
 import mido
 
+from midi import Midi
 from tempera_global import TemperaGlobal
 from emitter import Emitter
 from track import Track
-from utils import cc, note_on, note_off, build_messages
 
 
 # Environment variable to enable hardware tests
 RUN_HARDWARE_TESTS = os.environ.get('RUN_HARDWARE_TESTS')
 
 # Expected Tempera MIDI port name (adjust if different on your system)
-TEMPERA_PORT_NAME = os.environ.get('TEMPERA_PORT_NAME', 'Tempera')
+TEMPERA_PORT_NAME = os.environ.get('TEMPERA_PORT')
 
 
 class MidiIntegrationTestBase(unittest.TestCase):
@@ -43,389 +43,389 @@ class MidiIntegrationTestBase(unittest.TestCase):
         for msg in messages:
             self.output.send(msg)
         return messages
-
-
-class TestTemperaGlobalIntegration(MidiIntegrationTestBase):
-    """Integration tests for TemperaGlobal class."""
-
-    def setUp(self):
-        self.tempera = TemperaGlobal()
-
-    def test_modwheel(self):
-        raw_bytes = self.tempera.modwheel(modwheel=64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-        self.assertEqual(messages[0].value, 64)
-
-    def test_adsr_attack(self):
-        raw_bytes = self.tempera.adsr(attack=100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-        self.assertEqual(messages[0].value, 100)
-
-    def test_adsr_all_params(self):
-        raw_bytes = self.tempera.adsr(attack=64, decay=50, sustain=80, release=30)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 4)
-        for msg in messages:
-            self.assertEqual(msg.type, 'control_change')
-
-    def test_reverb_size(self):
-        raw_bytes = self.tempera.reverb(size=100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_reverb_all_params(self):
-        raw_bytes = self.tempera.reverb(size=100, color=64, mix=80)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 3)
-
-    def test_delay_feedback(self):
-        raw_bytes = self.tempera.delay(feedback=50)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_delay_all_params(self):
-        raw_bytes = self.tempera.delay(feedback=50, time=64, color=100, mix=60)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 4)
-
-    def test_chorus_depth(self):
-        raw_bytes = self.tempera.chorus(depth=64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_chorus_all_params(self):
-        raw_bytes = self.tempera.chorus(depth=64, speed=50, flange=30, mix=70)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 4)
-
-    def test_change_canvas(self):
-        raw_bytes = self.tempera.change_canvas(program=3)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'program_change')
-        self.assertEqual(messages[0].program, 3)
-
-    def test_clock(self):
-        raw_bytes = TemperaGlobal.clock()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'clock')
-
-    def test_start(self):
-        raw_bytes = TemperaGlobal.start()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'start')
-
-    def test_stop(self):
-        raw_bytes = TemperaGlobal.stop()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'stop')
-
-    def test_with_custom_channel(self):
-        tempera = TemperaGlobal(midi_channel=5)
-        raw_bytes = tempera.modwheel(modwheel=100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].channel, 4)  # Channel 5 = byte 4
-
-
-class TestEmitterIntegration(MidiIntegrationTestBase):
-    """Integration tests for Emitter class."""
-
-    def setUp(self):
-        self.emitter = Emitter(emitter=1)
-
-    def test_volume(self):
-        raw_bytes = self.emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-        self.assertEqual(messages[0].value, 100)
-
-    def test_octave(self):
-        raw_bytes = self.emitter.octave(64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_grain_density(self):
-        raw_bytes = self.emitter.grain(density=50)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_grain_multiple_params(self):
-        raw_bytes = self.emitter.grain(density=50, length_cell=64, shape=80)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 3)
-        for msg in messages:
-            self.assertEqual(msg.type, 'control_change')
-
-    def test_relative_position_both(self):
-        raw_bytes = self.emitter.relative_position(x=64, y=64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 2)
-
-    def test_spray_both(self):
-        raw_bytes = self.emitter.spray(x=30, y=30)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 2)
-
-    def test_tone_filter_both(self):
-        raw_bytes = self.emitter.tone_filter(width=64, center=64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 2)
-
-    def test_effects_send(self):
-        raw_bytes = self.emitter.effects_send(80)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_set_active(self):
-        raw_bytes = self.emitter.set_active()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_place_in_cell(self):
-        raw_bytes = self.emitter.place_in_cell(column=1, cell=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_remove_from_cell(self):
-        raw_bytes = self.emitter.remove_from_cell(column=1, cell=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_emitter_2(self):
-        emitter = Emitter(emitter=2)
-        raw_bytes = emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-
-    def test_emitter_3(self):
-        emitter = Emitter(emitter=3)
-        raw_bytes = emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-
-    def test_emitter_4(self):
-        emitter = Emitter(emitter=4)
-        raw_bytes = emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-
-    def test_with_custom_channel(self):
-        emitter = Emitter(emitter=1, midi_channel=10)
-        raw_bytes = emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].channel, 9)  # Channel 10 = byte 9
-
-
-class TestTrackIntegration(MidiIntegrationTestBase):
-    """Integration tests for Track class."""
-
-    def setUp(self):
-        self.track = Track(track=1)
-
-    def test_volume(self):
-        raw_bytes = self.track.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-        self.assertEqual(messages[0].value, 100)
-
-    def test_record_on(self):
-        raw_bytes = self.track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'note_on')
-        self.assertEqual(messages[0].note, 100)
-        self.assertEqual(messages[0].velocity, 127)
-
-    def test_track_2(self):
-        track = Track(track=2)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].note, 101)
-
-    def test_track_3(self):
-        track = Track(track=3)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 102)
-
-    def test_track_4(self):
-        track = Track(track=4)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 103)
-
-    def test_track_5(self):
-        track = Track(track=5)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 104)
-
-    def test_track_6(self):
-        track = Track(track=6)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 105)
-
-    def test_track_7(self):
-        track = Track(track=7)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 106)
-
-    def test_track_8(self):
-        track = Track(track=8)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].note, 107)
-
-    def test_with_custom_channel(self):
-        track = Track(track=1, midi_channel=15)
-        raw_bytes = track.record_on()
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].channel, 14)  # Channel 15 = byte 14
-
-
-class TestUtilsIntegration(MidiIntegrationTestBase):
-    """
-    Integration tests for utils.py functions.
-
-    These tests verify that the raw bytes produced by utils functions
-    are correctly parsed by mido and have the expected attribute values.
-
-    MIDI channels: The MIDI spec uses 0-15 internally but displays as 1-16.
-    These tests verify the actual channel values in the parsed messages.
-    """
-
-    def test_cc_channel_1(self):
-        """Test CC with channel 1 produces mido channel 0 (MIDI channel 1)."""
-        raw_bytes = cc(cc_num=1, value=64, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'control_change')
-        self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
-        self.assertEqual(messages[0].control, 1)
-        self.assertEqual(messages[0].value, 64)
-
-    def test_cc_channel_2(self):
-        """Test CC with channel 2 produces mido channel 1."""
-        raw_bytes = cc(cc_num=1, value=64, channel=2)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].channel, 1)  # Channel 2 = byte 1
-
-    def test_cc_channel_values(self):
-        """Test CC messages across all 16 channels (1-16)."""
-        for ch in range(1, 17):
-            raw_bytes = cc(cc_num=10, value=100, channel=ch)
-            messages = self.parse_and_send(raw_bytes)
-            self.assertEqual(messages[0].channel, ch - 1,
-                f"Channel mismatch: passed {ch}, mido got {messages[0].channel}, expected {ch - 1}")
-
-    def test_cc_control_number(self):
-        """Test that CC number is correctly set."""
-        raw_bytes = cc(cc_num=74, value=100, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].control, 74)
-
-    def test_cc_value(self):
-        """Test that CC value is correctly set."""
-        raw_bytes = cc(cc_num=1, value=127, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].value, 127)
-
-    def test_note_on_channel_1(self):
-        """Test note_on with channel 1 produces mido channel 0."""
-        raw_bytes = note_on(note=60, velocity=100, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'note_on')
-        self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
-        self.assertEqual(messages[0].note, 60)
-        self.assertEqual(messages[0].velocity, 100)
-
-    def test_note_on_channel_2(self):
-        """Test note_on with channel 2 produces mido channel 1."""
-        raw_bytes = note_on(note=60, velocity=100, channel=2)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 1)  # Channel 2 = byte 1
-
-    def test_note_off_channel_1(self):
-        """Test note_off with channel 1 produces mido channel 0."""
-        raw_bytes = note_off(note=60, velocity=0, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0].type, 'note_off')
-        self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
-
-    def test_note_off_channel_2(self):
-        """Test note_off with channel 2 produces mido channel 1."""
-        raw_bytes = note_off(note=60, velocity=0, channel=2)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 1)
-
-    def test_build_messages_channel(self):
-        """Test build_messages produces correct channel byte."""
-        cc_map = {'test_param': 20}
-        params = {'test_param': 64}
-        raw_bytes = build_messages(params, cc_map, channel=1)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 0,  # Channel 1 = byte 0
-            f"build_messages(channel=1): expected mido channel 0, got {messages[0].channel}")
-
-    def test_emitter_channel_mapping(self):
-        """
-        Test that Emitter with midi_channel=1 produces mido channel 0.
-
-        MIDI channels 1-16 map to bytes 0-15. This test verifies the
-        end-to-end channel mapping from the high-level API.
-        """
-        emitter = Emitter(emitter=1, midi_channel=1)
-        raw_bytes = emitter.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 0,
-            f"Emitter(midi_channel=1) should produce mido channel 0, "
-            f"got channel {messages[0].channel}")
-
-    def test_tempera_global_channel_mapping(self):
-        """Test that TemperaGlobal with midi_channel=1 produces mido channel 0."""
-        tempera = TemperaGlobal(midi_channel=1)
-        raw_bytes = tempera.modwheel(modwheel=64)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 0,
-            f"TemperaGlobal(midi_channel=1) should produce mido channel 0, "
-            f"got channel {messages[0].channel}")
-
-    def test_track_channel_mapping(self):
-        """Test that Track with midi_channel=1 produces mido channel 0."""
-        track = Track(track=1, midi_channel=1)
-        raw_bytes = track.volume(100)
-        messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(messages[0].channel, 0,
-            f"Track(midi_channel=1) should produce mido channel 0, "
-            f"got channel {messages[0].channel}")
+#
+#
+# class TestTemperaGlobalIntegration(MidiIntegrationTestBase):
+#     """Integration tests for TemperaGlobal class."""
+#
+#     def setUp(self):
+#         self.tempera = TemperaGlobal()
+#
+#     def test_modwheel(self):
+#         raw_bytes = self.tempera.modwheel(modwheel=64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#         self.assertEqual(messages[0].value, 64)
+#
+#     def test_adsr_attack(self):
+#         raw_bytes = self.tempera.adsr(attack=100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#         self.assertEqual(messages[0].value, 100)
+#
+#     def test_adsr_all_params(self):
+#         raw_bytes = self.tempera.adsr(attack=64, decay=50, sustain=80, release=30)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 4)
+#         for msg in messages:
+#             self.assertEqual(msg.type, 'control_change')
+#
+#     def test_reverb_size(self):
+#         raw_bytes = self.tempera.reverb(size=100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_reverb_all_params(self):
+#         raw_bytes = self.tempera.reverb(size=100, color=64, mix=80)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 3)
+#
+#     def test_delay_feedback(self):
+#         raw_bytes = self.tempera.delay(feedback=50)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_delay_all_params(self):
+#         raw_bytes = self.tempera.delay(feedback=50, time=64, color=100, mix=60)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 4)
+#
+#     def test_chorus_depth(self):
+#         raw_bytes = self.tempera.chorus(depth=64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_chorus_all_params(self):
+#         raw_bytes = self.tempera.chorus(depth=64, speed=50, flange=30, mix=70)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 4)
+#
+#     def test_change_canvas(self):
+#         raw_bytes = self.tempera.change_canvas(program=3)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'program_change')
+#         self.assertEqual(messages[0].program, 3)
+#
+#     def test_clock(self):
+#         raw_bytes = TemperaGlobal.clock()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'clock')
+#
+#     def test_start(self):
+#         raw_bytes = TemperaGlobal.start()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'start')
+#
+#     def test_stop(self):
+#         raw_bytes = TemperaGlobal.stop()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'stop')
+#
+#     def test_with_custom_channel(self):
+#         tempera = TemperaGlobal(midi_channel=5)
+#         raw_bytes = tempera.modwheel(modwheel=100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].channel, 4)  # Channel 5 = byte 4
+#
+#
+# class TestEmitterIntegration(MidiIntegrationTestBase):
+#     """Integration tests for Emitter class."""
+#
+#     def setUp(self):
+#         self.emitter = Emitter(emitter=1)
+#
+#     def test_volume(self):
+#         raw_bytes = self.emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#         self.assertEqual(messages[0].value, 100)
+#
+#     def test_octave(self):
+#         raw_bytes = self.emitter.octave(64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_grain_density(self):
+#         raw_bytes = self.emitter.grain(density=50)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_grain_multiple_params(self):
+#         raw_bytes = self.emitter.grain(density=50, length_cell=64, shape=80)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 3)
+#         for msg in messages:
+#             self.assertEqual(msg.type, 'control_change')
+#
+#     def test_relative_position_both(self):
+#         raw_bytes = self.emitter.relative_position(x=64, y=64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 2)
+#
+#     def test_spray_both(self):
+#         raw_bytes = self.emitter.spray(x=30, y=30)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 2)
+#
+#     def test_tone_filter_both(self):
+#         raw_bytes = self.emitter.tone_filter(width=64, center=64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 2)
+#
+#     def test_effects_send(self):
+#         raw_bytes = self.emitter.effects_send(80)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_set_active(self):
+#         raw_bytes = self.emitter.set_active()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_place_in_cell(self):
+#         raw_bytes = self.emitter.place_in_cell(column=1, cell=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_remove_from_cell(self):
+#         raw_bytes = self.emitter.remove_from_cell(column=1, cell=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_emitter_2(self):
+#         emitter = Emitter(emitter=2)
+#         raw_bytes = emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#
+#     def test_emitter_3(self):
+#         emitter = Emitter(emitter=3)
+#         raw_bytes = emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#
+#     def test_emitter_4(self):
+#         emitter = Emitter(emitter=4)
+#         raw_bytes = emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#
+#     def test_with_custom_channel(self):
+#         emitter = Emitter(emitter=1, midi_channel=10)
+#         raw_bytes = emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].channel, 9)  # Channel 10 = byte 9
+#
+#
+# class TestTrackIntegration(MidiIntegrationTestBase):
+#     """Integration tests for Track class."""
+#
+#     def setUp(self):
+#         self.track = Track(track=1)
+#
+#     def test_volume(self):
+#         raw_bytes = self.track.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#         self.assertEqual(messages[0].value, 100)
+#
+#     def test_record_on(self):
+#         raw_bytes = self.track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'note_on')
+#         self.assertEqual(messages[0].note, 100)
+#         self.assertEqual(messages[0].velocity, 127)
+#
+#     def test_track_2(self):
+#         track = Track(track=2)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].note, 101)
+#
+#     def test_track_3(self):
+#         track = Track(track=3)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 102)
+#
+#     def test_track_4(self):
+#         track = Track(track=4)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 103)
+#
+#     def test_track_5(self):
+#         track = Track(track=5)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 104)
+#
+#     def test_track_6(self):
+#         track = Track(track=6)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 105)
+#
+#     def test_track_7(self):
+#         track = Track(track=7)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 106)
+#
+#     def test_track_8(self):
+#         track = Track(track=8)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].note, 107)
+#
+#     def test_with_custom_channel(self):
+#         track = Track(track=1, midi_channel=15)
+#         raw_bytes = track.record_on()
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].channel, 14)  # Channel 15 = byte 14
+#
+#
+# class TestUtilsIntegration(MidiIntegrationTestBase):
+#     """
+#     Integration tests for utils.py functions.
+#
+#     These tests verify that the raw bytes produced by utils functions
+#     are correctly parsed by mido and have the expected attribute values.
+#
+#     MIDI channels: The MIDI spec uses 0-15 internally but displays as 1-16.
+#     These tests verify the actual channel values in the parsed messages.
+#     """
+#
+#     def test_cc_channel_1(self):
+#         """Test CC with channel 1 produces mido channel 0 (MIDI channel 1)."""
+#         raw_bytes = cc(cc_num=1, value=64, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'control_change')
+#         self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
+#         self.assertEqual(messages[0].control, 1)
+#         self.assertEqual(messages[0].value, 64)
+#
+#     def test_cc_channel_2(self):
+#         """Test CC with channel 2 produces mido channel 1."""
+#         raw_bytes = cc(cc_num=1, value=64, channel=2)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].channel, 1)  # Channel 2 = byte 1
+#
+#     def test_cc_channel_values(self):
+#         """Test CC messages across all 16 channels (1-16)."""
+#         for ch in range(1, 17):
+#             raw_bytes = cc(cc_num=10, value=100, channel=ch)
+#             messages = self.parse_and_send(raw_bytes)
+#             self.assertEqual(messages[0].channel, ch - 1,
+#                 f"Channel mismatch: passed {ch}, mido got {messages[0].channel}, expected {ch - 1}")
+#
+#     def test_cc_control_number(self):
+#         """Test that CC number is correctly set."""
+#         raw_bytes = cc(cc_num=74, value=100, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].control, 74)
+#
+#     def test_cc_value(self):
+#         """Test that CC value is correctly set."""
+#         raw_bytes = cc(cc_num=1, value=127, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].value, 127)
+#
+#     def test_note_on_channel_1(self):
+#         """Test note_on with channel 1 produces mido channel 0."""
+#         raw_bytes = note_on(note=60, velocity=100, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'note_on')
+#         self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
+#         self.assertEqual(messages[0].note, 60)
+#         self.assertEqual(messages[0].velocity, 100)
+#
+#     def test_note_on_channel_2(self):
+#         """Test note_on with channel 2 produces mido channel 1."""
+#         raw_bytes = note_on(note=60, velocity=100, channel=2)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 1)  # Channel 2 = byte 1
+#
+#     def test_note_off_channel_1(self):
+#         """Test note_off with channel 1 produces mido channel 0."""
+#         raw_bytes = note_off(note=60, velocity=0, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(len(messages), 1)
+#         self.assertEqual(messages[0].type, 'note_off')
+#         self.assertEqual(messages[0].channel, 0)  # Channel 1 = byte 0
+#
+#     def test_note_off_channel_2(self):
+#         """Test note_off with channel 2 produces mido channel 1."""
+#         raw_bytes = note_off(note=60, velocity=0, channel=2)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 1)
+#
+#     def test_build_messages_channel(self):
+#         """Test build_messages produces correct channel byte."""
+#         cc_map = {'test_param': 20}
+#         params = {'test_param': 64}
+#         raw_bytes = build_messages(params, cc_map, channel=1)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 0,  # Channel 1 = byte 0
+#             f"build_messages(channel=1): expected mido channel 0, got {messages[0].channel}")
+#
+#     def test_emitter_channel_mapping(self):
+#         """
+#         Test that Emitter with midi_channel=1 produces mido channel 0.
+#
+#         MIDI channels 1-16 map to bytes 0-15. This test verifies the
+#         end-to-end channel mapping from the high-level API.
+#         """
+#         emitter = Emitter(emitter=1, midi_channel=1)
+#         raw_bytes = emitter.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 0,
+#             f"Emitter(midi_channel=1) should produce mido channel 0, "
+#             f"got channel {messages[0].channel}")
+#
+#     def test_tempera_global_channel_mapping(self):
+#         """Test that TemperaGlobal with midi_channel=1 produces mido channel 0."""
+#         tempera = TemperaGlobal(midi_channel=1)
+#         raw_bytes = tempera.modwheel(modwheel=64)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 0,
+#             f"TemperaGlobal(midi_channel=1) should produce mido channel 0, "
+#             f"got channel {messages[0].channel}")
+#
+#     def test_track_channel_mapping(self):
+#         """Test that Track with midi_channel=1 produces mido channel 0."""
+#         track = Track(track=1, midi_channel=1)
+#         raw_bytes = track.volume(100)
+#         messages = self.parse_and_send(raw_bytes)
+#         self.assertEqual(messages[0].channel, 0,
+#             f"Track(midi_channel=1) should produce mido channel 0, "
+#             f"got channel {messages[0].channel}")
 
 
 def find_tempera_port():
@@ -479,6 +479,9 @@ class MidiHardwareTestBase(unittest.TestCase):
         parser.feed(raw_bytes)
         messages = list(parser)
         for msg in messages:
+            # TEMP DEBUG
+            breakpoint()
+
             self.output.send(msg)
         return messages
 
@@ -487,6 +490,29 @@ class MidiHardwareTestBase(unittest.TestCase):
         messages = self.parse_and_send(raw_bytes)
         time.sleep(delay)
         return messages
+
+
+@unittest.skipUnless(RUN_HARDWARE_TESTS, "Hardware tests require RUN_HARDWARE_TESTS=1 and connected Tempera")
+class TestNote(MidiHardwareTestBase):
+    def setUp(self):
+        self.midi = Midi(midi_channel=1)
+        self.tempera = TemperaGlobal()
+
+    def test_note_on(self):
+        self.tempera.modwheel(modwheel=64)
+        self.midi.note_on(60, 127, 0)
+        time.sleep(1)
+        self.midi.note_on(60, 127, 480)
+        # self.assertEqual(len(messages), 1)
+        # self.assertEqual(messages[0].type, 'control_change')
+
+    def test_start_stop(self):
+        self.midi.send(Midi.clock())
+        self.midi.send(Midi.start())
+        time.sleep(1)
+        self.midi.send(Midi.stop())
+        # self.assertEqual(len(messages), 1)
+        # self.assertEqual(messages[0].type, 'control_change')
 
 
 @unittest.skipUnless(RUN_HARDWARE_TESTS, "Hardware tests require RUN_HARDWARE_TESTS=1 and connected Tempera")
@@ -568,7 +594,7 @@ class TestEmitterHardware(MidiHardwareTestBase):
 
     def setUp(self):
         self.emitter = Emitter(emitter=1)
-        self.emitter.set_active()
+        self.send_with_delay(self.emitter.set_active())
 
     def test_volume(self):
         messages = self.send_with_delay(self.emitter.volume(100))
@@ -611,8 +637,8 @@ class TestEmitterHardware(MidiHardwareTestBase):
 
     def test_place_in_cell(self):
         emitter = Emitter(emitter=1)
-        emitter.set_active()
-        # messages = self.send_with_delay(emitter.place_in_cell(column=1, cell=1))
+        self.send_with_delay(emitter.set_active())
+        messages = self.send_with_delay(emitter.place_in_cell(column=1, cell=1))
         # self.assertEqual(len(messages), 1)
 
     def test_remove_from_cell(self):

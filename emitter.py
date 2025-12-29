@@ -21,7 +21,8 @@ from constants import (
     EMITTER_4_RELATIVE_X, EMITTER_4_RELATIVE_Y, EMITTER_4_SPRAY_X, EMITTER_4_SPRAY_Y,
     EMITTER_4_TONE_FILTER_WIDTH, EMITTER_4_TONE_FILTER_CENTER, EMITTER_4_EFFECTS_SEND,
 )
-from utils import build_messages, cc
+from midi import Midi
+from mido import Message
 
 EMITTER_1_CC_MAP = {
     'volume': EMITTER_1_VOLUME,
@@ -118,17 +119,26 @@ class Emitter:
     def __init__(self, emitter: int = 1, midi_channel: int = 1):
         if emitter < 1 or emitter > 4:
             raise ValueError(f"emitter must be in range 1..4, got {emitter}")
-        self.emitter_num = emitter
+        self._emitter_num = emitter
+        self.cc_map = EMITTER_CC_MAPS[emitter]
         self.midi_channel = midi_channel
+        self.midi = Midi(midi_channel)
 
-    def _cc_map(self) -> dict:
-        return EMITTER_CC_MAPS[self.emitter_num]
+
+    @property
+    def emitter_num(self, value):
+        self._emitter_num = value
+        self.cc_map = EMITTER_CC_MAPS[value]
+
+    @property
+    def emitter_num(self):
+        return self._emitter_num
 
     """
     Change Emitter Volume
     """
-    def volume(self, value: int) -> bytes:
-        return build_messages({'volume': value}, self._cc_map(), self.midi_channel)
+    def volume(self, value: int) -> list[Message]:
+        return self.midi.all_ccs({'volume': value}, self.cc_map)
 
     """
     Change Emitter Grain Parameters
@@ -143,67 +153,67 @@ class Emitter:
         shape_attack: int = None,
         pan: int = None,
         tune_spread: int = None
-    ) -> bytes:
+    ) -> list[Message]:
         params = {f'grain_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.midi_channel)
+        return self.midi.all_ccs(params, EMITTER_CC_MAPS[self.emitter_num])
 
     """
     Change Emitter Octave
     """
-    def octave(self, value: int) -> bytes:
-        return build_messages({'octave': value}, self._cc_map(), self.midi_channel)
+    def octave(self, value: int) -> list[Message]:
+        return self.midi.all_ccs({'octave': value}, self.cc_map)
 
     """
     Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
     """
-    def relative_position(self, *, x: int = None, y: int = None) -> bytes:
+    def relative_position(self, *, x: int = None, y: int = None) -> list[Message]:
         params = {f'relative_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.midi_channel)
+        return self.midi.all_ccs(params, self.cc_map)
 
     """
     Change Emitter Spray along X and Y axes. Applies to a placement for the Emitter in a given Cell.
     """
-    def spray(self, *, x: int = None, y: int = None) -> bytes:
+    def spray(self, *, x: int = None, y: int = None) -> list[Message]:
         params = {f'spray_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.midi_channel)
+        return self.midi.all_ccs(params, self.cc_map)
 
     """
     Change Emitter Filter width and center
     """
-    def tone_filter(self, *, width: int = None, center: int = None) -> bytes:
+    def tone_filter(self, *, width: int = None, center: int = None) -> list[Message]:
         params = {f'tone_filter_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, self._cc_map(), self.midi_channel)
+        return self.midi.all_ccs(params, self.cc_map)
 
     """
     Change Emitter Effects Send
     """
-    def effects_send(self, value: int) -> bytes:
-        return build_messages({'effects_send': value}, self._cc_map(), self.midi_channel)
+    def effects_send(self, value: int) -> list[Message]:
+        return self.midi.all_ccs({'effects_send': value}, self.cc_map)
 
     """
     Set Emitter as Active
     """
-    def set_active(self) -> bytes:
-        return cc(ACTIVE_EMITTER, self.emitter_num - 1, self.midi_channel)
-
-    """
-    Remove Emitter placement in a given Cell in a given Column
-    """
-    def remove_from_cell(self, column: int, cell: int) -> bytes:
-        if column < 1 or column > 8:
-            raise ValueError(f"column must be in range 1..8, got {column}")
-        if cell < 1 or cell > 8:
-            raise ValueError(f"cell must be in range 1..8, got {cell}")
-        value = ((column - 1) * 8) + (cell - 1)
-        return cc(REMOVE_EMITTER_FROM_CELL, value, self.midi_channel)
+    def set_active(self) -> Message:
+        return self.midi.cc(ACTIVE_EMITTER, self.emitter_num - 1)
 
     """
     Place Emitter in a given Cell in a given Column
     """
-    def place_in_cell(self, column: int, cell: int) -> bytes:
+    def place_in_cell(self, column: int, cell: int) -> Message:
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
-        return cc(PLACE_EMITTER_IN_CELL, value, self.midi_channel)
+        return self.midi.cc(PLACE_EMITTER_IN_CELL, value)
+
+    """
+    Remove Emitter placement in a given Cell in a given Column
+    """
+    def remove_from_cell(self, column: int, cell: int) -> Message:
+        if column < 1 or column > 8:
+            raise ValueError(f"column must be in range 1..8, got {column}")
+        if cell < 1 or cell > 8:
+            raise ValueError(f"cell must be in range 1..8, got {cell}")
+        value = ((column - 1) * 8) + (cell - 1)
+        return self.midi.cc(REMOVE_EMITTER_FROM_CELL, value)

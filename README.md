@@ -17,28 +17,16 @@ uv sync
 ```python
 from tempera_global import TemperaGlobal
 
+# NOTE: midi_channel is 1-based, 1-16
 # Create instance with default channel (1)
-tempera = TemperaGlobal ()
-
+tempera = TemperaGlobal()
 # Or specify a MIDI channel (0-15)
-tempera = TemperaGlobal (midi_channel=5)
+# tempera = TemperaGlobal(midi_channel=5)
 
 # Generate MIDI CC bytes for ADSR parameters
-midi_bytes = tempera.adsr (attack=64, decay=100, sustain=80, release=50)
+messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
 
-# Generate MIDI CC bytes for effects
-midi_bytes = tempera.reverb (size=100, color=64, mix=80)
-midi_bytes = tempera.delay (feedback=50, time=64, color=100, mix=60)
-midi_bytes = tempera.chorus (depth=64, speed=50, flange=30, mix=70)
-
-# Modwheel and canvas control
-midi_bytes = tempera.modwheel (modwheel=64)
-midi_bytes = tempera.change_canvas (program=3)
-
-# MIDI clock messages
-midi_bytes = TemperaGlobal.clock ()
-midi_bytes = TemperaGlobal.start ()
-midi_bytes = TemperaGlobal.stop ()
+# See main.py for an example of sending messages to a MIDI port
 ```
 
 ### Emitter Controls
@@ -46,28 +34,26 @@ midi_bytes = TemperaGlobal.stop ()
 ```python
 from emitter import Emitter
 
+# NOTE: emitter is 1-based, 1-4
 # Create emitter instance (emitter 1-4, channel 0-15)
+# You may want to create one object for each of the four emitters and call set_active() on them
+# to modify one or another emitter
 emitter = Emitter (emitter=1, midi_channel=1)
 
 # Volume and octave
-midi_bytes = emitter.volume (100)
-midi_bytes = emitter.octave (64)
-
-# Grain parameters
-midi_bytes = emitter.grain (density=50, length_cell=64, shape=80)
-
-# Position and spray
-midi_bytes = emitter.relative_position (x=64, y=64)
-midi_bytes = emitter.spray (x=30, y=30)
-
-# Tone filter and effects
-midi_bytes = emitter.tone_filter (width=64, center=64)
-midi_bytes = emitter.effects_send (80)
+message = emitter.set_active()
+# Then send this, see main.py for an example
+# Now that the emitter is active, you can modify its parameters and place it in cells
+message = emitter.volume(100)
+# send ...
+message = emitter.effects_send(80)
+# send ...
 
 # Cell placement
-midi_bytes = emitter.set_active ()
-midi_bytes = emitter.place_in_cell (column=1, cell=1)
-midi_bytes = emitter.remove_from_cell (column=1, cell=1)
+message = emitter.place_in_cell (column=1, cell=1)
+# send ...
+message = emitter.remove_from_cell (column=1, cell=1)
+# send ...
 ```
 
 ### Track Controls
@@ -75,38 +61,20 @@ midi_bytes = emitter.remove_from_cell (column=1, cell=1)
 ```python
 from track import Track
 
-# Create track instance (track 1-8, channel 0-15)
+# NOTE: track is 1-based, 1-8
+# Create track instance
 track = Track (track=1, midi_channel=1)
 
 # Set track volume
-midi_bytes = track.volume (100)
+message = track.volume(100)
+# send ...
 
 # Recording control
-midi_bytes = track.record_on ()
-midi_bytes = track.record_off ()
+message = track.record_on ()
+# send ...
 ```
 
 ## Running Tests
-
-### Unit Tests
-
-Run all unit tests:
-
-```bash
-uv run python -m unittest discover test
-```
-
-Run unit tests with verbose output:
-
-```bash
-uv run python -m unittest discover test -v
-```
-
-Run a specific unit test:
-
-```bash
-uv run python -m unittest test.test_tempera_global.TestTemperaGlobal.test_adsr_attack
-```
 
 ### Integration Tests
 
@@ -138,7 +106,7 @@ Hardware tests send real MIDI messages to a connected Tempera device. These are 
 RUN_HARDWARE_TESTS=1 uv run python -m unittest discover integration_test -v
 
 # With custom Tempera port name
-RUN_HARDWARE_TESTS=1 TEMPERA_PORT_NAME="My Tempera" uv run python -m unittest discover integration_test -v
+RUN_HARDWARE_TESTS=1 TEMPERA_PORT='My Tempera' uv run python -m unittest discover integration_test -v
 ```
 
 The hardware tests will auto-detect a MIDI port containing "Tempera" in its name. If your device appears with a different name, use the `TEMPERA_PORT_NAME` environment variable.
@@ -158,3 +126,11 @@ uv run pdoc ./*.py -o docs/
 ```
 
 Docs are also regenerated automatically by the pre-commit hook.
+
+## Running main.py
+
+```bash
+# You must set the TEMPORA_PORT environment variable and it must match an available MIDI port
+# The code currently assumes a virtual port
+TEMPERA_PORT='My Tempera' uv run python -m main
+```

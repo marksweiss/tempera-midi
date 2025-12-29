@@ -2,7 +2,8 @@ from constants import (
     TRACK_1_VOLUME, TRACK_2_VOLUME, TRACK_3_VOLUME, TRACK_4_VOLUME,
     TRACK_5_VOLUME, TRACK_6_VOLUME, TRACK_7_VOLUME, TRACK_8_VOLUME,
 )
-from utils import build_messages, note_on, note_off
+from midi import Midi
+from mido import Message
 
 TRACK_VOLUME_CC_MAP = {
     'track_1_volume': TRACK_1_VOLUME,
@@ -30,17 +31,17 @@ class Track:
             raise ValueError(f"track must be in range 1..8, got {track}")
         self.track_num = track
         self.midi_channel = midi_channel
+        self.midi = Midi(midi_channel)
 
     """
     Change Track Volume
     """
-    def volume(self, value: int) -> bytes:
-        return build_messages({f'track_{self.track_num}_volume': value},
-                              TRACK_VOLUME_CC_MAP, self.midi_channel)
+    def volume(self, value: int) -> list[Message]:
+        return self.midi.all_ccs({f'track_{self.track_num}_volume': value}, TRACK_VOLUME_CC_MAP)
 
     """
     Set Recording on for Track. Recording starts when audio threshold set in Settings is reached.
     """
-    def record_on(self) -> bytes:
+    def record_on(self) -> Message:
         note = 100 + (self.track_num - 1)
-        return note_on(note, 127, self.midi_channel)
+        return self.midi.note_on(note, 0, self.midi_channel)

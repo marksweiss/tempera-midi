@@ -3,9 +3,9 @@ from constants import (
     MODWHEEL, REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
-    MIDI_PC_STATUS, MIDI_CLOCK, MIDI_START, MIDI_STOP,
 )
-from utils import build_messages
+from midi import Midi
+from mido import Message
 
 MODWHEEL_CC_MAP = {
     'modwheel': MODWHEEL,
@@ -49,6 +49,7 @@ class TemperaGlobal:
 
     def __init__(self, midi_channel: int = 1):
         self.midi_channel = midi_channel
+        self.midi = Midi(midi_channel)
 
     """
     Change Modwheel
@@ -57,9 +58,9 @@ class TemperaGlobal:
             self,
             *,
             modwheel: int = None,
-    ) -> bytes:
+    ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, MODWHEEL_CC_MAP, self.midi_channel)
+        return self.midi.all_ccs(params, MODWHEEL_CC_MAP)
 
     """
     Change ADSR envelope parameters
@@ -71,9 +72,9 @@ class TemperaGlobal:
         decay: int = None,
         sustain: int = None,
         release: int = None
-    ) -> bytes:
+    ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, ADSR_CC_MAP, self.midi_channel)
+        return self.midi.all_ccs(params, ADSR_CC_MAP)
 
     """
     Change Reverb parameters
@@ -84,9 +85,9 @@ class TemperaGlobal:
         size: int = None,
         color: int = None,
         mix: int = None
-    ) -> bytes:
+    ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, REVERB_CC_MAP, self.midi_channel)
+        return self.midi.all_ccs(params, REVERB_CC_MAP)
 
     """
     Change Delay parameters
@@ -98,9 +99,9 @@ class TemperaGlobal:
         time: int = None,
         color: int = None,
         mix: int = None
-    ) -> bytes:
+    ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, DELAY_CC_MAP, self.midi_channel)
+        self.midi.all_ccs(params, DELAY_CC_MAP)
 
     """
     Change Chorus parameters
@@ -112,31 +113,40 @@ class TemperaGlobal:
         speed: int = None,
         flange: int = None,
         mix: int = None
-    ) -> bytes:
+    ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return build_messages(params, CHORUS_CC_MAP, self.midi_channel)
+        self.midi.all_ccs(params, CHORUS_CC_MAP)
 
-    def change_canvas(self, program: int) -> bytes:
+    """
+    Change Canvas
+    
+    'To change the current canvas, send a Program change message with the value between 0 and 127.
+    Tempera will then load a canvas form the folder the current canvas is loaded from, with the program number
+    corresponding to the canvas name sorted alphabetically.'
+    
+    https://docs.beetlecrab.audio/tempera/midi.html#changing-canvases-with-midi
+    """
+    def change_canvas(self, program: int) -> Message:
         """Change the active canvas via MIDI Program Change."""
-        return bytes([MIDI_PC_STATUS | ((self.midi_channel - 1) & 0x0F), program & 0x7F])
+        return self.midi.program_change(program)
 
     """
     Send MIDI Clock message
     """
     @staticmethod
-    def clock() -> bytes:
-        return bytes([MIDI_CLOCK])
+    def clock() -> Message:
+        return Midi.clock()
 
     """
     Send MIDI Start message
     """
     @staticmethod
-    def start() -> bytes:
-        return bytes([MIDI_START])
+    def start() -> Message:
+        return Midi.start()
 
     """
     Send MIDI Stop message
     """
     @staticmethod
-    def stop() -> bytes:
-        return bytes([MIDI_STOP])
+    def stop() -> Message:
+        return Midi.stop()
