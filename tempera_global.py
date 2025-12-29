@@ -57,9 +57,9 @@ class TemperaGlobal:
     def modwheel(
             self,
             modwheel: int
-    ) -> list[Message]:
+    ) -> Message:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        return self.midi.all_ccs(params, MODWHEEL_CC_MAP)
+        return self.midi.all_ccs(params, MODWHEEL_CC_MAP)[0]
 
     """
     Change ADSR envelope parameters

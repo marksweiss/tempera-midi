@@ -36,12 +36,12 @@ class Track:
     """
     Change Track Volume
     """
-    def volume(self, value: int) -> list[Message]:
-        return self.midi.all_ccs({f'track_{self.track_num}_volume': value}, TRACK_VOLUME_CC_MAP)
+    def volume(self, value: int) -> Message:
+        return self.midi.all_ccs({f'track_{self.track_num}_volume': value}, TRACK_VOLUME_CC_MAP)[0]
 
     """
     Set Recording on for Track. Recording starts when audio threshold set in Settings is reached.
     """
     def record_on(self) -> Message:
         note = 100 + (self.track_num - 1)
-        return self.midi.note_on(note, 0, self.midi_channel)
+        return self.midi.note_on(note, 127, 0)

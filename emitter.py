@@ -124,7 +124,6 @@ class Emitter:
         self.midi_channel = midi_channel
         self.midi = Midi(midi_channel)
 
-
     @property
     def emitter_num(self, value):
         self._emitter_num = value
@@ -137,8 +136,8 @@ class Emitter:
     """
     Change Emitter Volume
     """
-    def volume(self, value: int) -> list[Message]:
-        return self.midi.all_ccs({'volume': value}, self.cc_map)
+    def volume(self, value: int) -> Message:
+        return self.midi.all_ccs({'volume': value}, self.cc_map)[0]
 
     """
     Change Emitter Grain Parameters
@@ -160,8 +159,8 @@ class Emitter:
     """
     Change Emitter Octave
     """
-    def octave(self, value: int) -> list[Message]:
-        return self.midi.all_ccs({'octave': value}, self.cc_map)
+    def octave(self, value: int) -> Message:
+        return self.midi.all_ccs({'octave': value}, self.cc_map)[0]
 
     """
     Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
@@ -187,8 +186,8 @@ class Emitter:
     """
     Change Emitter Effects Send
     """
-    def effects_send(self, value: int) -> list[Message]:
-        return self.midi.all_ccs({'effects_send': value}, self.cc_map)
+    def effects_send(self, value: int) -> Message:
+        return self.midi.all_ccs({'effects_send': value}, self.cc_map)[0]
 
     """
     Set Emitter as Active

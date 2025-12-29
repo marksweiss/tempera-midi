@@ -13,7 +13,7 @@ INIT_SLEEP = .5
 PORT = os.environ.get(TEMPERA_PORT_NAME)
 
 async def play(messages: list[Message]):
-    with open_output(PORT, True) as output:
+    with open_output(PORT) as output:
         # Some exmaple code
         # Typical pattern is to have logic outside of this function in an event loop etc.
         # building lists of Messages, which are then just sent here to play
