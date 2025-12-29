@@ -56,8 +56,7 @@ class TemperaGlobal:
     """
     def modwheel(
             self,
-            *,
-            modwheel: int = None,
+            modwheel: int
     ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, MODWHEEL_CC_MAP)
@@ -101,7 +100,7 @@ class TemperaGlobal:
         mix: int = None
     ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        self.midi.all_ccs(params, DELAY_CC_MAP)
+        return self.midi.all_ccs(params, DELAY_CC_MAP)
 
     """
     Change Chorus parameters
@@ -115,7 +114,7 @@ class TemperaGlobal:
         mix: int = None
     ) -> list[Message]:
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
-        self.midi.all_ccs(params, CHORUS_CC_MAP)
+        return self.midi.all_ccs(params, CHORUS_CC_MAP)
 
     """
     Change Canvas
