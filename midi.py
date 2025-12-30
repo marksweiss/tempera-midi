@@ -21,7 +21,7 @@ class Midi:
     # TODO DO WE NEED THIS?
     #  DO WE NEED SLEEP AND TIMING SEMANTICS?
     def send(self, message: Message):
-        with mido.open_output(self.tempera_port, virtual=True) as output:
+        with mido.open_output(self.tempera_port) as output:
             output.send(message)
 
     def note_on(self, note: int, velocity: int, time: int = 0) -> Message:
