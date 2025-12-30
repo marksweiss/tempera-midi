@@ -119,13 +119,10 @@ uv run python -c "import mido; print(mido.get_output_names())"
 
 ## Generating Docs
 
-Documentation is auto-generated from docstrings using pdoc. To regenerate:
-
+Documentation is auto-generated from docstrings using `pdoc3`, on each commit. To regenerate manually run:
 ```bash
-uv run pdoc ./*.py -o docs/
+uv run pdoc3 --force -o docs tempera_global emitter track
 ```
-
-Docs are also regenerated automatically by the pre-commit hook.
 
 ## Running main.py
 
