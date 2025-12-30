@@ -1,6 +1,6 @@
 # Tempera MIDI
 
-A Python library for generating MIDI CC messages for the Tempera granular synthesizer.
+A Python library for generating MIDI CC messages for the Tempera granular sampler.
 
 ## Installation
 
