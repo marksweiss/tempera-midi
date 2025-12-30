@@ -4,7 +4,7 @@ A Python library for generating MIDI CC messages for the Tempera granular sample
 
 ## Installation
 
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management. Follow that link for instructions on installing `uv`. After doing so, run this command once to install dependencies and create the correct local environment:
 
 ```bash
 uv sync
