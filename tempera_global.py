@@ -51,19 +51,14 @@ class TemperaGlobal:
         self.midi_channel = midi_channel
         self.midi = Midi(midi_channel)
 
-    """
-    Change Modwheel
-    """
     def modwheel(
             self,
             modwheel: int
     ) -> Message:
+        """Change Modwheel."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, MODWHEEL_CC_MAP)[0]
 
-    """
-    Change ADSR envelope parameters
-    """
     def adsr(
         self,
         *,
@@ -72,12 +67,10 @@ class TemperaGlobal:
         sustain: int = None,
         release: int = None
     ) -> list[Message]:
+        """Change ADSR envelope parameters."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, ADSR_CC_MAP)
 
-    """
-    Change Reverb parameters
-    """
     def reverb(
         self,
         *,
@@ -85,12 +78,10 @@ class TemperaGlobal:
         color: int = None,
         mix: int = None
     ) -> list[Message]:
+        """Change Reverb parameters."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, REVERB_CC_MAP)
 
-    """
-    Change Delay parameters
-    """
     def delay(
         self,
         *,
@@ -99,12 +90,10 @@ class TemperaGlobal:
         color: int = None,
         mix: int = None
     ) -> list[Message]:
+        """Change Delay parameters."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, DELAY_CC_MAP)
 
-    """
-    Change Chorus parameters
-    """
     def chorus(
         self,
         *,
@@ -113,39 +102,32 @@ class TemperaGlobal:
         flange: int = None,
         mix: int = None
     ) -> list[Message]:
+        """Change Chorus parameters."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, CHORUS_CC_MAP)
 
-    """
-    Change Canvas
-    
-    'To change the current canvas, send a Program change message with the value between 0 and 127.
-    Tempera will then load a canvas form the folder the current canvas is loaded from, with the program number
-    corresponding to the canvas name sorted alphabetically.'
-    
-    https://docs.beetlecrab.audio/tempera/midi.html#changing-canvases-with-midi
-    """
     def change_canvas(self, program: int) -> Message:
-        """Change the active canvas via MIDI Program Change."""
+        """Change the active canvas via MIDI Program Change.
+
+        To change the current canvas, send a Program change message with the value between 0 and 127.
+        Tempera will then load a canvas from the folder the current canvas is loaded from, with the program number
+        corresponding to the canvas name sorted alphabetically.
+
+        See: https://docs.beetlecrab.audio/tempera/midi.html#changing-canvases-with-midi
+        """
         return self.midi.program_change(program)
 
-    """
-    Send MIDI Clock message
-    """
     @staticmethod
     def clock() -> Message:
+        """Send MIDI Clock message."""
         return Midi.clock()
 
-    """
-    Send MIDI Start message
-    """
     @staticmethod
     def start() -> Message:
+        """Send MIDI Start message."""
         return Midi.start()
 
-    """
-    Send MIDI Stop message
-    """
     @staticmethod
     def stop() -> Message:
+        """Send MIDI Stop message."""
         return Midi.stop()

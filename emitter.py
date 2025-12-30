@@ -133,15 +133,10 @@ class Emitter:
     def emitter_num(self):
         return self._emitter_num
 
-    """
-    Change Emitter Volume
-    """
     def volume(self, value: int) -> Message:
+        """Change Emitter Volume."""
         return self.midi.all_ccs({'volume': value}, self.cc_map)[0]
 
-    """
-    Change Emitter Grain Parameters
-    """
     def grain(
         self,
         *,
@@ -153,52 +148,39 @@ class Emitter:
         pan: int = None,
         tune_spread: int = None
     ) -> list[Message]:
+        """Change Emitter Grain Parameters."""
         params = {f'grain_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, EMITTER_CC_MAPS[self.emitter_num])
 
-    """
-    Change Emitter Octave
-    """
     def octave(self, value: int) -> Message:
+        """Change Emitter Octave."""
         return self.midi.all_ccs({'octave': value}, self.cc_map)[0]
 
-    """
-    Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
-    """
     def relative_position(self, *, x: int = None, y: int = None) -> list[Message]:
+        """Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell."""
         params = {f'relative_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, self.cc_map)
 
-    """
-    Change Emitter Spray along X and Y axes. Applies to a placement for the Emitter in a given Cell.
-    """
     def spray(self, *, x: int = None, y: int = None) -> list[Message]:
+        """Change Emitter Spray along X and Y axes. Applies to a placement for the Emitter in a given Cell."""
         params = {f'spray_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, self.cc_map)
 
-    """
-    Change Emitter Filter width and center
-    """
     def tone_filter(self, *, width: int = None, center: int = None) -> list[Message]:
+        """Change Emitter Filter width and center."""
         params = {f'tone_filter_{k}': v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, self.cc_map)
 
-    """
-    Change Emitter Effects Send
-    """
     def effects_send(self, value: int) -> Message:
+        """Change Emitter Effects Send."""
         return self.midi.all_ccs({'effects_send': value}, self.cc_map)[0]
 
-    """
-    Set Emitter as Active
-    """
     def set_active(self) -> Message:
+        """Set Emitter as Active."""
         return self.midi.cc(ACTIVE_EMITTER, self.emitter_num - 1)
 
-    """
-    Place Emitter in a given Cell in a given Column
-    """
     def place_in_cell(self, column: int, cell: int) -> Message:
+        """Place Emitter in a given Cell in a given Column."""
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
@@ -206,10 +188,8 @@ class Emitter:
         value = ((column - 1) * 8) + (cell - 1)
         return self.midi.cc(PLACE_EMITTER_IN_CELL, value)
 
-    """
-    Remove Emitter placement in a given Cell in a given Column
-    """
     def remove_from_cell(self, column: int, cell: int) -> Message:
+        """Remove Emitter placement in a given Cell in a given Column."""
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
