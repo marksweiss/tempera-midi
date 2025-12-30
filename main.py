@@ -17,8 +17,9 @@ async def play(messages: list[Message]):
 
 
 # Integration test function. Run this from main
-async def play_test():
-    with open_output('IAC Driver Bus1', True) as output:
+async def play_test(override_port: str = None):
+    port = override_port or PORT
+    with open_output(port, True) as output:
         # in the output context manager
         midi = Midi(midi_channel=1)
         await asyncio.sleep(INIT_SLEEP)
@@ -137,6 +138,7 @@ async def play_test():
 
 if __name__ == '__main__':
     # Comment this out to skip running the lighgtweight integration test
+    # pass an argumenbt for override_port or set env var TEMPERA_PORT to run against actual Tempera
     asyncio.run(play_test())
 
     # Define list of mido Messages here. This is the composition which will be sent to the Tempera.
