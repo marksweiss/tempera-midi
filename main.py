@@ -2,6 +2,7 @@ import asyncio
 import os
 from constants import TEMPERA_PORT_NAME
 from emitter import Emitter
+from emitter_pool import EmitterPool
 from midi import Midi
 from mido import Message, open_output
 
@@ -131,10 +132,102 @@ async def play_test(override_port: str = None):
         print("\n=== All integration tests completed successfully ===")
 
 
+async def play_test_emitter_pool(override_port: str = None):
+    """Test EmitterPool with all four emitters placing in different cells."""
+    port = override_port or PORT
+
+    async with EmitterPool(port_name=port) as pool:
+        await asyncio.sleep(INIT_SLEEP)
+
+        print("Testing EmitterPool with all 4 emitters...")
+
+        # Set up all emitters with different parameters
+        for emitter_num in range(1, 5):
+            await pool.set_active(emitter_num)
+            print(f"Emitter {emitter_num}: set_active")
+
+            await pool.volume(emitter_num, 80 + emitter_num * 5)
+            print(f"Emitter {emitter_num}: volume({80 + emitter_num * 5})")
+
+            await pool.grain(
+                emitter_num,
+                length_cell=60 + emitter_num * 2,
+                density=70 + emitter_num * 5,
+                shape=40 + emitter_num * 10
+            )
+            print(f"Emitter {emitter_num}: grain settings applied")
+
+            await pool.octave(emitter_num, 64)
+            print(f"Emitter {emitter_num}: octave(64)")
+
+            await pool.relative_position(emitter_num, x=64, y=64)
+            print(f"Emitter {emitter_num}: relative_position(x=64, y=64)")
+
+            await pool.spray(emitter_num, x=20 + emitter_num * 5, y=20 + emitter_num * 5)
+            print(f"Emitter {emitter_num}: spray applied")
+
+            await pool.tone_filter(emitter_num, width=80, center=64)
+            print(f"Emitter {emitter_num}: tone_filter(width=80, center=64)")
+
+            await pool.effects_send(emitter_num, 40 + emitter_num * 10)
+            print(f"Emitter {emitter_num}: effects_send({40 + emitter_num * 10})")
+
+        await asyncio.sleep(0.5)
+
+        # Place each emitter in different cells using modulus 4
+        # Cell indices 0-63 map to column 1-8, cell 1-8
+        # Emitter 1: indices 0, 4, 8, 12 (mod 4 == 0)
+        # Emitter 2: indices 1, 5, 9, 13 (mod 4 == 1)
+        # Emitter 3: indices 2, 6, 10, 14 (mod 4 == 2)
+        # Emitter 4: indices 3, 7, 11, 15 (mod 4 == 3)
+        print("\nPlacing emitters in cells (each emitter in cells where index mod 4 matches emitter-1)...")
+
+        placements = []  # Track placements for cleanup
+        for flat_index in range(16):  # Use first 16 cells for this test
+            emitter_num = (flat_index % 4) + 1
+            column = (flat_index // 8) + 1  # 1-8
+            cell = (flat_index % 8) + 1     # 1-8
+
+            await pool.set_active(emitter_num)
+            await pool.place_in_cell(emitter_num, column=column, cell=cell)
+            placements.append((emitter_num, column, cell))
+            print(f"Emitter {emitter_num}: placed in column={column}, cell={cell}")
+
+        print("\nAll 4 emitters now have placements. Observe on hardware...")
+        await asyncio.sleep(3)
+
+        # Test dispatch method
+        print("\nTesting dispatch method...")
+        await pool.dispatch({'emitter': 1, 'method': 'volume', 'args': [100]})
+        print("dispatch: Emitter 1 volume -> 100")
+
+        await pool.dispatch({
+            'emitter': 2,
+            'method': 'grain',
+            'kwargs': {'density': 100, 'shape': 80}
+        })
+        print("dispatch: Emitter 2 grain density=100, shape=80")
+
+        await asyncio.sleep(2)
+
+        # Cleanup - remove all placements
+        print("\nRemoving all placements...")
+        for emitter_num, column, cell in placements:
+            await pool.set_active(emitter_num)
+            await pool.remove_from_cell(emitter_num, column=column, cell=cell)
+            print(f"Emitter {emitter_num}: removed from column={column}, cell={cell}")
+
+        await asyncio.sleep(0.5)
+        print("\n=== EmitterPool integration test completed successfully ===")
+
+
 if __name__ == '__main__':
-    # Comment this out to skip running the lighgtweight integration test
-    # pass an argumenbt for override_port or set env var TEMPERA_PORT to run against actual Tempera
-    asyncio.run(play_test())
+    # Comment this out to skip running the lightweight integration test
+    # pass an argument for override_port or set env var TEMPERA_PORT to run against actual Tempera
+    # asyncio.run(play_test())
+
+    # Uncomment to run the EmitterPool test (tests all 4 emitters with async pool)
+    asyncio.run(play_test_emitter_pool())
 
     # Define list of mido Messages here. This is the composition which will be sent to the Tempera.
     messages: list[Message] = []

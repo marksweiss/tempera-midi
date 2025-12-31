@@ -116,6 +116,19 @@ message = track.record_on()
 
 ## Running Tests
 
+Run all test:
+```bash
+uv run python -m unittest discover integration_test
+```
+
+### Unit Tests
+
+There are some unit tests for `emitter_pool.py` Run them with:
+
+```bash
+uv run python -m unittest discover
+```
+
 ### Integration Tests
 
 Integration tests use mido to parse and send real MIDI messages. There are two types:

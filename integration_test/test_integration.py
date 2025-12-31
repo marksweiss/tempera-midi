@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 import unittest
@@ -6,6 +7,7 @@ import mido
 from midi import Midi
 from tempera_global import TemperaGlobal
 from emitter import Emitter
+from emitter_pool import EmitterPool
 from track import Track
 
 
@@ -238,6 +240,123 @@ class TestEmitterIntegration(MidiIntegrationTestBase):
         messages = self.parse_and_send(raw_bytes)
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0].channel, 9)  # Channel 10 = byte 9
+
+
+class TestEmitterPoolIntegration(unittest.IsolatedAsyncioTestCase):
+    """Integration tests for EmitterPool class using virtual MIDI port."""
+
+    async def test_pool_creates_four_emitters(self):
+        pool = EmitterPool(port_name='TemperaMidi Pool Test', virtual=True)
+        self.assertEqual(len(pool._emitters), 4)
+        for i in range(1, 5):
+            self.assertIn(i, pool._emitters)
+            self.assertEqual(pool._emitters[i].emitter_num, i)
+            self.assertEqual(pool._emitters[i].midi_channel, i)
+
+    async def test_pool_context_manager(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            self.assertIsNotNone(pool._port)
+            self.assertTrue(pool._running)
+            self.assertIsNotNone(pool._sender_task)
+        # After exit
+        self.assertFalse(pool._running)
+        self.assertIsNone(pool._port)
+
+    async def test_volume(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.volume(1, 100)
+            await pool._queue.join()  # Wait for message to be sent
+
+    async def test_volume_invalid_emitter(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            with self.assertRaises(ValueError):
+                await pool.volume(0, 100)
+            with self.assertRaises(ValueError):
+                await pool.volume(5, 100)
+
+    async def test_grain(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.grain(2, density=50, length_cell=64)
+            await pool._queue.join()
+
+    async def test_octave(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.octave(3, 64)
+            await pool._queue.join()
+
+    async def test_relative_position(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.relative_position(1, x=64, y=32)
+            await pool._queue.join()
+
+    async def test_spray(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.spray(2, x=30, y=30)
+            await pool._queue.join()
+
+    async def test_tone_filter(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.tone_filter(3, width=64, center=64)
+            await pool._queue.join()
+
+    async def test_effects_send(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.effects_send(4, 80)
+            await pool._queue.join()
+
+    async def test_set_active(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.set_active(1)
+            await pool._queue.join()
+
+    async def test_place_in_cell(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.place_in_cell(1, column=1, cell=1)
+            await pool._queue.join()
+
+    async def test_remove_from_cell(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.remove_from_cell(2, column=4, cell=5)
+            await pool._queue.join()
+
+    async def test_dispatch_volume(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.dispatch({'emitter': 1, 'method': 'volume', 'args': [64]})
+            await pool._queue.join()
+
+    async def test_dispatch_grain_kwargs(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.dispatch({
+                'emitter': 2,
+                'method': 'grain',
+                'kwargs': {'density': 80, 'shape': 60}
+            })
+            await pool._queue.join()
+
+    async def test_dispatch_place_in_cell(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            await pool.dispatch({
+                'emitter': 3,
+                'method': 'place_in_cell',
+                'args': [2, 3]  # column=2, cell=3
+            })
+            await pool._queue.join()
+
+    async def test_send_raw(self):
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            msg = mido.Message('control_change', channel=0, control=40, value=100)
+            await pool.send_raw(msg)
+            await pool._queue.join()
+
+    async def test_multiple_emitters_concurrent(self):
+        """Test sending to multiple emitters in quick succession."""
+        async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
+            # Send messages to all 4 emitters
+            await pool.volume(1, 100)
+            await pool.volume(2, 90)
+            await pool.volume(3, 80)
+            await pool.volume(4, 70)
+            await pool._queue.join()
 
 
 class TestTrackIntegration(MidiIntegrationTestBase):
