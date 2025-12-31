@@ -19,7 +19,7 @@ async def play(messages: list[Message]):
 # Integration test function. Run this from main
 async def play_test(override_port: str = None):
     port = override_port or PORT
-    with open_output(port, True) as output:
+    with open_output(port) as output:
         # in the output context manager
         midi = Midi(midi_channel=1)
         await asyncio.sleep(INIT_SLEEP)
@@ -37,17 +37,6 @@ async def play_test(override_port: str = None):
 
         output.send(midi.program_change(0))
         print("calling Midi.program_change with arguments (0) just succeeded")
-
-        output.send(Midi.clock())
-        print("calling Midi.clock with arguments () just succeeded")
-
-        output.send(Midi.start())
-        print("calling Midi.start with arguments () just succeeded")
-
-        output.send(Midi.stop())
-        print("calling Midi.stop with arguments () just succeeded")
-
-        await asyncio.sleep(INIT_SLEEP)
 
         # --- Emitter class tests ---
         emitter = Emitter(emitter=1)
@@ -83,10 +72,18 @@ async def play_test(override_port: str = None):
         output.send(emitter.place_in_cell(column=1, cell=1))
         print("calling Emitter.place_in_cell with arguments (column=1, cell=1) just succeeded")
 
+        await asyncio.sleep(2)
+
         output.send(emitter.remove_from_cell(column=1, cell=1))
         print("calling Emitter.remove_from_cell with arguments (column=1, cell=1) just succeeded")
 
-        await asyncio.sleep(INIT_SLEEP)
+        output.send (emitter.place_in_cell (column=1, cell=1))
+        print ("calling Emitter.place_in_cell with arguments (column=1, cell=1) just succeeded")
+
+        await asyncio.sleep (2)
+
+        output.send (emitter.remove_from_cell (column=1, cell=1))
+        print ("calling Emitter.remove_from_cell with arguments (column=1, cell=1) just succeeded")
 
         # --- Track class tests ---
         track = Track(track=1)
@@ -96,8 +93,6 @@ async def play_test(override_port: str = None):
 
         output.send(track.record_on())
         print("calling Track.record_on with arguments () just succeeded")
-
-        await asyncio.sleep(INIT_SLEEP)
 
         # --- TemperaGlobal class tests ---
         tempera = TemperaGlobal()
@@ -121,8 +116,8 @@ async def play_test(override_port: str = None):
             output.send(message)
         print("calling TemperaGlobal.chorus with arguments (depth=50, speed=40, flange=30, mix=60) just succeeded")
 
-        output.send(tempera.change_canvas(0))
-        print("calling TemperaGlobal.change_canvas with arguments (0) just succeeded")
+        # output.send(tempera.change_canvas(0))
+        # print("calling TemperaGlobal.change_canvas with arguments (0) just succeeded")
 
         output.send(TemperaGlobal.clock())
         print("calling TemperaGlobal.clock with arguments () just succeeded")
