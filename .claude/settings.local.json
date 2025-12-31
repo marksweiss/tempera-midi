@@ -15,7 +15,8 @@
       "Bash(grep:*)",
       "Bash(chmod:*)",
       "Bash(.git/hooks/pre-commit)",
-      "Bash(uv run:*)"
+      "Bash(uv run:*)",
+      "Bash(tree:*)"
     ]
   }
 }
