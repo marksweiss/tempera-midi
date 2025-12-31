@@ -183,18 +183,21 @@ async def play_test_emitter_pool(override_port: str = None):
         print("\nPlacing emitters in cells (each emitter in cells where index mod 4 matches emitter-1)...")
 
         placements = []  # Track placements for cleanup
-        for flat_index in range(16):  # Use first 16 cells for this test
+        for flat_index in range(63):
             emitter_num = (flat_index % 4) + 1
             column = (flat_index // 8) + 1  # 1-8
-            cell = (flat_index % 8) + 1     # 1-8
+            # Mod 7 to leave bottom row open for keyboard
+            cell = (flat_index % 7) + 1     # 1-8
 
             await pool.set_active(emitter_num)
             await pool.place_in_cell(emitter_num, column=column, cell=cell)
             placements.append((emitter_num, column, cell))
             print(f"Emitter {emitter_num}: placed in column={column}, cell={cell}")
+            # Sadly some delay necessary or messages are dropped and don't reach device
+            await asyncio.sleep(.001)
 
         print("\nAll 4 emitters now have placements. Observe on hardware...")
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
 
         # Test dispatch method
         print("\nTesting dispatch method...")
@@ -216,6 +219,7 @@ async def play_test_emitter_pool(override_port: str = None):
             await pool.set_active(emitter_num)
             await pool.remove_from_cell(emitter_num, column=column, cell=cell)
             print(f"Emitter {emitter_num}: removed from column={column}, cell={cell}")
+            await asyncio.sleep(.001)
 
         await asyncio.sleep(0.5)
         print("\n=== EmitterPool integration test completed successfully ===")
