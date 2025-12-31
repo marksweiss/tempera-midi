@@ -38,7 +38,7 @@ from emitter import Emitter
 # Create emitter instance (emitter 1-4, channel 0-15)
 # You may want to create one object for each of the four emitters and call set_active() on them
 # to modify one or another emitter
-emitter = Emitter (emitter=1, midi_channel=1)
+emitter = Emitter(emitter=1, midi_channel=1)
 
 # Volume and octave
 message = emitter.set_active()
@@ -50,9 +50,9 @@ message = emitter.effects_send(80)
 # send ...
 
 # Cell placement
-message = emitter.place_in_cell (column=1, cell=1)
+message = emitter.place_in_cell(column=1, cell=1)
 # send ...
-message = emitter.remove_from_cell (column=1, cell=1)
+message = emitter.remove_from_cell(column=1, cell=1)
 # send ...
 ```
 
@@ -63,14 +63,14 @@ from track import Track
 
 # NOTE: track is 1-based, 1-8
 # Create track instance
-track = Track (track=1, midi_channel=1)
+track = Track(track=1, midi_channel=1)
 
 # Set track volume
 message = track.volume(100)
 # send ...
 
 # Recording control
-message = track.record_on ()
+message = track.record_on()
 # send ...
 ```
 
