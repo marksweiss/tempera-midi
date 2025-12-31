@@ -114,6 +114,27 @@ message = track.record_on()
 # send ...
 ```
 
+### EmitterPool
+
+The `EmitterPool` class provides a convenient way to manage multiple emitters. It handles
+queueing and sending MIDI messages in the background.
+
+The pool launches by default with four emitters, each on its own MIDI channel (1-4).
+
+The pool also provides a `dispatch` method to send messages to any emitter based on a
+dictionary event. This makes it easy to send messages from a queue or other async source.
+
+See @main.py for an example of using the pool in code.
+
+```python
+from emitter_pool import EmitterPool
+
+async with EmitterPool() as pool:
+    await pool.volume(1, 100)
+    # wraps emitter methods with additional emmitter_num parameter
+    await pool.place_in_cell(2, column=1, cell=1)
+```
+
 ## Running Tests
 
 Run all test:
