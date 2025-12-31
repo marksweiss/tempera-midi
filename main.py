@@ -77,13 +77,13 @@ async def play_test(override_port: str = None):
         output.send(emitter.remove_from_cell(column=1, cell=1))
         print("calling Emitter.remove_from_cell with arguments (column=1, cell=1) just succeeded")
 
-        output.send (emitter.place_in_cell (column=1, cell=1))
-        print ("calling Emitter.place_in_cell with arguments (column=1, cell=1) just succeeded")
+        output.send(emitter.place_in_cell(column=1, cell=1))
+        print("calling Emitter.place_in_cell with arguments (column=1, cell=1) just succeeded")
 
-        await asyncio.sleep (2)
+        await asyncio.sleep(2)
 
-        output.send (emitter.remove_from_cell (column=1, cell=1))
-        print ("calling Emitter.remove_from_cell with arguments (column=1, cell=1) just succeeded")
+        output.send(emitter.remove_from_cell(column=1, cell=1))
+        print("calling Emitter.remove_from_cell with arguments (column=1, cell=1) just succeeded")
 
         # --- Track class tests ---
         track = Track(track=1)

@@ -125,13 +125,13 @@ class Emitter:
         self.midi = Midi(midi_channel)
 
     @property
+    def emitter_num(self):
+        return self._emitter_num
+
+    @emitter_num.setter
     def emitter_num(self, value):
         self._emitter_num = value
         self.cc_map = EMITTER_CC_MAPS[value]
-
-    @property
-    def emitter_num(self):
-        return self._emitter_num
 
     def volume(self, value: int) -> Message:
         """Change Emitter Volume."""
