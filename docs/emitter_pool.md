@@ -19,57 +19,59 @@ Classes
         port_name: MIDI port name. Defaults to TEMPERA_PORT environment variable.
         virtual: If True, create a virtual MIDI port (for testing). Defaults to False.
 
-    ### Methods
+### Methods
 
-    `dispatch(self, event: dict)`
-    :   Dispatch an event to the appropriate emitter method.
-        
-        Args:
-            event: Dictionary with keys:
-                - emitter: Emitter number (1-4)
-                - method: Method name (e.g., 'volume', 'grain', 'place_in_cell')
-                - args: Optional list of positional arguments
-                - kwargs: Optional dict of keyword arguments
-        
-        Example:
-            await pool.dispatch({'emitter': 1, 'method': 'volume', 'args': [64]})
-            await pool.dispatch({'emitter': 2, 'method': 'grain', 'kwargs': {'density': 80}})
+`dispatch(self, event: dict)`
+:   Dispatch an event to the appropriate emitter method.
+    
+    Args:
+        event: Dictionary with keys:
+            - emitter: Emitter number (1-4)
+            - method: Method name (e.g., 'volume', 'grain', 'place_in_cell')
+            - args: Optional list of positional arguments
+            - kwargs: Optional dict of keyword arguments
+    
+    Example:
+        await pool.dispatch({'emitter': 1, 'method': 'volume', 'args': [64]})
+        await pool.dispatch({'emitter': 2, 'method': 'grain', 'kwargs': {'density': 80}})
 
-    `effects_send(self, emitter_num: int, value: int)`
-    :   Change Emitter Effects Send.
+`effects_send(self, emitter_num: int, value: int)`
+:   Change Emitter Effects Send.
 
-    `grain(self, emitter_num: int, *, length_cell: int = None, length_note: int = None, density: int = None, shape: int = None, shape_attack: int = None, pan: int = None, tune_spread: int = None)`
-    :   Change Emitter Grain Parameters.
+`grain(self, emitter_num: int, *, length_cell: int = None, length_note: int = None, density: int = None, shape: int = None, shape_attack: int = None, pan: int = None, tune_spread: int = None)`
+:   Change Emitter Grain Parameters.
 
-    `octave(self, emitter_num: int, value: int)`
-    :   Change Emitter Octave.
+`octave(self, emitter_num: int, value: int)`
+:   Change Emitter Octave.
 
-    `place_in_cell(self, emitter_num: int, column: int, cell: int)`
-    :   Place Emitter in a given Cell in a given Column.
+`place_in_cell(self, emitter_num: int, column: int, cell: int)`
+:   Place Emitter in a given Cell in a given Column.
 
-    `relative_position(self, emitter_num: int, *, x: int = None, y: int = None)`
-    :   Change Emitter Position along X and Y axes.
+`relative_position(self, emitter_num: int, *, x: int = None, y: int = None)`
+:   Change Emitter Position along X and Y axes.
 
-    `remove_from_cell(self, emitter_num: int, column: int, cell: int)`
-    :   Remove Emitter placement from a given Cell in a given Column.
+`remove_from_cell(self, emitter_num: int, column: int, cell: int)`
+:   Remove Emitter placement from a given Cell in a given Column.
 
-    `send_raw(self, message: mido.messages.messages.Message)`
-    :   Send a raw MIDI message through the queue.
+`send_raw(self, message: mido.messages.messages.Message)`
+:   Send a raw MIDI message through the queue.
 
-    `set_active(self, emitter_num: int)`
-    :   Set Emitter as Active.
+`set_active(self, emitter_num: int)`
+:   Set Emitter as Active.
 
-    `spray(self, emitter_num: int, *, x: int = None, y: int = None)`
-    :   Change Emitter Spray along X and Y axes.
+`spray(self, emitter_num: int, *, x: int = None, y: int = None)`
+:   Change Emitter Spray along X and Y axes.
 
-    `start(self)`
-    :   Open MIDI port and start the background sender task.
+`start(self)`
+:   Open MIDI port and start the background sender task.
 
-    `stop(self)`
-    :   Stop the sender task, drain the queue, and close the MIDI port.
+`stop(self)`
+:   Stop the sender task, drain the queue, and close the MIDI port.
 
-    `tone_filter(self, emitter_num: int, *, width: int = None, center: int = None)`
-    :   Change Emitter Filter width and center.
+`tone_filter(self, emitter_num: int, *, width: int = None, center: int = None)`
+:   Change Emitter Filter width and center.
 
-    `volume(self, emitter_num: int, value: int)`
-    :   Change Emitter Volume.
+`volume(self, emitter_num: int, value: int)`
+:   Change Emitter Volume.
+
+---------
