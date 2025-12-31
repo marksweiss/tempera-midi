@@ -2,12 +2,32 @@
 
 A Python library for generating MIDI CC messages for the Tempera granular sampler.
 
-## Installation
+## Software Installation
 
 This project uses [uv](https://github.com/astral-sh/uv) for dependency management. Follow that link for instructions on installing `uv`. After doing so, run this command once to install dependencies and create the correct local environment:
 
 ```bash
 uv sync
+```
+
+## Tempera Setup
+
+You must set the TEMPORA_PORT environment variable and it must match an available MIDI port
+The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
+In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
+
+## Running `main.py` to Verify
+
+The project includes an example `main.py` entry point which exercises all of the library functions. So this also
+shows usage of all available methods.
+Run it and verify that you see activity in the Tempera, and verify the state on the Tempera matches what is set
+in the code. At this point your setup is valid and you can modify `main.py` to call the currently empty `play()`
+function to do whatever interesting things you want to do.
+
+To run:
+
+```bash
+TEMPERA_PORT='Tempera' uv run python -m main
 ```
 
 ## Usage
@@ -122,13 +142,4 @@ uv run python -c "import mido; print(mido.get_output_names())"
 Documentation is auto-generated from docstrings using `pdoc3`, on each commit. To regenerate manually run:
 ```bash
 uv run pdoc3 --force -o docs tempera_global emitter track
-```
-
-## Running main.py
-
-```bash
-# You must set the TEMPORA_PORT environment variable and it must match an available MIDI port
-# The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
-# In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
-TEMPERA_PORT='Tempera' uv run python -m main
 ```
