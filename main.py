@@ -228,7 +228,7 @@ async def play_test_emitter_pool(override_port: str = None):
 if __name__ == '__main__':
     # Comment this out to skip running the lightweight integration test
     # pass an argument for override_port or set env var TEMPERA_PORT to run against actual Tempera
-    # asyncio.run(play_test())
+    asyncio.run(play_test())
 
     # Uncomment to run the EmitterPool test (tests all 4 emitters with async pool)
     asyncio.run(play_test_emitter_pool())
