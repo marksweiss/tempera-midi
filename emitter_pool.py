@@ -191,7 +191,6 @@ class EmitterPool:
         await method(emitter_num, *args, **kwargs)
 
     # --- Low-level escape hatch ---
-
     async def send_raw(self, message: Message):
         """Send a raw MIDI message through the queue."""
         await self._queue.put(message)
