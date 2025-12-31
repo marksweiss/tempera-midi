@@ -16,6 +16,26 @@ You must set the TEMPORA_PORT environment variable and it must match an availabl
 The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
 In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
 
+### Notes on Manual Temperal MIDI Setup and MIDI Control
+
+The Tempera supports two kinds of MIDI control:
+* Each Emitter has a `Channel` setting which controls what MIDI Channel will send Note On / Off messages which
+  are played at the pitch of the Note On / Off by all actively placed cells on the grid for that Emitter
+* In `Settings` there is a global `Control MIDI channel` setting with two button toggles, `In` and `Out`. This controls
+  the channel for sending and receiving all other MIDI CC messages.
+
+This maps to this library as follows:
+* You should create `Emitter` objects with the `midi_channel` set to the `Channel` setting for that Emitter in the Tempera
+* You should create a `TemperaGlobal` object with the `midi_channel` set to the `Control MIDI channel` setting in the Tempera
+
+A typical MIDI setup on the device to send both notes and messages from this library to the Tempera might be:
+* Emitter 1: Channel 1
+* Emitter 2: Channel 2
+* Emitter 3: Channel 3
+* Emitter 4: Channel 4
+* Control MIDI channel: 5
+  * In: On
+
 ## Running `main.py` to Verify
 
 The project includes an example `main.py` entry point which exercises all of the library functions. So this also
