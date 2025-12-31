@@ -128,6 +128,7 @@ uv run pdoc3 --force -o docs tempera_global emitter track
 
 ```bash
 # You must set the TEMPORA_PORT environment variable and it must match an available MIDI port
-# The code currently assumes a virtual port
-TEMPERA_PORT='My Tempera' uv run python -m main
+# The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
+# In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
+TEMPERA_PORT='Tempera' uv run python -m main
 ```
