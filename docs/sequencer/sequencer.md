@@ -78,6 +78,9 @@ Classes
 
 ### Methods
 
+`cleanup(self)`
+:   Remove all cells that were placed by this sequencer.
+
 `clear_column(self, column: int)`
 :   Clear pattern for a column.
 
@@ -142,6 +145,9 @@ Classes
 * abc.ABC
 
 ### Methods
+
+`cleanup(self)`
+:   Remove all cells that were placed by this sequencer.
 
 `clear(self)`
 :   Clear the pattern, removing all cells.

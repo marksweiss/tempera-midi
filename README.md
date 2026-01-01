@@ -150,7 +150,7 @@ async with EmitterPool() as pool:
 
 ### Sequencers
 
-The `composition` package provides two sequencer classes for pattern-based composition:
+The `sequencer` package provides two sequencer classes for pattern-based composition:
 
 #### GridSequencer
 
@@ -168,7 +168,7 @@ async with EmitterPool () as pool:
   pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
   sequencer.set_pattern (pattern)
 
-  await sequencer.run (loops=4)  # Run 4 times
+  await sequencer.run(loops=4)  # Run 4 times
 ```
 
 #### ColumnSequencer
@@ -189,7 +189,7 @@ async with EmitterPool () as pool:
   # Mute patterns - column 2 plays every other loop
   sequencer.set_mute_pattern (2, [1, 0])
 
-  await sequencer.run (loops=8)
+  await sequencer.run(loops=8)
 ```
 
 Both sequencers support:
@@ -235,10 +235,11 @@ Hardware tests send real MIDI messages to a connected Tempera device. These are 
 RUN_HARDWARE_TESTS=1 uv run python -m unittest discover test -v
 
 # With custom Tempera port name
-RUN_HARDWARE_TESTS=1 TEMPERA_PORT='My Tempera' uv run python -m unittest discover test -v
+RUN_HARDWARE_TESTS=1 TEMPERA_PORT='Tempera' uv run python -m unittest discover test -v
 ```
 
-The hardware tests will auto-detect a MIDI port containing "Tempera" in its name. If your device appears with a different name, use the `TEMPERA_PORT_NAME` environment variable.
+The hardware tests will auto-detect a MIDI port containing "Tempera" in its name.
+If your device appears with a different name, use the `TEMPERA_PORT_NAME` environment variable.
 
 To list available MIDI ports on your system:
 
