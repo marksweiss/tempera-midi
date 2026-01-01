@@ -5,7 +5,7 @@ Sequencer classes for composing Tempera patterns.
 Classes
 -------
 
-`BaseSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float = None, bpm: float = None, steps_per_beat: int = 1)`
+`BaseSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float | None = None, bpm: float | None = None, steps_per_beat: int = 1)`
 :   Abstract base class for sequencers.
     
     Provides common functionality for timing, looping, and playback control.
@@ -58,7 +58,7 @@ Classes
 
 ---------
 
-`ColumnSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float = None, bpm: float = None, steps_per_beat: int = 1)`
+`ColumnSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float | None = None, bpm: float | None = None, steps_per_beat: int = 1)`
 :   Sequencer that treats the grid as 8 independent columns (samples).
     
     Each column has 8 cells (steps). Pattern format per column: sparse dict {cell: emitter_num}
@@ -76,6 +76,11 @@ Classes
 * sequencer.sequencer.BaseSequencer
 * abc.ABC
 
+### Class variables
+
+`DISPATCH_HANDLERS`
+:   
+
 ### Methods
 
 `cleanup(self)`
@@ -90,6 +95,7 @@ Classes
     Supported actions:
         - set_column_pattern: Set pattern for a column. Requires 'column' and 'pattern' keys.
         - clear_column: Clear pattern for a column. Requires 'column' key.
+        - cleanup: Remove all placed cells.
         - mute_column: Mute a column. Requires 'column' key.
         - unmute_column: Unmute a column. Requires 'column' key.
         - set_mute_pattern: Set mute pattern. Requires 'column' and 'pattern' keys.
@@ -129,7 +135,7 @@ Classes
 
 ---------
 
-`GridSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float = None, bpm: float = None, steps_per_beat: int = 1)`
+`GridSequencer(pool: tempera.emitter_pool.EmitterPool, step_duration: float | None = None, bpm: float | None = None, steps_per_beat: int = 1)`
 :   Sequencer that treats all 64 cells as one continuous sequence.
     
     Pattern format: sparse dict {step_index: emitter_num}
@@ -143,6 +149,11 @@ Classes
 
 * sequencer.sequencer.BaseSequencer
 * abc.ABC
+
+### Class variables
+
+`DISPATCH_HANDLERS`
+:   
 
 ### Methods
 
@@ -158,6 +169,7 @@ Classes
     Supported actions:
         - set_pattern: Set the pattern. Requires 'pattern' key.
         - clear: Clear the pattern.
+        - cleanup: Remove all placed cells.
         - set_loops: Set loop count. Requires 'loops' key.
         - pause: Pause the sequencer.
         - resume: Resume the sequencer.
