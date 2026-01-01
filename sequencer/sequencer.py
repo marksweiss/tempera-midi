@@ -20,11 +20,12 @@ class BaseSequencer(ABC):
         steps_per_beat: Number of steps per beat (default 1). Only used with bpm.
     """
 
+    # noinspection PyTypeHints
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: float = None,
-        bpm: float = None,
+        step_duration: Optional[float] = None,
+        bpm: Optional[float] = None,
         steps_per_beat: int = 1
     ):
         self.pool = pool
@@ -94,7 +95,7 @@ class BaseSequencer(ABC):
                 self._loop_count += 1
 
                 # Check if we've completed target loops
-                if self._target_loops > 0 and self._loop_count >= self._target_loops:
+                if 0 < self._target_loops <= self._loop_count:
                     self._running = False
                     break
 
@@ -145,11 +146,22 @@ class GridSequencer(BaseSequencer):
         pattern = {0: 1, 4: 2, 8: 1}  # Steps 0 and 8 use emitter 1, step 4 uses emitter 2
     """
 
+    DISPATCH_HANDLERS = {
+        'set_pattern': lambda self, event: self.set_pattern(event['pattern']),
+        'clear': lambda self, event: self.clear(),
+        'cleanup': lambda self, event: self.cleanup(),
+        'set_loops': lambda self, event: self.set_loops(event['loops']),
+        'pause': lambda self, event: self.pause(),
+        'resume': lambda self, event: self.resume(),
+        'stop': lambda self, event: self.stop(),
+    }
+
+    # noinspection PyTypeHints
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: float = None,
-        bpm: float = None,
+        step_duration: Optional[float] = None,
+        bpm: Optional[float] = None,
         steps_per_beat: int = 1
     ):
         super().__init__(pool, step_duration, bpm, steps_per_beat)
@@ -224,6 +236,7 @@ class GridSequencer(BaseSequencer):
         Supported actions:
             - set_pattern: Set the pattern. Requires 'pattern' key.
             - clear: Clear the pattern.
+            - cleanup: Remove all placed cells.
             - set_loops: Set loop count. Requires 'loops' key.
             - pause: Pause the sequencer.
             - resume: Resume the sequencer.
@@ -231,22 +244,13 @@ class GridSequencer(BaseSequencer):
         """
         action = event.get('action')
 
-        if action == 'set_pattern':
-            await self.set_pattern(event['pattern'])
-        elif action == 'clear':
-            await self.clear()
-        elif action == 'cleanup':
-            await self.cleanup()
-        elif action == 'set_loops':
-            self.set_loops(event['loops'])
-        elif action == 'pause':
-            await self.pause()
-        elif action == 'resume':
-            await self.resume()
-        elif action == 'stop':
-            await self.stop()
-        else:
+        handler = self.DISPATCH_HANDLERS.get(action)
+        if handler is None:
             raise ValueError(f"Unknown action: {action}")
+
+        result = handler(self, event)
+        if asyncio.iscoroutine(result):
+            await result
 
 
 class ColumnSequencer(BaseSequencer):
@@ -264,11 +268,25 @@ class ColumnSequencer(BaseSequencer):
         sequencer.set_mute_pattern(1, [1, 0])  # Column 1 plays every other loop
     """
 
+    DISPATCH_HANDLERS = {
+        'set_column_pattern': lambda self, event: self.set_column_pattern(event['column'], event['pattern']),
+        'clear_column': lambda self, event: self.clear_column(event['column']),
+        'cleanup': lambda self, event: self.cleanup(),
+        'mute_column': lambda self, event: self.mute_column(event['column']),
+        'unmute_column': lambda self, event: self.unmute_column(event['column']),
+        'set_mute_pattern': lambda self, event: self.set_mute_pattern(event['column'], event['pattern']),
+        'set_loops': lambda self, event: self.set_loops(event['loops']),
+        'pause': lambda self, event: self.pause(),
+        'resume': lambda self, event: self.resume(),
+        'stop': lambda self, event: self.stop(),
+    }
+
+    # noinspection PyTypeHints
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: float = None,
-        bpm: float = None,
+        step_duration: Optional[float] = None,
+        bpm: Optional[float] = None,
         steps_per_beat: int = 1
     ):
         super().__init__(pool, step_duration, bpm, steps_per_beat)
@@ -404,6 +422,7 @@ class ColumnSequencer(BaseSequencer):
         Supported actions:
             - set_column_pattern: Set pattern for a column. Requires 'column' and 'pattern' keys.
             - clear_column: Clear pattern for a column. Requires 'column' key.
+            - cleanup: Remove all placed cells.
             - mute_column: Mute a column. Requires 'column' key.
             - unmute_column: Unmute a column. Requires 'column' key.
             - set_mute_pattern: Set mute pattern. Requires 'column' and 'pattern' keys.
@@ -414,25 +433,10 @@ class ColumnSequencer(BaseSequencer):
         """
         action = event.get('action')
 
-        if action == 'set_column_pattern':
-            await self.set_column_pattern(event['column'], event['pattern'])
-        elif action == 'clear_column':
-            await self.clear_column(event['column'])
-        elif action == 'cleanup':
-            await self.cleanup()
-        elif action == 'mute_column':
-            self.mute_column(event['column'])
-        elif action == 'unmute_column':
-            self.unmute_column(event['column'])
-        elif action == 'set_mute_pattern':
-            self.set_mute_pattern(event['column'], event['pattern'])
-        elif action == 'set_loops':
-            self.set_loops(event['loops'])
-        elif action == 'pause':
-            await self.pause()
-        elif action == 'resume':
-            await self.resume()
-        elif action == 'stop':
-            await self.stop()
-        else:
+        handler = self.DISPATCH_HANDLERS.get(action)
+        if handler is None:
             raise ValueError(f"Unknown action: {action}")
+
+        result = handler(self, event)
+        if asyncio.iscoroutine(result):
+            await result
