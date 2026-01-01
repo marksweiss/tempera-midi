@@ -1,5 +1,7 @@
 import asyncio
 import os
+
+from sequencer import ColumnSequencer, GridSequencer
 from tempera.constants import TEMPERA_PORT_NAME
 from midi import Midi
 from mido import Message, open_output
@@ -225,6 +227,44 @@ async def play_test_emitter_pool(override_port: str = None):
         print("\n=== EmitterPool integration test completed successfully ===")
 
 
+async def play_test_sequencers(override_port: str = None):
+    """Test ColumnSequencer and GrideSequencer with all four emitters placing in different cells."""
+    port = override_port or PORT
+
+    print("\nRunning ColumnSequencer test...")
+    try:
+        async with EmitterPool(port_name=port) as pool:
+            sequencer = ColumnSequencer(pool, step_duration=0.25)
+            await sequencer.set_column_pattern(1, {1: 1, 5: 1})
+            await sequencer.set_column_pattern(2, {2: 2, 6: 2})
+
+            await sequencer.run(loops=2)
+
+            # Clear patterns and cleanup all placed cells
+            await sequencer.clear_column(1)
+            await sequencer.clear_column(2)
+            await sequencer.cleanup()
+    except Exception as e:
+        print(f"Exception in play_test_sequencers: {e}")
+        raise
+
+    await asyncio.sleep(1)
+    print("Running GridSequencer test...")
+    try:
+        async with EmitterPool(port_name=port) as pool:
+            sequencer = GridSequencer(pool, step_duration=0.25)
+            await sequencer.set_pattern({0: 1, 8: 2})  # Steps in columns 1 and 2
+
+            await sequencer.run(loops=2)
+
+            # Clear pattern and cleanup all placed cells
+            await sequencer.clear()
+            await sequencer.cleanup()
+    except Exception as e:
+        print(f"Exception in play_test_sequencers: {e}")
+        raise
+
+
 if __name__ == '__main__':
     # Comment this out to skip running the lightweight integration test
     # pass an argument for override_port or set env var TEMPERA_PORT to run against actual Tempera
@@ -233,7 +273,10 @@ if __name__ == '__main__':
     # Uncomment to run the EmitterPool test (tests all 4 emitters with async pool)
     asyncio.run(play_test_emitter_pool())
 
-    # Define list of mido Messages here. This is the composition which will be sent to the Tempera.
+    # Uncomment to run the Sequencer tests (tests all 4 emitters with in each type of sequencer)
+    asyncio.run(play_test_sequencers())
+
+    # Define list of mido Messages here. This is the sequencer which will be sent to the Tempera.
     messages: list[Message] = []
     # Pass them to the play() function
     asyncio.run(play(messages))

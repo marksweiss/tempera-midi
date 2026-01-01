@@ -50,15 +50,20 @@ class EmitterPool:
 
     async def stop(self):
         """Stop the sender task, drain the queue, and close the MIDI port."""
-        self._running = False
         if self._sender_task:
-            # Wait for queue to drain
-            await self._queue.join()
+            # Wait for queue to drain with timeout (sender loop still running)
+            try:
+                await asyncio.wait_for(self._queue.join(), timeout=1.0)
+            except asyncio.TimeoutError:
+                pass
+            # Now stop the sender loop and cancel the task
+            self._running = False
             self._sender_task.cancel()
             try:
                 await self._sender_task
             except asyncio.CancelledError:
                 pass
+        self._running = False
         if self._port:
             self._port.close()
             self._port = None

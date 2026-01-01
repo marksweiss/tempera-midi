@@ -487,7 +487,7 @@ class MidiHardwareTestBase(unittest.TestCase):
     Base class for hardware MIDI tests that send to a real Tempera device.
 
     To run these tests:
-        RUN_HARDWARE_TESTS=1 uv run python -m unittest discover integration_test -v
+        RUN_HARDWARE_TESTS=1 uv run python -m unittest discover test -v
 
     If your Tempera shows up with a different port name, set:
         TEMPERA_PORT_NAME="Your Tempera Port Name"

@@ -27,7 +27,7 @@ Thanks for your interest in contributing! This is a small community project, and
 These tests verify MIDI message generation without needing a Tempera:
 
 ```bash
-uv run python -m unittest discover integration_test -v
+uv run python -m unittest discover test -v
 ```
 
 ### Hardware Tests
@@ -35,7 +35,7 @@ uv run python -m unittest discover integration_test -v
 If you have a Tempera connected:
 
 ```bash
-RUN_HARDWARE_TESTS=1 TEMPERA_PORT='Tempera' uv run python -m unittest discover integration_test -v
+RUN_HARDWARE_TESTS=1 TEMPERA_PORT='Tempera' uv run python -m unittest discover test -v
 ```
 
 ## Submitting Changes

@@ -1,6 +1,18 @@
 # Tempera MIDI
 
-A Python library for generating MIDI CC messages for the Tempera granular sampler.
+A Python library for controlling the Tempera granular sampler. This client supports the entire
+specifciation as documented [here](https://docs.beetlecrab.audio/tempera/), including all global settings, track
+recording (resampling), setting notes on and off, and all `Emitter` parameters.
+
+There are some nice additional features supporting programmatic composition on the Tempera and particular to its
+capabilities and features. In paticular, the `EmitterPool` class provides a convenient way to manage multiple emitters
+and their parameters and manipulate all four Emitters concurrently, either in a loop programatically or in response to
+external events with the pool running in a separate process.
+
+In addition, two `Sequencer` classes provide either a multi-track sequencer abstraction over the 8 Tempera tracks
+or a single-track sequencer abstraction that treats the 64-cell grid of the instrument as a single sequence. These
+classes support setting per-cell Emitter placements, setting a tempo in bpm or time units, looping, and modifying
+sequence patterns on the fly.
 
 ## Software Installation
 
@@ -40,6 +52,7 @@ A typical MIDI setup on the device to send both notes and messages from this lib
 
 The project includes an example `main.py` entry point which exercises all of the library functions. So this also
 shows usage of all available methods.
+
 Run it and verify that you see activity in the Tempera, and verify the state on the Tempera matches what is set
 in the code. At this point your setup is valid and you can modify `main.py` to call the currently empty `play()`
 function to do whatever interesting things you want to do.
@@ -135,11 +148,61 @@ async with EmitterPool() as pool:
     await pool.place_in_cell(2, column=1, cell=1)
 ```
 
+### Sequencers
+
+The `composition` package provides two sequencer classes for pattern-based composition:
+
+#### GridSequencer
+
+Treats the Tempera's 64 cells as a single continuous sequence:
+
+```python
+from tempera import EmitterPool
+from sequencer import GridSequencer
+
+async with EmitterPool () as pool:
+  sequencer = GridSequencer (pool, bpm=120)
+
+  # Sparse pattern: {step_index: emitter_num}
+  # Only include steps that should be ON
+  pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
+  sequencer.set_pattern (pattern)
+
+  await sequencer.run (loops=4)  # Run 4 times
+```
+
+#### ColumnSequencer
+
+Treats the grid as 8 independent columns (samples), each with 8 cells:
+
+```python
+from tempera import EmitterPool
+from sequencer import ColumnSequencer
+
+async with EmitterPool () as pool:
+  sequencer = ColumnSequencer (pool, step_duration=0.25)
+
+  # Pattern per column: {cell: emitter_num}
+  sequencer.set_column_pattern (1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
+  sequencer.set_column_pattern (2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
+
+  # Mute patterns - column 2 plays every other loop
+  sequencer.set_mute_pattern (2, [1, 0])
+
+  await sequencer.run (loops=8)
+```
+
+Both sequencers support:
+- Timing via `bpm` or `step_duration` parameters
+- Looping (finite or infinite)
+- Pause/resume control
+- Event dispatch for external control (server mode)
+
 ## Running Tests
 
 Run all tests:
 ```bash
-uv run python -m unittest discover integration_test
+uv run python -m unittest discover test
 ```
 
 ### Integration Tests
@@ -155,10 +218,10 @@ These tests verify that the bytes produced by the library are valid MIDI message
 
 ```bash
 # Run virtual port tests only (default)
-uv run python -m unittest discover integration_test
+uv run python -m unittest discover test
 
 # With verbose output
-uv run python -m unittest discover integration_test -v
+uv run python -m unittest discover test -v
 ```
 
 Note: Virtual port tests require virtual MIDI port support (available on macOS and Linux).
@@ -169,10 +232,10 @@ Hardware tests send real MIDI messages to a connected Tempera device. These are 
 
 ```bash
 # Run all integration tests including hardware tests
-RUN_HARDWARE_TESTS=1 uv run python -m unittest discover integration_test -v
+RUN_HARDWARE_TESTS=1 uv run python -m unittest discover test -v
 
 # With custom Tempera port name
-RUN_HARDWARE_TESTS=1 TEMPERA_PORT='My Tempera' uv run python -m unittest discover integration_test -v
+RUN_HARDWARE_TESTS=1 TEMPERA_PORT='My Tempera' uv run python -m unittest discover test -v
 ```
 
 The hardware tests will auto-detect a MIDI port containing "Tempera" in its name. If your device appears with a different name, use the `TEMPERA_PORT_NAME` environment variable.
@@ -187,5 +250,5 @@ uv run python -c "import mido; print(mido.get_output_names())"
 
 Documentation is auto-generated from docstrings using `pdoc3`, on each commit. To regenerate manually run:
 ```bash
-uv run pdoc3 --force --template templates -o docs tempera midi
+uv run pdoc3 --force --template templates -o docs tempera midi sequencer
 ```
