@@ -5,7 +5,7 @@ from typing import Union
 import mido
 from mido import Message
 
-from emitter import Emitter
+from tempera.emitter import Emitter
 
 
 class EmitterPool:

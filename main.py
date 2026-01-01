@@ -1,13 +1,13 @@
 import asyncio
 import os
-from constants import TEMPERA_PORT_NAME
-from emitter import Emitter
-from emitter_pool import EmitterPool
+from tempera.constants import TEMPERA_PORT_NAME
 from midi import Midi
 from mido import Message, open_output
 
-from tempera_global import TemperaGlobal
-from track import Track
+from tempera.emitter import Emitter
+from tempera.emitter_pool import EmitterPool
+from tempera.tempera_global import TemperaGlobal
+from tempera.track import Track
 
 INIT_SLEEP = .5
 PORT = os.environ.get(TEMPERA_PORT_NAME)

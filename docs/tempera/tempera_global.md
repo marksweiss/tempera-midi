@@ -1,5 +1,5 @@
-Module tempera_global
-=====================
+Module tempera.tempera_global
+=============================
 
 Classes
 -------

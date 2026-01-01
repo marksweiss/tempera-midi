@@ -1,5 +1,5 @@
-Module emitter_pool
-===================
+Module tempera.emitter_pool
+===========================
 
 Classes
 -------

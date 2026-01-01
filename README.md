@@ -55,7 +55,7 @@ TEMPERA_PORT='Tempera' uv run python -m main
 ### Global Controls
 
 ```python
-from tempera_global import TemperaGlobal
+from tempera import TemperaGlobal
 
 # NOTE: midi_channel is 1-based, 1-16
 # Create instance with default channel (1)
@@ -72,7 +72,7 @@ messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
 ### Emitter Controls
 
 ```python
-from emitter import Emitter
+from tempera import Emitter
 
 # NOTE: emitter is 1-based, 1-4
 # Create emitter instance (emitter 1-4, channel 0-15)
@@ -99,7 +99,7 @@ message = emitter.remove_from_cell(column=1, cell=1)
 ### Track Controls
 
 ```python
-from track import Track
+from tempera import Track
 
 # NOTE: track is 1-based, 1-8
 # Create track instance
@@ -127,7 +127,7 @@ dictionary event. This makes it easy to send messages from a queue or other asyn
 See @main.py for an example of using the pool in code.
 
 ```python
-from emitter_pool import EmitterPool
+from tempera import EmitterPool
 
 async with EmitterPool() as pool:
     await pool.volume(1, 100)
@@ -137,17 +137,9 @@ async with EmitterPool() as pool:
 
 ## Running Tests
 
-Run all test:
+Run all tests:
 ```bash
 uv run python -m unittest discover integration_test
-```
-
-### Unit Tests
-
-There are some unit tests for `emitter_pool.py` Run them with:
-
-```bash
-uv run python -m unittest discover
 ```
 
 ### Integration Tests
@@ -195,5 +187,5 @@ uv run python -c "import mido; print(mido.get_output_names())"
 
 Documentation is auto-generated from docstrings using `pdoc3`, on each commit. To regenerate manually run:
 ```bash
-uv run pdoc3 --force -o docs tempera_global emitter track
+uv run pdoc3 --force --template templates -o docs tempera midi
 ```

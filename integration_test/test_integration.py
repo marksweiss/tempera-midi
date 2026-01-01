@@ -5,10 +5,10 @@ import unittest
 import mido
 
 from midi import Midi
-from tempera_global import TemperaGlobal
-from emitter import Emitter
-from emitter_pool import EmitterPool
-from track import Track
+from tempera.tempera_global import TemperaGlobal
+from tempera.emitter import Emitter
+from tempera.emitter_pool import EmitterPool
+from tempera.track import Track
 
 
 # Environment variable to enable hardware tests

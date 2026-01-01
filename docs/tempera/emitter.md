@@ -1,5 +1,5 @@
-Module emitter
-==============
+Module tempera.emitter
+======================
 
 Classes
 -------

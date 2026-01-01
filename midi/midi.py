@@ -2,7 +2,7 @@ import os
 import mido
 from mido import Message
 
-from constants import TEMPERA_PORT_NAME
+from tempera.constants import TEMPERA_PORT_NAME
 
 NOTE_ON = 'note_on'
 NOTE_OFF = 'note_off'
