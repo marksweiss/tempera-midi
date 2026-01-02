@@ -1,3 +1,6 @@
+import asyncio
+from typing import Any
+
 from tempera.constants import (
     ACTIVE_EMITTER, PLACE_EMITTER_IN_CELL, REMOVE_EMITTER_FROM_CELL,
     EMITTER_1_VOLUME, EMITTER_1_GRAIN_LENGTH_CELL, EMITTER_1_GRAIN_LENGTH_NOTE,
@@ -196,3 +199,9 @@ class Emitter:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
         return self.midi.cc(REMOVE_EMITTER_FROM_CELL, value)
+
+    async def play(self, output: Any, note: int = 60, velocity: int = 127, duration: float = 1.0) -> None:
+        """Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note."""
+        output.send(self.midi.note_on(note, velocity, 0))
+        await asyncio.sleep(duration)
+        output.send(self.midi.note_off(note, 0))

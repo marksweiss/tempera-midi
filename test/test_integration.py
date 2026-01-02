@@ -255,12 +255,12 @@ class TestEmitterPoolIntegration(unittest.IsolatedAsyncioTestCase):
 
     async def test_pool_context_manager(self):
         async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
-            self.assertIsNotNone(pool._port)
+            self.assertIsNotNone(pool._output)
             self.assertTrue(pool._running)
             self.assertIsNotNone(pool._sender_task)
         # After exit
         self.assertFalse(pool._running)
-        self.assertIsNone(pool._port)
+        self.assertIsNone(pool._output)
 
     async def test_volume(self):
         async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:

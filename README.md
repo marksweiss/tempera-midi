@@ -91,22 +91,34 @@ from tempera import Emitter
 # Create emitter instance (emitter 1-4, channel 0-15)
 # You may want to create one object for each of the four emitters and call set_active() on them
 # to modify one or another emitter
-emitter = Emitter(emitter=1, midi_channel=1)
+# Can also put each emitter on its own MIDI channel to selectively send notes to a particular emitter
+emitter = Emitter(emitter=1, midi_channel=3)
 
 # Volume and octave
 message = emitter.set_active()
 # Then send this, see main.py for an example
 # Now that the emitter is active, you can modify its parameters and place it in cells
-message = emitter.volume(100)
-# send ...
-message = emitter.effects_send(80)
-# send ...
+with open_output('Tempera') as output:
+    message = emitter.volume(100)
+    output.send(message)
+    message = emitter.effects_send(80)
+    output.send(message)
 
-# Cell placement
-message = emitter.place_in_cell(column=1, cell=1)
-# send ...
-message = emitter.remove_from_cell(column=1, cell=1)
-# send ...
+# Cell placement and playback
+# Can play notes via the Emitter's Midi attribute, which is set to the channel passed when creating the Emitter
+# So, if each Emitter is on its own channel, playing back through the Emitter only plays that note on cells
+#  that Emitter is placed in
+# 50 == C3, default base note of the Tempera Keyboard, so this plays all placed cells with no pitch shift, at max volume
+with open_output('Tempera') as output:
+    message = emitter.place_in_cell(column=1, cell=1)
+    output.send(emitter.midi.note_on(60, 127, 0))
+    await asyncio.sleep(2)
+    output.send(emitter.midi.note_off(0, 0, 0))
+    # Or just call emitter.play(), which will play C3 at max volume for the duration passed in, on this emitter's
+    # MIDI channel
+    emitter.play(oputput=output, duration=2)
+    message = emitter.remove_from_cell(column=1, cell=1)
+    output.send(message)
 ```
 
 ### Track Controls

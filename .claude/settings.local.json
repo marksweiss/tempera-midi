@@ -16,7 +16,9 @@
       "Bash(chmod:*)",
       "Bash(.git/hooks/pre-commit)",
       "Bash(uv run:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(python:*)",
+      "Bash(timeout 60 python:*)"
     ]
   }
 }

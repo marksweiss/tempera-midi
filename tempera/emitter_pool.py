@@ -30,7 +30,7 @@ class EmitterPool:
         self._virtual = virtual
         self._emitters = {i: Emitter(emitter=i, midi_channel=i) for i in range(1, 5)}
         self._queue: asyncio.Queue[Union[Message, list[Message]]] = asyncio.Queue()
-        self._port = None
+        self._output = None
         self._sender_task = None
         self._running = False
 
@@ -44,7 +44,7 @@ class EmitterPool:
 
     async def start(self):
         """Open MIDI port and start the background sender task."""
-        self._port = mido.open_output(self._port_name, virtual=self._virtual)
+        self._output = mido.open_output(self._port_name, virtual=self._virtual)
         self._running = True
         self._sender_task = asyncio.create_task(self._sender_loop())
 
@@ -64,9 +64,9 @@ class EmitterPool:
             except asyncio.CancelledError:
                 pass
         self._running = False
-        if self._port:
-            self._port.close()
-            self._port = None
+        if self._output:
+            self._output.close()
+            self._output = None
 
     async def _sender_loop(self):
         """Background task that consumes messages from the queue and sends them."""
@@ -78,9 +78,9 @@ class EmitterPool:
 
             if isinstance(item, list):
                 for msg in item:
-                    self._port.send(msg)
+                    self._output.send(msg)
             else:
-                self._port.send(item)
+                self._output.send(item)
             self._queue.task_done()
 
     def _validate_emitter_num(self, emitter_num: int):
@@ -160,13 +160,47 @@ class EmitterPool:
 
     async def place_in_cell(self, emitter_num: int, column: int, cell: int):
         """Place Emitter in a given Cell in a given Column."""
-        self._validate_emitter_num(emitter_num)
+        # TODO Verify can remove. Unnecessary validation in inner performance loop
+        # self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].place_in_cell(column, cell)
         await self._queue.put(msg)
 
+    async def play(self, emitter_num: int, note: int = 60, velocity: int = 127, duration: float = 1.0):
+        """Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note."""
+        self._validate_emitter_num(emitter_num)
+        await self._emitters[emitter_num].play(self._output, note, velocity, duration)
+
+    async def play_all(
+        self,
+        emitter_nums: list[int],
+        note: int = 60,
+        velocity: int = 127,
+        duration: float = 1.0
+    ):
+        """Play a note on multiple emitters concurrently.
+
+        Sends all note_on messages, waits for duration, then sends all note_off messages.
+
+        Args:
+            emitter_nums: List of emitter numbers (1-4) to play.
+            note: MIDI note number.
+            velocity: Note velocity.
+            duration: Note duration in seconds.
+        """
+        if not emitter_nums:
+            return
+        # Send all note_on messages
+        for emitter_num in emitter_nums:
+            self._output.send(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
+        # Wait once
+        await asyncio.sleep(duration)
+        # Send all note_off messages
+        for emitter_num in emitter_nums:
+            self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
+
     async def remove_from_cell(self, emitter_num: int, column: int, cell: int):
         """Remove Emitter placement from a given Cell in a given Column."""
-        self._validate_emitter_num(emitter_num)
+        # self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].remove_from_cell(column, cell)
         await self._queue.put(msg)
 

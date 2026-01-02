@@ -83,10 +83,19 @@ class BaseSequencer(ABC):
                 break
 
             # Execute current step
-            await self._execute_step(self._current_step, self._loop_count)
+            active_emitters = await self._execute_step(self._current_step, self._loop_count)
 
-            # Wait for step duration
-            await asyncio.sleep(self._step_duration)
+            # Play notes on active emitters concurrently, then wait for step duration
+            if active_emitters:
+                await self.pool.play_all(
+                    list(active_emitters),
+                    duration=self._step_duration * 0.9  # Slightly shorter to avoid overlap
+                )
+                # Small gap after notes end before next step
+                await asyncio.sleep(self._step_duration * 0.1)
+            else:
+                # No active emitters - still need to maintain step timing
+                await asyncio.sleep(self._step_duration)
 
             # Advance step
             self._current_step += 1
@@ -119,8 +128,12 @@ class BaseSequencer(ABC):
         self._target_loops = loops
 
     @abstractmethod
-    async def _execute_step(self, step: int, loop: int):
-        """Execute a single step. Implemented by subclasses."""
+    async def _execute_step(self, step: int, loop: int) -> set[int]:
+        """Execute a single step. Implemented by subclasses.
+
+        Returns:
+            Set of emitter numbers (1-4) that are active in this step.
+        """
         pass
 
     @abstractmethod
@@ -179,11 +192,11 @@ class GridSequencer(BaseSequencer):
         self._pattern = dict(pattern)
 
         # Remove cells that were in old pattern but not in new
-        for step, emitter in old_pattern.items():
+        for step, emitter_num in old_pattern.items():
             if step not in self._pattern:
                 column = (step // 8) + 1
                 cell = (step % 8) + 1
-                await self.pool.remove_from_cell(emitter, column, cell)
+                await self.pool.remove_from_cell(emitter_num, column, cell)
 
     async def clear(self):
         """Clear the pattern, removing all cells."""
@@ -191,10 +204,10 @@ class GridSequencer(BaseSequencer):
 
     async def cleanup(self):
         """Remove all cells that were placed by this sequencer."""
-        for step, emitter in self._prev_step_cells.items():
+        for step, emitter_num in self._prev_step_cells.items():
             column = (step // 8) + 1
             cell = (step % 8) + 1
-            await self.pool.remove_from_cell(emitter, column, cell)
+            await self.pool.remove_from_cell(emitter_num, column, cell)
         self._prev_step_cells.clear()
 
     def get_state(self) -> dict:
@@ -213,21 +226,26 @@ class GridSequencer(BaseSequencer):
             return 8
         return max(self._pattern.keys()) + 1
 
-    async def _execute_step(self, step: int, loop: int):
+    async def _execute_step(self, step: int, loop: int) -> set[int]:
         """Execute a single step of the sequence."""
+        active_emitters: set[int] = set()
+
         # Calculate column and cell from step index
         column = (step // 8) + 1
         cell = (step % 8) + 1
 
         # Check if this step is in the pattern
         if step in self._pattern:
-            emitter = self._pattern[step]
-            await self.pool.place_in_cell(emitter, column, cell)
-            self._prev_step_cells[step] = emitter
+            emitter_num = self._pattern[step]
+            await self.pool.place_in_cell(emitter_num, column, cell)
+            self._prev_step_cells[step] = emitter_num
+            active_emitters.add(emitter_num)
         elif step in self._prev_step_cells:
             # Cell was active but no longer - remove it
             prev_emitter = self._prev_step_cells.pop(step)
             await self.pool.remove_from_cell(prev_emitter, column, cell)
+
+        return active_emitters
 
     async def dispatch(self, event: dict):
         """
@@ -327,8 +345,8 @@ class ColumnSequencer(BaseSequencer):
     async def cleanup(self):
         """Remove all cells that were placed by this sequencer."""
         for column in range(1, 9):
-            for cell, emitter in self._prev_step_cells[column].items():
-                await self.pool.remove_from_cell(emitter, column, cell)
+            for cell, emitter_num in self._prev_step_cells[column].items():
+                await self.pool.remove_from_cell(emitter_num, column, cell)
             self._prev_step_cells[column].clear()
 
     def mute_column(self, column: int):
@@ -391,8 +409,9 @@ class ColumnSequencer(BaseSequencer):
         # Pattern value: True = play, False = mute
         return not mute_pattern[loop % len(mute_pattern)]
 
-    async def _execute_step(self, step: int, loop: int):
+    async def _execute_step(self, step: int, loop: int) -> set[int]:
         """Execute a single step across all columns."""
+        active_emitters: set[int] = set()
         cell = step + 1  # Convert 0-indexed step to 1-indexed cell
 
         for column in range(1, 9):
@@ -400,20 +419,23 @@ class ColumnSequencer(BaseSequencer):
             if self._is_column_muted_this_loop(column, loop):
                 # If muted and cell was previously active, remove it
                 if cell in self._prev_step_cells[column]:
-                    prev_emitter = self._prev_step_cells[column].pop(cell)
-                    await self.pool.remove_from_cell(prev_emitter, column, cell)
+                    prev_emitter_num = self._prev_step_cells[column].pop(cell)
+                    await self.pool.remove_from_cell(prev_emitter_num, column, cell)
                 continue
 
             pattern = self._patterns[column]
 
             if cell in pattern:
-                emitter = pattern[cell]
-                await self.pool.place_in_cell(emitter, column, cell)
-                self._prev_step_cells[column][cell] = emitter
+                emitter_num = pattern[cell]
+                await self.pool.place_in_cell(emitter_num, column, cell)
+                self._prev_step_cells[column][cell] = emitter_num
+                active_emitters.add(emitter_num)
             elif cell in self._prev_step_cells[column]:
                 # Cell was active but no longer - remove it
-                prev_emitter = self._prev_step_cells[column].pop(cell)
-                await self.pool.remove_from_cell(prev_emitter, column, cell)
+                prev_emitter_num = self._prev_step_cells[column].pop(cell)
+                await self.pool.remove_from_cell(prev_emitter_num, column, cell)
+
+        return active_emitters
 
     async def dispatch(self, event: dict):
         """
