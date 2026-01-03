@@ -30,10 +30,12 @@ class EmitterPool:
         self._virtual = virtual
         self._emitters_on_own_channels = emitters_on_own_channels
         if emitters_on_own_channels:
-            self._emitters = {i: Emitter(emitter=i, midi_channel=i) for i in range(1, 5)}
+            self._emitters = {i: Emitter(emitter=i, midi_channel=DEFAULT_PLAYBACK_CHANNEL + i) for i in range(1, 5)}
         else:
             self._emitters = {i: Emitter(emitter=i) for i in range(1, 5)}
-        self._emitters = {i: Emitter(emitter=i, midi_channel=i) for i in range(1, 5)}
+            # All emitters on same channel, so only need to send one note_on and one note_off
+            # Capture reference at init time to not have to look it up on each call to play_all()
+            self._midi = self._emitters[1].midi
         self._queue: asyncio.Queue[Union[Message, list[Message]]] = asyncio.Queue()
         self._output = None
         self._sender_task = None
@@ -88,15 +90,12 @@ class EmitterPool:
                 self._output.send(item)
             self._queue.task_done()
 
-    def _validate_emitter_num(self, emitter_num: int):
-        if emitter_num < 1 or emitter_num > 4:
-            raise ValueError(f"emitter_num must be in range 1..4, got {emitter_num}")
-
     # --- Emitter parameter methods ---
 
     async def volume(self, emitter_num: int, value: int):
         """Change Emitter Volume."""
-        self._validate_emitter_num(emitter_num)
+        if emitter_num not in self._emitters:
+            raise ValueError(f"Invalid emitter number: {emitter_num}. Must be 1-4.")
         msg = self._emitters[emitter_num].volume(value)
         await self._queue.put(msg)
 
@@ -113,7 +112,6 @@ class EmitterPool:
         tune_spread: int = None
     ):
         """Change Emitter Grain Parameters."""
-        self._validate_emitter_num(emitter_num)
         msgs = self._emitters[emitter_num].grain(
             length_cell=length_cell,
             length_note=length_note,
@@ -127,31 +125,26 @@ class EmitterPool:
 
     async def octave(self, emitter_num: int, value: int):
         """Change Emitter Octave."""
-        self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].octave(value)
         await self._queue.put(msg)
 
     async def relative_position(self, emitter_num: int, *, x: int = None, y: int = None):
         """Change Emitter Position along X and Y axes."""
-        self._validate_emitter_num(emitter_num)
         msgs = self._emitters[emitter_num].relative_position(x=x, y=y)
         await self._queue.put(msgs)
 
     async def spray(self, emitter_num: int, *, x: int = None, y: int = None):
         """Change Emitter Spray along X and Y axes."""
-        self._validate_emitter_num(emitter_num)
         msgs = self._emitters[emitter_num].spray(x=x, y=y)
         await self._queue.put(msgs)
 
     async def tone_filter(self, emitter_num: int, *, width: int = None, center: int = None):
         """Change Emitter Filter width and center."""
-        self._validate_emitter_num(emitter_num)
         msgs = self._emitters[emitter_num].tone_filter(width=width, center=center)
         await self._queue.put(msgs)
 
     async def effects_send(self, emitter_num: int, value: int):
         """Change Emitter Effects Send."""
-        self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].effects_send(value)
         await self._queue.put(msg)
 
@@ -159,21 +152,19 @@ class EmitterPool:
 
     async def set_active(self, emitter_num: int):
         """Set Emitter as Active."""
-        self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].set_active()
         await self._queue.put(msg)
 
     async def place_in_cell(self, emitter_num: int, column: int, cell: int):
         """Place Emitter in a given Cell in a given Column."""
-        # TODO Verify can remove. Unnecessary validation in inner performance loop
-        # self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].place_in_cell(column, cell)
         await self._queue.put(msg)
 
     async def play(self, emitter_num: int, note: int = 60, velocity: int = 127, duration: float = 1.0):
         """Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note."""
-        self._validate_emitter_num(emitter_num)
-        await self._emitters[emitter_num].play(self._output, note, velocity, duration)
+        self._emitters[emitter_num].midi.note_on(note, velocity, 0)
+        await asyncio.sleep(duration)
+        self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
 
     async def play_all(
         self,
@@ -195,23 +186,23 @@ class EmitterPool:
         if not emitter_nums:
             return
 
-        if self._emitters_on_own_channels:
+        # Default is all on same channel so check that first
+        if not self._emitters_on_own_channels:
+            self._output.send(self._midi.note_on(note, velocity, 0))
+            await asyncio.sleep(duration)
+            self._output.send(self._midi.note_off(note, 0))
+        else:
             # Send all note_on messages
             for emitter_num in emitter_nums:
                 self._output.send(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
                 # Wait once
-            await asyncio.sleep (duration)
+            await asyncio.sleep(duration)
             # Send all note_off messages
             for emitter_num in emitter_nums:
-                self._output.send (self._emitters[emitter_num].midi.note_off(note, 0))
-        else:
-            self._emitters[emitter_nums[0]].midi.note_on(note, velocity, 0)
-            await asyncio.sleep (duration)
-            self._output.send(self._emitters[emitter_nums[0]].midi.note_off(note, 0))
+                self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
 
     async def remove_from_cell(self, emitter_num: int, column: int, cell: int):
         """Remove Emitter placement from a given Cell in a given Column."""
-        # self._validate_emitter_num(emitter_num)
         msg = self._emitters[emitter_num].remove_from_cell(column, cell)
         await self._queue.put(msg)
 

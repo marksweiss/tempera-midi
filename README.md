@@ -1,5 +1,7 @@
 # Tempera MIDI
 
+## Overview
+
 A Python library for controlling the Tempera granular sampler. This client supports the entire
 specifciation as documented [here](https://docs.beetlecrab.audio/tempera/), including all global settings, track
 recording (resampling), setting notes on and off, and all `Emitter` parameters.
@@ -24,9 +26,16 @@ uv sync
 
 ## Tempera Setup
 
+### Connecting Tempera to Computer
+
+> [!IMPORTANT]
+> You must connect the Tempera directly to the computer via USB. If you also connect a MIDI TRS Type A or Type B
+> cable to the Tempera, this will take precedence and the USB connection will not be recognized.
+
 ### Environment Variable for MIDI Port Name
 
-You must set the `TEMPORA_PORT` environment variable and it must match an available MIDI port
+> [!IMPORTANT]
+> You must set the `TEMPORA_PORT` environment variable and it must match an available MIDI port
 The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'.
 
 For example, when running the provided `main.py`:
@@ -67,11 +76,11 @@ With that as background, we recommend you set up the Tempera as follows:
 
 With the above setup on the Tempera, the defaults for MIDI channels in `tempera-midi` will work as expected:
 
-| Class           | Channel | Notes                                                                                                            |
-|-----------------|---------|------------------------------------------------------------------------------------------------------------------|
-| `TemperaGlobal` | 1 |                                                                                                                  | Modifies CC properties for global attributes like modwheel, envelope, effects, etc. |
-| `Emitter`       | 2 | Modifies Emitter properties because each Emitter is listening on that channel                                    |
-| `Track`         | 1 | Considered Global CC messages by Tempera                                                                         |
+| Class           | Channel | Notes                                                                                                          |
+|-----------------|---------|----------------------------------------------------------------------------------------------------------------|
+| `TemperaGlobal` | 1 | Modifies Global settings via `Control MIDI channel`                                                            | Modifies CC properties for global attributes like modwheel, envelope, effects, etc. |
+| `Emitter`       | 2 | Modifies Emitter properties because each Emitter is listening on that channel                                  |
+| `Track`         | 1 | Considered Global CC messages by Tempera                                                                       |
 | `Midi`          | 2 | Sends `Note On / Off` which plays notes on all placed cells on all Emitters, since they are also listening on 2 |
 
 ## Running `main.py` to Verify
@@ -256,7 +265,11 @@ Both sequencers support:
 - Pause/resume control
 - Event dispatch for external control (server mode)
 
-## Running Tests
+---
+
+## For Conributors
+
+### Running Tests
 
 Run all tests:
 ```bash
@@ -305,7 +318,7 @@ To list available MIDI ports on your system:
 uv run python -c "import mido; print(mido.get_output_names())"
 ```
 
-## Generating Docs
+### Generating Docs
 
 Documentation is auto-generated from docstrings using `pdoc3`, on each commit. To regenerate manually run:
 ```bash

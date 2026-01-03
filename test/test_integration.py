@@ -251,7 +251,7 @@ class TestEmitterPoolIntegration(unittest.IsolatedAsyncioTestCase):
         for i in range(1, 5):
             self.assertIn(i, pool._emitters)
             self.assertEqual(pool._emitters[i].emitter_num, i)
-            self.assertEqual(pool._emitters[i].midi_channel, i)
+            self.assertEqual(pool._emitters[i].midi_channel, 2)  # DEFAULT_PLAYBACK_CHANNEL
 
     async def test_pool_context_manager(self):
         async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:

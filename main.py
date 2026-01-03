@@ -4,6 +4,7 @@ import os
 from sequencer import ColumnSequencer, GridSequencer
 from tempera.constants import TEMPERA_PORT_NAME
 from midi import Midi
+# noinspection PyProtectedMember
 from mido import Message, open_output
 
 from tempera.emitter import Emitter
@@ -11,7 +12,7 @@ from tempera.emitter_pool import EmitterPool
 from tempera.tempera_global import TemperaGlobal
 from tempera.track import Track
 
-INIT_SLEEP = .5
+INIT_SLEEP = 0.5
 PORT = os.environ.get(TEMPERA_PORT_NAME)
 
 
@@ -44,7 +45,7 @@ async def play_test(override_port: str = None):
         # print("called Midi.program_change with arguments (0)")
 
         # --- Emitter class tests ---
-        emitter = Emitter(emitter=1, midi_channel=3)
+        emitter = Emitter(emitter=1, midi_channel=2)
 
         output.send(emitter.set_active())
         print("called Emitter.set_active with arguments ()")
@@ -52,11 +53,11 @@ async def play_test(override_port: str = None):
         output.send(emitter.volume(100))
         print("called Emitter.volume with arguments (100)")
 
-        # MIDI Name | Tempera Menu Name | MIDI Value | Tempoera Value
-        #
-        for message in emitter.grain(length_cell=127, length_note=48, density=127, shape=100, shape_attack=40, pan=32, tune_spread=60):
+        for message in emitter.grain(length_cell=127, length_note=48, density=127, shape=100, shape_attack=40,
+                                     pan=32, tune_spread=60):
             output.send(message)
-        print("called Emitter.grain with arguments (length_cell=64, length_note=32, density=80, shape=50, shape_attack=40, pan=64, tune_spread=30)")
+        print("called Emitter.grain with arguments (length_cell=64, length_note=32, density=80, shape=50, "
+              + "shape_attack=40, pan=64, tune_spread=30")
 
         output.send(emitter.octave(64))
         print("called Emitter.octave with arguments (64)")
@@ -91,26 +92,22 @@ async def play_test(override_port: str = None):
         output.send(emitter.midi.note_off(60, 0))
         print("played note by calling emitter.midi.note_on() and note_off()")
 
-        await asyncio.sleep(2)
-
-        await emitter.play(output, duration=2)
-        print("played note by calling emitter.play()")
-
         output.send(emitter.remove_from_cell(column=1, cell=1))
         print("called Emitter.remove_from_cell with arguments (column=1, cell=1)")
 
         # --- Track class tests ---
-        track = Track(track=1)
+        track = Track(track=1, midi_channel=1)
 
         output.send(track.volume(100))
         print("called Track.volume with arguments (100)")
 
         output.send(track.record_on())
         print("called Track.record_on with arguments ()")
-        await asyncio.sleep(20)
+        # sleep long enough to let recording finish
+        await asyncio.sleep(5)
 
         # --- TemperaGlobal class tests ---
-        tempera = TemperaGlobal()
+        tempera = TemperaGlobal(midi_channel=1)
 
         output.send(tempera.modwheel(64))
         print("called TemperaGlobal.modwheel with arguments (64)")
@@ -187,7 +184,7 @@ async def play_test_emitter_pool(override_port: str = None):
             await pool.effects_send(emitter_num, 40 + emitter_num * 10)
             print(f"Emitter {emitter_num}: effects_send({40 + emitter_num * 10})")
 
-        await asyncio.sleep(0.5)
+            await asyncio.sleep(INIT_SLEEP)
 
         # Place each emitter in different cells using modulus 4
         # Cell indices 0-63 map to column 1-8, cell 1-8
@@ -227,6 +224,8 @@ async def play_test_emitter_pool(override_port: str = None):
         print("dispatch: Emitter 2 grain density=100, shape=80")
 
         await asyncio.sleep(2)
+
+        await pool.play_all([1, 2, 3, 4], note=60, velocity=127, duration=1.0)
 
         # Cleanup - remove all placements
         print("\nRemoving all placements...")
