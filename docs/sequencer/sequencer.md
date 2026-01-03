@@ -113,14 +113,7 @@ Classes
 `mute_column(self, column: int)`
 :   Mute a column.
 
-`set_column_pattern(self, column: int, pattern: dict[int, int])`
-:   Set pattern for a column.
-    
-    Args:
-        column: Column number (1-8).
-        pattern: Sparse dict mapping cell index (1-8) to emitter number (1-4).
-
-`set_mute_pattern(self, column: int, pattern: list)`
+`set_column_mute_pattern(self, column: int, pattern: list)`
 :   Set mute pattern for a column.
     
     The mute pattern determines which loops the column plays.
@@ -129,6 +122,13 @@ Classes
     Args:
         column: Column number (1-8).
         pattern: List of 0/1 or bool values. 1/True = play, 0/False = mute.
+
+`set_column_pattern(self, column: int, pattern: dict[int, int])`
+:   Set pattern for a column.
+    
+    Args:
+        column: Column number (1-8).
+        pattern: Sparse dict mapping cell index (1-8) to emitter number (1-4).
 
 `unmute_column(self, column: int)`
 :   Unmute a column.
