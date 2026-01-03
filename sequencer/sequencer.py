@@ -292,7 +292,7 @@ class ColumnSequencer(BaseSequencer):
         'cleanup': lambda self, event: self.cleanup(),
         'mute_column': lambda self, event: self.mute_column(event['column']),
         'unmute_column': lambda self, event: self.unmute_column(event['column']),
-        'set_mute_pattern': lambda self, event: self.set_mute_pattern(event['column'], event['pattern']),
+        'set_mute_pattern': lambda self, event: self.set_column_mute_pattern(event['column'], event['pattern']),
         'set_loops': lambda self, event: self.set_loops(event['loops']),
         'pause': lambda self, event: self.pause(),
         'resume': lambda self, event: self.resume(),
@@ -361,7 +361,7 @@ class ColumnSequencer(BaseSequencer):
             raise ValueError(f"column must be 1-8, got {column}")
         self._muted[column] = False
 
-    def set_mute_pattern(self, column: int, pattern: list):
+    def set_column_mute_pattern(self, column: int, pattern: list):
         """
         Set mute pattern for a column.
 

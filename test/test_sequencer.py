@@ -177,7 +177,7 @@ class TestColumnSequencerPattern(unittest.IsolatedAsyncioTestCase):
         """set_mute_pattern stores pattern."""
         pool = create_mock_pool()
         sequencer = ColumnSequencer(pool)
-        sequencer.set_mute_pattern(1, [1, 0, 1, 0])
+        sequencer.set_column_mute_pattern(1, [1, 0, 1, 0])
         self.assertEqual(sequencer._mute_patterns[1], [True, False, True, False])
 
     async def test_get_column_state(self):
@@ -186,7 +186,7 @@ class TestColumnSequencerPattern(unittest.IsolatedAsyncioTestCase):
         sequencer = ColumnSequencer(pool)
         await sequencer.set_column_pattern(1, {1: 1})
         sequencer.mute_column(1)
-        sequencer.set_mute_pattern(1, [1, 0])
+        sequencer.set_column_mute_pattern(1, [1, 0])
         state = sequencer.get_column_state(1)
         self.assertEqual(state['pattern'], {1: 1})
         self.assertTrue(state['muted'])
@@ -340,7 +340,7 @@ class TestColumnSequencerAsync(unittest.IsolatedAsyncioTestCase):
 
         sequencer = ColumnSequencer(pool)
         await sequencer.set_column_pattern(1, {1: 1})
-        sequencer.set_mute_pattern(1, [True, False])  # Play on even loops, mute on odd
+        sequencer.set_column_mute_pattern(1, [True, False])  # Play on even loops, mute on odd
 
         # Loop 0 (even) - should play
         await sequencer._execute_step(0, 0)

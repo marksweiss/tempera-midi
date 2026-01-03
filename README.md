@@ -24,9 +24,16 @@ uv sync
 
 ## Tempera Setup
 
-You must set the TEMPORA_PORT environment variable and it must match an available MIDI port
-The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
-In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
+### Environment Variable for MIDI Port Name
+
+You must set the `TEMPORA_PORT` environment variable and it must match an available MIDI port
+The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'.
+
+For example, when running the provided `main.py`:
+
+```bash
+TEMPERA_PORT='Tempera' uv run python -m main
+```
 
 ### Tempera MIDI Setup and MIDI Control
 
@@ -45,41 +52,27 @@ These correspond to three MIDI settings:
   same channel as is set for `Keyboard -> Channel`
 
 With that as background, we recommend you set up the Tempera as follows:
-- `Settings`
-	- `Control MIDI channel` - `1`, `In` toggled on
-		- This enables receiving `Tempera Global` CC messages
-	- `Record mode` - `Replace`, `Cue rec` toggled on
-      - Required for MIDI triggering recording
-    - `Rec threshold` - `0.00`
-      - Based on observation, this seems to be required for MIDI-triggered recording to complete and close cleanly
-	- `Source` - `Instrument`
-      - You probably want this setting if you are generally controlling note playback via MIDI -- it will support
-        resampling current playback
-- `Keyboard` ->
-	- `Base Note` - `C3`
-      - Tempera default, so that notes as sent map to MIDI note values on the Tempera as expected
-	- `Channel` - `2`
-	- `Scale` - `Chromatic` (MIDI default)
-	- `Overlay` - `None` 
-        - Note that because we are using MIDI to play notes we can hide the overlay keyboard and use all 8 tracks fo
-          cell placement
-- `Emitter` ->
-	- `Channel` - `Global`, `All` or `2`
-		- Will receive messages that change the Emitter settings on any Channel -- these have unique CC values per
-          Emitter and so they map to the Emitter by CC value, not MIDI channel
-		- With no Overlay Keyboard pressed, the Emitter's placed cells won't play when Note On messages are sent unless
-          it is on `Global` `All` or the same MIDI Channel as the Keyboard setting
-        - NOTE: You may want to choose `All` because then the Emitter can receive Notes on `2` and CC messages on
-          `1` or any other channel; for exmaple, you may want to send notes and control messages on concurrent
-          threads to manipulate playback as it is happening.
 
-With the above setup on the Tempera, the defaults for MIDI channels in this library will work as expected, meaning:
-* `TemperaGlobal` will send messages on Channel 1
-* `Emitter` objects will send messages on Channel 2, which will modify Emitter properties because each Emitter
-  is listenining on that channel
-* `Track` objects will send messages on channel 1; these are considered Global CC messages by Tempera
-* Sending notes via `MIDI Note On` will transmit on Channel 2, and will cause the note to play on all placed cells on
-  all Emitters, since they are listening on that channel
+| Menu | Setting | Value | Notes |
+|--------------|---------|-------|-------|
+| Settings     | Control MIDI channel | `1`, `In` toggled on | Enables receiving `Tempera Global` CC messages |
+| Settings     | Record mode | `Replace`, `Cue rec` toggled on | Required for MIDI triggering recording |
+| Settings     | Rec threshold | `0.00` | Required for MIDI-triggered recording to complete and close cleanly |
+| Settings     | Source | `Instrument` | Supports resampling current playback when controlling note playback via MIDI |
+| Keyboard     | Base Note | `C3` | Tempera default, so notes map to MIDI note values as expected |
+| Keyboard     | Channel | `2` | |
+| Keyboard     | Scale | `Chromatic` | MIDI default |
+| Keyboard     | Overlay | `None` | Using MIDI to play notes allows hiding the overlay keyboard and using all 8 tracks for cell placement |
+| Emitter      | Channel | `Global`, `All` or `2` | Will receive Emitter settings on any channel (unique CC values per Emitter). Placed cells won't play on Note On unless set to `Global`, `All`, or same channel as Keyboard. Consider `All` to receive Notes on `2` and CC messages on `1` for concurrent thread control. |
+
+With the above setup on the Tempera, the defaults for MIDI channels in `tempera-midi` will work as expected:
+
+| Class           | Channel | Notes                                                                                                            |
+|-----------------|---------|------------------------------------------------------------------------------------------------------------------|
+| `TemperaGlobal` | 1 |                                                                                                                  | Modifies CC properties for global attributes like modwheel, envelope, effects, etc. |
+| `Emitter`       | 2 | Modifies Emitter properties because each Emitter is listening on that channel                                    |
+| `Track`         | 1 | Considered Global CC messages by Tempera                                                                         |
+| `Midi`          | 2 | Sends `Note On / Off` which plays notes on all placed cells on all Emitters, since they are also listening on 2 |
 
 ## Running `main.py` to Verify
 
@@ -130,33 +123,33 @@ async def main():
     # Can also put each emitter on its own MIDI channel to selectively send notes to a particular emitter
     emitter = Emitter(emitter=1, midi_channel=3)
 
-    # Volume and octave
-    message = emitter.set_active()
     # Then send this, see main.py for an example
     # Now that the emitter is active, you can modify its parameters and place it in cells
     with mido.open_output('Tempera') as output:
-      # noinspection PyRedeclaration
-      message = emitter.volume (100)
-      output.send (message)
-      message = emitter.effects_send (80)
-      output.send (message)
+        # Volume and octave
+        message = emitter.set_active()
+        output.send (message)
+        message = emitter.volume (100)
+        output.send (message)
+        message = emitter.effects_send (80)
+        output.send (message)
 
-      # Cell placement and playback
-      # Can play notes via the Emitter's Midi attribute, which is set to the channel passed when creating the Emitter
-      # So, if each Emitter is on its own channel, playing back through the Emitter only plays that note on cells
-      #  that Emitter is placed in
-      # 50 == C3, default base note of the Tempera Keyboard, so this plays all placed cells with no pitch shift, at max volume
-      message = emitter.place_in_cell(column=1, cell=1)
-      output.send(message)
-      output.send(emitter.midi.note_on(60, 127, 0))
-      await asyncio.sleep (2)
-      output.send(emitter.midi.note_off(0, 0, 0))
-      
-      # Or just call emitter.play(), which will play C3 at max volume for the duration passed in, on this emitter's
-      # MIDI channel. Useful when you are only sending the Note to trigger playback of the cells placed by the Emitter
-      await emitter.play(output=output, duration=2)
-      message = emitter.remove_from_cell(column=1, cell=1)
-      output.send(message)
+        # Cell placement and playback
+        # Can play notes via the Emitter's Midi attribute, which is set to the channel passed when creating the Emitter
+        # So, if each Emitter is on its own channel, playing back through the Emitter only plays that note on cells
+        #  that Emitter is placed in
+        # 50 == C3, default base note of the Tempera Keyboard, so this plays all placed cells with no pitch shift, at max volume
+        message = emitter.place_in_cell(column=1, cell=1)
+        output.send(message)
+        output.send(emitter.midi.note_on(60, 127, 0))
+        await asyncio.sleep (2)
+        output.send(emitter.midi.note_off(0, 0, 0))
+          
+        # Or just call emitter.play(), which will play C3 at max volume for the duration passed in, on this emitter's
+        # MIDI channel. Useful when you are only sending the Note to trigger playback of the cells placed by the Emitter
+        await emitter.play(output=output, duration=2)
+        message = emitter.remove_from_cell(column=1, cell=1)
+        output.send(message)
 ```
 
 ### Track Controls
@@ -211,7 +204,7 @@ async def main():
 
 ### Sequencers
 
-The `sequencer` package provides two sequencer classes for pattern-based composition:
+The `sequencer` package provides two sequencer classes for pattern-based composition.
 
 #### GridSequencer
 
@@ -241,18 +234,20 @@ Treats the grid as 8 independent columns (samples), each with 8 cells:
 from tempera import EmitterPool
 from sequencer import ColumnSequencer
 
+
 async def main():
     async with EmitterPool () as pool:
         sequencer = ColumnSequencer (pool, step_duration=0.25)
 
         # Pattern per column: {cell: emitter_num}
-        sequencer.set_column_pattern (1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
-        sequencer.set_column_pattern (2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
+        # Sparse format, only pass in pairs for cells which you want to place an Emitter into
+        sequencer.set_column_pattern(1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
+        sequencer.set_column_pattern(2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
 
         # Mute patterns - column 2 plays every other loop
-        sequencer.set_mute_pattern (2, [1, 0])
+        sequencer.set_column_mute_pattern(2, [1, 0])
 
-        await sequencer.run(loops=8)
+        await sequencer.run (loops=8)
 ```
 
 Both sequencers support:
