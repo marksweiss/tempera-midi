@@ -28,7 +28,7 @@ You must set the TEMPORA_PORT environment variable and it must match an availabl
 The code currently assumes direct USB connection of the Tempera, which will register a MIDI port as 'Tempera'
 In Tempera Settings menu, set 'MIDI Settings' to the channel you are sending on (e.g. 1) and toggle Control MIDI Channel In on and set to the same channel
 
-### Temperal MIDI Setup and MIDI Control
+### Tempera MIDI Setup and MIDI Control
 
 Tempera MIDI settings on the device are organized around three concepts:
 * Global Settings
@@ -128,13 +128,13 @@ async def main():
     # You may want to create one object for each of the four emitters and call set_active() on them
     # to modify one or another emitter
     # Can also put each emitter on its own MIDI channel to selectively send notes to a particular emitter
-    emitter = Emitter (emitter=1, midi_channel=3)
+    emitter = Emitter(emitter=1, midi_channel=3)
 
     # Volume and octave
-    message = emitter.set_active ()
+    message = emitter.set_active()
     # Then send this, see main.py for an example
     # Now that the emitter is active, you can modify its parameters and place it in cells
-    with mido.open_output ('Tempera') as output:
+    with mido.open_output('Tempera') as output:
       # noinspection PyRedeclaration
       message = emitter.volume (100)
       output.send (message)
@@ -146,43 +146,51 @@ async def main():
       # So, if each Emitter is on its own channel, playing back through the Emitter only plays that note on cells
       #  that Emitter is placed in
       # 50 == C3, default base note of the Tempera Keyboard, so this plays all placed cells with no pitch shift, at max volume
-      message = emitter.place_in_cell (column=1, cell=1)
-      output.send (message)
-      output.send (emitter.midi.note_on (60, 127, 0))
+      message = emitter.place_in_cell(column=1, cell=1)
+      output.send(message)
+      output.send(emitter.midi.note_on(60, 127, 0))
       await asyncio.sleep (2)
-      output.send (emitter.midi.note_off (0, 0, 0))
+      output.send(emitter.midi.note_off(0, 0, 0))
       
       # Or just call emitter.play(), which will play C3 at max volume for the duration passed in, on this emitter's
       # MIDI channel. Useful when you are only sending the Note to trigger playback of the cells placed by the Emitter
-      await emitter.play (output=output, duration=2)
-      message = emitter.remove_from_cell (column=1, cell=1)
-      output.send (message)
+      await emitter.play(output=output, duration=2)
+      message = emitter.remove_from_cell(column=1, cell=1)
+      output.send(message)
 ```
 
 ### Track Controls
 
 ```python
+import mido
 from tempera import Track
 
-# NOTE: track is 1-based, 1-8
-# Create track instance
-track = Track(track=1, midi_channel=1)
+async def main():
+    with mido.open_output('Tempera') as output:
+        # NOTE: track is 1-based, 1-8
+        # Create track instance
+        track = Track(track=1, midi_channel=1)
 
-# Set track volume
-message = track.volume(100)
-# send ...
+        # Set track volume
+        message = track.volume(100)
+        output.send(message)
 
-# Recording control
-message = track.record_on()
-# send ...
+        # Recording control
+        message = track.record_on()
+        output.send(message)
 ```
 
 ### EmitterPool
 
-The `EmitterPool` class provides a convenient way to manage multiple emitters. It handles
-queueing and sending MIDI messages in the background.
+The `EmitterPool` class provides a convenient way to manage multiple emitters. It handles queueing and sending MIDI
+messages in the background.
 
-The pool launches by default with four emitters mapping to the four Emitters on the Tempera.
+The pool launches by default with four emitters mapping to the four Emitters on the Tempera. By default all are
+set to MIDI Channel 2, per the discussion above in
+[Tempera MIDI Setup and MIDI Control](#tempera-midi-setup-and-midi-control). The `play_all()` method in this case
+simply sends one `Note On` message on Channel 2. You can override this behavior by creating the pool with
+`emitters_on_own_channels=True`, in which case each Emitter will be assigned to its own MIDI channel (2-5) and
+`play_all()` will send a `Note On` message to each channel. 
 
 The pool also provides a `dispatch` method to send messages to any emitter based on a
 dictionary event. This makes it easy to send messages from a queue or other async source.
@@ -190,12 +198,15 @@ dictionary event. This makes it easy to send messages from a queue or other asyn
 See `main.py` for examples of using the pool in code.
 
 ```python
+import mido
 from tempera import EmitterPool
 
-async with EmitterPool() as pool:
-    await pool.volume(1, 100)
-    # wraps emitter methods with additional emmitter_num parameter
-    await pool.place_in_cell(2, column=1, cell=1)
+async def main():
+    with mido.open_output('Tempera') as output:
+        async with EmitterPool() as pool:
+            await pool.volume(1, 100)
+            # wraps emitter methods with additional emmitter_num parameter
+            await pool.place_in_cell(2, column=1, cell=1)
 ```
 
 ### Sequencers
@@ -210,15 +221,16 @@ Treats the Tempera's 64 cells as a single continuous sequence:
 from tempera import EmitterPool
 from sequencer import GridSequencer
 
-async with EmitterPool () as pool:
-  sequencer = GridSequencer (pool, bpm=120)
+async def main():
+    async with EmitterPool() as pool:
+      sequencer = GridSequencer(pool, bpm=120)
 
-  # Sparse pattern: {step_index: emitter_num}
-  # Only include steps that should be ON
-  pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
-  sequencer.set_pattern (pattern)
+      # Sparse pattern: {step_index: emitter_num}
+      # Only include steps that should be ON
+      pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
+      sequencer.set_pattern(pattern)
 
-  await sequencer.run(loops=4)  # Run 4 times
+      await sequencer.run(loops=4)  # Run 4 times
 ```
 
 #### ColumnSequencer
@@ -229,17 +241,18 @@ Treats the grid as 8 independent columns (samples), each with 8 cells:
 from tempera import EmitterPool
 from sequencer import ColumnSequencer
 
-async with EmitterPool () as pool:
-  sequencer = ColumnSequencer (pool, step_duration=0.25)
+async def main():
+    async with EmitterPool () as pool:
+        sequencer = ColumnSequencer (pool, step_duration=0.25)
 
-  # Pattern per column: {cell: emitter_num}
-  sequencer.set_column_pattern (1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
-  sequencer.set_column_pattern (2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
+        # Pattern per column: {cell: emitter_num}
+        sequencer.set_column_pattern (1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
+        sequencer.set_column_pattern (2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
 
-  # Mute patterns - column 2 plays every other loop
-  sequencer.set_mute_pattern (2, [1, 0])
+        # Mute patterns - column 2 plays every other loop
+        sequencer.set_mute_pattern (2, [1, 0])
 
-  await sequencer.run(loops=8)
+        await sequencer.run(loops=8)
 ```
 
 Both sequencers support:
