@@ -110,6 +110,8 @@ EMITTER_CC_MAPS = {
     4: EMITTER_4_CC_MAP,
 }
 
+DEFAULT_PLAYBACK_CHANNEL = 2
+
 class Emitter:
     """
     Controls for an individual Tempera emitter.
@@ -119,7 +121,7 @@ class Emitter:
         midi_channel: MIDI channel (1-16). Default is 1.
     """
 
-    def __init__(self, emitter: int = 1, midi_channel: int = 1):
+    def __init__(self, emitter: int = 1, midi_channel: int = DEFAULT_PLAYBACK_CHANNEL):
         if emitter < 1 or emitter > 4:
             raise ValueError(f"emitter must be in range 1..4, got {emitter}")
         self._emitter_num = emitter
@@ -199,9 +201,3 @@ class Emitter:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
         return self.midi.cc(REMOVE_EMITTER_FROM_CELL, value)
-
-    async def play(self, output: Any, note: int = 60, velocity: int = 127, duration: float = 1.0) -> None:
-        """Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note."""
-        output.send(self.midi.note_on(note, velocity, 0))
-        await asyncio.sleep(duration)
-        output.send(self.midi.note_off(note, 0))

@@ -5,7 +5,7 @@ from typing import Union
 import mido
 from mido import Message
 
-from tempera.emitter import Emitter
+from tempera.emitter import Emitter, DEFAULT_PLAYBACK_CHANNEL
 
 
 class EmitterPool:
@@ -25,9 +25,14 @@ class EmitterPool:
         virtual: If True, create a virtual MIDI port (for testing). Defaults to False.
     """
 
-    def __init__(self, port_name: str = None, virtual: bool = False):
+    def __init__(self, port_name: str = None, virtual: bool = False, emitters_on_own_channels: bool = False):
         self._port_name = port_name or os.environ.get('TEMPERA_PORT', 'Tempera')
         self._virtual = virtual
+        self._emitters_on_own_channels = emitters_on_own_channels
+        if emitters_on_own_channels:
+            self._emitters = {i: Emitter(emitter=i, midi_channel=i) for i in range(1, 5)}
+        else:
+            self._emitters = {i: Emitter(emitter=i) for i in range(1, 5)}
         self._emitters = {i: Emitter(emitter=i, midi_channel=i) for i in range(1, 5)}
         self._queue: asyncio.Queue[Union[Message, list[Message]]] = asyncio.Queue()
         self._output = None
@@ -189,14 +194,20 @@ class EmitterPool:
         """
         if not emitter_nums:
             return
-        # Send all note_on messages
-        for emitter_num in emitter_nums:
-            self._output.send(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
-        # Wait once
-        await asyncio.sleep(duration)
-        # Send all note_off messages
-        for emitter_num in emitter_nums:
-            self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
+
+        if self._emitters_on_own_channels:
+            # Send all note_on messages
+            for emitter_num in emitter_nums:
+                self._output.send(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
+                # Wait once
+            await asyncio.sleep (duration)
+            # Send all note_off messages
+            for emitter_num in emitter_nums:
+                self._output.send (self._emitters[emitter_num].midi.note_off(note, 0))
+        else:
+            self._emitters[emitter_nums[0]].midi.note_on(note, velocity, 0)
+            await asyncio.sleep (duration)
+            self._output.send(self._emitters[emitter_nums[0]].midi.note_off(note, 0))
 
     async def remove_from_cell(self, emitter_num: int, column: int, cell: int):
         """Remove Emitter placement from a given Cell in a given Column."""

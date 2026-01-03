@@ -39,6 +39,9 @@ Classes
 `place_in_cell(self, column: int, cell: int) ‑> mido.messages.messages.Message`
 :   Place Emitter in a given Cell in a given Column.
 
+`play(self, output: Any, note: int = 60, velocity: int = 127, duration: float = 1.0) ‑> None`
+:   Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note.
+
 `relative_position(self, *, x: int = None, y: int = None) ‑> list[mido.messages.messages.Message]`
 :   Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
 
@@ -101,6 +104,20 @@ Classes
 
 `place_in_cell(self, emitter_num: int, column: int, cell: int)`
 :   Place Emitter in a given Cell in a given Column.
+
+`play(self, emitter_num: int, note: int = 60, velocity: int = 127, duration: float = 1.0)`
+:   Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note.
+
+`play_all(self, emitter_nums: list[int], note: int = 60, velocity: int = 127, duration: float = 1.0)`
+:   Play a note on multiple emitters concurrently.
+    
+    Sends all note_on messages, waits for duration, then sends all note_off messages.
+    
+    Args:
+        emitter_nums: List of emitter numbers (1-4) to play.
+        note: MIDI note number.
+        velocity: Note velocity.
+        duration: Note duration in seconds.
 
 `relative_position(self, emitter_num: int, *, x: int = None, y: int = None)`
 :   Change Emitter Position along X and Y axes.

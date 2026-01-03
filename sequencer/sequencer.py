@@ -89,10 +89,10 @@ class BaseSequencer(ABC):
             if active_emitters:
                 await self.pool.play_all(
                     list(active_emitters),
-                    duration=self._step_duration * 0.9  # Slightly shorter to avoid overlap
+                    duration=self._step_duration * 0.999  # Slightly shorter to avoid overlap
                 )
                 # Small gap after notes end before next step
-                await asyncio.sleep(self._step_duration * 0.1)
+                await asyncio.sleep(self._step_duration * 0.001)
             else:
                 # No active emitters - still need to maintain step timing
                 await asyncio.sleep(self._step_duration)
