@@ -54,7 +54,7 @@ Tempera MIDI settings on the device are organized around three concepts:
 These correspond to three MIDI settings:
 * In `Settings` there is a global `Control MIDI channel` setting with two button toggles, `In` and `Out`.  This controls
   the channel for sending and receiving all Track-related and Global MIDI CC messages
-* In `Keyaboard` there is a `Channel` setting which controls what MIDI Channel will receive Note On / Off messages
+* In `Keyboard` there is a `Channel` setting which controls what MIDI Channel will receive Note On / Off messages
 * Each Emitter has a `Channel` setting which controls what MIDI Channel will receive Note On / Off messages. When
   playing the Tempera directly, all placed cells on all Emitters sound when any key on the overlay keyboard is pressed.
   In order to have the same behavior via notes triggered by MIDI, you must set the `Channel` for each Emitter to the
@@ -103,18 +103,22 @@ TEMPERA_PORT='Tempera' uv run python -m main
 ### Global Controls
 
 ```python
+import mido
 from tempera import TemperaGlobal
 
-# NOTE: midi_channel is 1-based, 1-16
-# Create instance with default channel (1)
-tempera = TemperaGlobal()
-# Or specify a MIDI channel (0-15)
-# tempera = TemperaGlobal(midi_channel=5)
+with mido.open_output('Tempera') as output:
+  # NOTE: midi_channel is 1-based, 1-16
+    # Create instance with default channel (1)
+    tempera = TemperaGlobal()
+    # Or specify a MIDI channel (0-15)
+    # tempera = TemperaGlobal(midi_channel=5)
 
-# Generate MIDI CC bytes for ADSR parameters
-messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
+    # Generate MIDI CC bytes for ADSR parameters
+    messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
+    for message in messages:
+      output.send(message)
 
-# See main.py for an example of sending messages to a MIDI port
+    # See main.py for an example of sending messages to a MIDI port
 ```
 
 ### Emitter Controls
@@ -137,11 +141,11 @@ async def main():
     with mido.open_output('Tempera') as output:
         # Volume and octave
         message = emitter.set_active()
-        output.send (message)
+        output.send(message)
         message = emitter.volume (100)
-        output.send (message)
+        output.send(message)
         message = emitter.effects_send (80)
-        output.send (message)
+        output.send(message)
 
         # Cell placement and playback
         # Can play notes via the Emitter's Midi attribute, which is set to the channel passed when creating the Emitter
@@ -256,7 +260,7 @@ async def main():
         # Mute patterns - column 2 plays every other loop
         sequencer.set_column_mute_pattern(2, [1, 0])
 
-        await sequencer.run (loops=8)
+        await sequencer.run(loops=8)
 ```
 
 Both sequencers support:
