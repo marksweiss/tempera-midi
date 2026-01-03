@@ -4,7 +4,7 @@ Module tempera.emitter
 Classes
 -------
 
-`Emitter(emitter: int = 1, midi_channel: int = 1)`
+`Emitter(emitter: int = 1, midi_channel: int = 2)`
 :   Controls for an individual Tempera emitter.
     
     Args:
@@ -29,9 +29,6 @@ Classes
 
 `place_in_cell(self, column: int, cell: int) ‑> mido.messages.messages.Message`
 :   Place Emitter in a given Cell in a given Column.
-
-`play(self, output: Any, note: int = 60, velocity: int = 127, duration: float = 1.0) ‑> None`
-:   Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note.
 
 `relative_position(self, *, x: int = None, y: int = None) ‑> list[mido.messages.messages.Message]`
 :   Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.

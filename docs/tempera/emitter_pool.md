@@ -4,7 +4,7 @@ Module tempera.emitter_pool
 Classes
 -------
 
-`EmitterPool(port_name: str = None, virtual: bool = False)`
+`EmitterPool(port_name: str = None, virtual: bool = False, emitters_on_own_channels: bool = False)`
 :   Async pool managing four Tempera emitters with queue-based message dispatch.
     
     Each emitter is assigned to its corresponding MIDI channel (emitter 1 → channel 1, etc.).
