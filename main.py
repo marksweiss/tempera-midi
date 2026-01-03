@@ -39,6 +39,7 @@ async def play_test(override_port: str = None):
         output.send(midi.cc(1, 64))
         print("called Midi.cc with arguments (1, 64)")
 
+        # This will change the canvas, losing current settings, so skip by default
         # output.send(midi.program_change(0))
         # print("called Midi.program_change with arguments (0)")
 
@@ -53,23 +54,6 @@ async def play_test(override_port: str = None):
 
         # MIDI Name | Tempera Menu Name | MIDI Value | Tempoera Value
         #
-        # *_GRAIN_LENGTH_CELL | Grain length | 16 | 0.2222
-        # *_GRAIN_LENGTH_CELL | Grain length | 64 | 0.8888
-        # *_GRAIN_LENGTH_CELL | Grain length | 80 | 2.0000
-        # *_GRAIN_LENGTH_CELL | Grain length | 96 | 4.0000
-        # *_GRAIN_LENGTH_CELL | Grain length | 112 | 6.0000
-        # *_GRAIN_LENGTH_CELL | Grain length | 127 | 8.0000
-
-        # *_GRAIN_DENSITY | Grain density | 16 | 0.5000
-        # *_GRAIN_DENSITY | Grain density | 32 | 1.0000
-        # *_GRAIN_DENSITY | Grain density | 48 | 2.0000
-        # *_GRAIN_DENSITY | Grain density | 56 | 3.0000
-        # *_GRAIN_DENSITY | Grain density | 64 | 6.0000
-        # *_GRAIN_DENSITY | Grain density | 80 | 18.0000
-        # *_GRAIN_DENSITY | Grain density | 96 | 34.0000
-        # *_GRAIN_DENSITY | Grain density | 112 | 60.0000
-        # *_GRAIN_DENSITY | Grain density | 127 | 100.0000
-
         for message in emitter.grain(length_cell=127, length_note=48, density=127, shape=100, shape_attack=40, pan=32, tune_spread=60):
             output.send(message)
         print("called Emitter.grain with arguments (length_cell=64, length_note=32, density=80, shape=50, shape_attack=40, pan=64, tune_spread=30)")
@@ -121,9 +105,9 @@ async def play_test(override_port: str = None):
         output.send(track.volume(100))
         print("called Track.volume with arguments (100)")
 
-        # output.send(track.record_on())
-        # print("called Track.record_on with arguments ()")
-        # await asyncio.sleep(20)
+        output.send(track.record_on())
+        print("called Track.record_on with arguments ()")
+        await asyncio.sleep(20)
 
         # --- TemperaGlobal class tests ---
         tempera = TemperaGlobal()
@@ -147,6 +131,7 @@ async def play_test(override_port: str = None):
             output.send(message)
         print("called TemperaGlobal.chorus with arguments (depth=50, speed=40, flange=30, mix=60)")
 
+        # This will change the canvas, losing current settings, so skip by default
         # output.send(tempera.change_canvas(0))
         # print("called TemperaGlobal.change_canvas with arguments (0)")
 
@@ -302,7 +287,7 @@ if __name__ == '__main__':
     asyncio.run(play_test_emitter_pool())
 
     # Uncomment to run the Sequencer tests (tests all 4 emitters with in each type of sequencer)
-    # asyncio.run(play_test_sequencers())
+    asyncio.run(play_test_sequencers())
 
     # Define list of mido Messages here. This is the sequencer which will be sent to the Tempera.
     messages: list[Message] = []
