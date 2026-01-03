@@ -116,7 +116,7 @@ with mido.open_output('Tempera') as output:
     # Generate MIDI CC bytes for ADSR parameters
     messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
     for message in messages:
-      output.send(message)
+        output.send(message)
 
     # See main.py for an example of sending messages to a MIDI port
 ```
