@@ -1,0 +1,317 @@
+"""QSS styling constants for Tempera GUI."""
+
+# Emitter colors (for cell grid and emitter selection)
+EMITTER_COLORS = {
+    1: '#4A90D9',  # Blue
+    2: '#D94A4A',  # Red
+    3: '#D9C74A',  # Yellow
+    4: '#4AD97E',  # Green
+}
+
+EMITTER_COLORS_LIGHT = {
+    1: '#7AB3E8',  # Light blue
+    2: '#E87A7A',  # Light red
+    3: '#E8DC7A',  # Light yellow
+    4: '#7AE8A8',  # Light green
+}
+
+# Cell grid colors
+CELL_EMPTY = '#3A3A3A'
+CELL_HOVER = '#5A5A5A'
+CELL_BORDER = '#2A2A2A'
+
+# Main application stylesheet
+MAIN_STYLESHEET = """
+QMainWindow {
+    background-color: #2B2B2B;
+}
+
+QWidget {
+    background-color: #2B2B2B;
+    color: #E0E0E0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+}
+
+QGroupBox {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    margin-top: 12px;
+    padding-top: 8px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 8px;
+    color: #A0A0A0;
+}
+
+QLabel {
+    color: #C0C0C0;
+    background: transparent;
+}
+
+QSlider::groove:horizontal {
+    border: 1px solid #404040;
+    height: 6px;
+    background: #3A3A3A;
+    border-radius: 3px;
+}
+
+QSlider::handle:horizontal {
+    background: #606060;
+    border: 1px solid #505050;
+    width: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+}
+
+QSlider::handle:horizontal:hover {
+    background: #707070;
+}
+
+QSlider::handle:horizontal:pressed {
+    background: #4A90D9;
+}
+
+QSlider::sub-page:horizontal {
+    background: #4A90D9;
+    border-radius: 3px;
+}
+
+QSlider::groove:vertical {
+    border: 1px solid #404040;
+    width: 6px;
+    background: #3A3A3A;
+    border-radius: 3px;
+}
+
+QSlider::handle:vertical {
+    background: #606060;
+    border: 1px solid #505050;
+    height: 14px;
+    margin: 0 -5px;
+    border-radius: 7px;
+}
+
+QSlider::handle:vertical:hover {
+    background: #707070;
+}
+
+QSlider::handle:vertical:pressed {
+    background: #4A90D9;
+}
+
+QSlider::sub-page:vertical {
+    background: #4A90D9;
+    border-radius: 3px;
+}
+
+QPushButton {
+    background-color: #404040;
+    border: 1px solid #505050;
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: #E0E0E0;
+}
+
+QPushButton:hover {
+    background-color: #4A4A4A;
+    border-color: #606060;
+}
+
+QPushButton:pressed {
+    background-color: #3A3A3A;
+}
+
+QPushButton:checked {
+    background-color: #4A90D9;
+    border-color: #5AA0E9;
+}
+
+QPushButton:disabled {
+    background-color: #353535;
+    color: #606060;
+}
+
+QRadioButton {
+    spacing: 8px;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #505050;
+    border-radius: 10px;
+    background: #3A3A3A;
+}
+
+QRadioButton::indicator:hover {
+    border-color: #606060;
+}
+
+QRadioButton::indicator:checked {
+    background-color: #4A90D9;
+    border-color: #4A90D9;
+}
+
+QSpinBox {
+    background-color: #3A3A3A;
+    border: 1px solid #505050;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #E0E0E0;
+}
+
+QSpinBox::up-button, QSpinBox::down-button {
+    background-color: #404040;
+    border: none;
+    width: 16px;
+}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #4A4A4A;
+}
+
+QTabWidget::pane {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2B2B2B;
+}
+
+QTabBar::tab {
+    background-color: #353535;
+    border: 1px solid #404040;
+    border-bottom: none;
+    padding: 6px 16px;
+    margin-right: 2px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+    background-color: #2B2B2B;
+    border-bottom: 1px solid #2B2B2B;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #3A3A3A;
+}
+
+QStatusBar {
+    background-color: #252525;
+    border-top: 1px solid #404040;
+    color: #A0A0A0;
+}
+
+QMenuBar {
+    background-color: #2B2B2B;
+    border-bottom: 1px solid #404040;
+}
+
+QMenuBar::item {
+    padding: 4px 12px;
+}
+
+QMenuBar::item:selected {
+    background-color: #404040;
+}
+
+QMenu {
+    background-color: #2B2B2B;
+    border: 1px solid #404040;
+}
+
+QMenu::item {
+    padding: 6px 24px;
+}
+
+QMenu::item:selected {
+    background-color: #4A90D9;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #404040;
+    margin: 4px 0;
+}
+
+QScrollBar:vertical {
+    background-color: #2B2B2B;
+    width: 12px;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #505050;
+    min-height: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #606060;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background-color: #2B2B2B;
+    height: 12px;
+    border: none;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #505050;
+    min-width: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #606060;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+"""
+
+
+def get_emitter_button_style(emitter_num: int, selected: bool = False) -> str:
+    """Get style for an emitter selection button."""
+    color = EMITTER_COLORS[emitter_num]
+    light_color = EMITTER_COLORS_LIGHT[emitter_num]
+
+    if selected:
+        return f"""
+            QPushButton {{
+                background-color: {color};
+                border: 2px solid {light_color};
+                border-radius: 4px;
+                padding: 6px 12px;
+                color: white;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {light_color};
+            }}
+        """
+    else:
+        return f"""
+            QPushButton {{
+                background-color: #404040;
+                border: 2px solid {color};
+                border-radius: 4px;
+                padding: 6px 12px;
+                color: {color};
+            }}
+            QPushButton:hover {{
+                background-color: #4A4A4A;
+                border-color: {light_color};
+            }}
+        """
