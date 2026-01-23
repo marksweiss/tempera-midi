@@ -69,11 +69,7 @@ class GlobalPanel(QGroupBox):
         layout = QHBoxLayout(self)
         layout.setSpacing(16)
 
-        # Left side: ADSR and effects
-        left_layout = QVBoxLayout()
-        left_layout.setSpacing(8)
-
-        # ADSR controls
+        # ADSR controls (left)
         self._adsr_group = SliderGroup('ADSR Envelope', ADSR_PARAMS, label_width=70)
         self._adsr_group.sliderChanged.connect(
             lambda p, v: self.parameterChanged.emit('adsr', p, v)
@@ -81,9 +77,9 @@ class GlobalPanel(QGroupBox):
         self._adsr_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('adsr', p, v)
         )
-        left_layout.addWidget(self._adsr_group)
+        layout.addWidget(self._adsr_group)
 
-        # Effects group with tabs
+        # Effects group with tabs (center)
         effects_group = QGroupBox('Effects')
         effects_layout = QVBoxLayout(effects_group)
         effects_layout.setContentsMargins(8, 8, 8, 8)
@@ -121,8 +117,7 @@ class GlobalPanel(QGroupBox):
         self._effects_tabs.addTab(self._chorus_group, 'Chorus')
 
         effects_layout.addWidget(self._effects_tabs)
-        left_layout.addWidget(effects_group)
-        layout.addLayout(left_layout)
+        layout.addWidget(effects_group)
 
         # Right side: Modwheel
         modwheel_layout = QVBoxLayout()

@@ -27,8 +27,8 @@ class MainWindow(QMainWindow):
     Main application window for Tempera MIDI controller.
 
     Layout:
-    - Left column: Cell grid (8x8) + Transport controls + Track panel
-    - Right column: Emitter panel (top, expands) + Global effects panel (bottom)
+    - Top row: Cell grid + Transport (left) | Emitter panel (right, expands)
+    - Bottom row: Track panel (left) | Global effects panel (right, expands)
     """
 
     def __init__(self, adapter: TemperaAdapter):
@@ -54,11 +54,18 @@ class MainWindow(QMainWindow):
         # Central widget
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QHBoxLayout(central)
+        main_layout = QVBoxLayout(central)
         main_layout.setSpacing(16)
         main_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Left column: Cell grid + Transport + Track panel (stacked vertically)
+        # Calculate grid width (matches CellGrid._setup_ui calculation)
+        grid_width = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
+
+        # Top section: Grid + Transport (left) | Emitter panel (right)
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(16)
+
+        # Left column: Cell grid + Transport (stacked vertically)
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
@@ -67,36 +74,33 @@ class MainWindow(QMainWindow):
         self._cell_grid = CellGrid()
         left_layout.addWidget(self._cell_grid, alignment=Qt.AlignmentFlag.AlignTop)
 
-        # Calculate grid width (matches CellGrid._setup_ui calculation)
-        grid_width = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
-
         # Transport panel - constrained to cell grid width
         self._transport = TransportPanel()
         self._transport.setFixedWidth(grid_width)
         left_layout.addWidget(self._transport, alignment=Qt.AlignmentFlag.AlignTop)
 
-        # Track panel below transport
-        self._track_panel = TrackPanel()
-        self._track_panel.setFixedWidth(grid_width)
-        left_layout.addWidget(self._track_panel, alignment=Qt.AlignmentFlag.AlignTop)
-
         left_layout.addStretch()
         left_widget.setFixedWidth(grid_width + 8)  # Small margin
-        main_layout.addWidget(left_widget)
+        top_layout.addWidget(left_widget)
 
-        # Right column: Emitter panel (top, expands) + Global/Effects panel (bottom)
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(16)
-
+        # Right: Emitter panel (expands)
         self._emitter_panel = EmitterPanel()
-        right_layout.addWidget(self._emitter_panel, stretch=2)
+        top_layout.addWidget(self._emitter_panel, stretch=1)
+
+        main_layout.addLayout(top_layout, stretch=2)
+
+        # Bottom section: Track panel (left) | Global/Effects panel (right)
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(16)
+
+        self._track_panel = TrackPanel()
+        self._track_panel.setFixedWidth(grid_width + 8)  # Match left column width
+        bottom_layout.addWidget(self._track_panel, alignment=Qt.AlignmentFlag.AlignTop)
 
         self._global_panel = GlobalPanel()
-        right_layout.addWidget(self._global_panel, stretch=1)
+        bottom_layout.addWidget(self._global_panel, stretch=1)
 
-        main_layout.addWidget(right_widget, stretch=1)
+        main_layout.addLayout(bottom_layout, stretch=1)
 
         # Menu bar
         self._setup_menu()
