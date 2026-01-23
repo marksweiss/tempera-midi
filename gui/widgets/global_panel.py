@@ -83,7 +83,11 @@ class GlobalPanel(QGroupBox):
         )
         left_layout.addWidget(self._adsr_group)
 
-        # Effects tabs
+        # Effects group with tabs
+        effects_group = QGroupBox('Effects')
+        effects_layout = QVBoxLayout(effects_group)
+        effects_layout.setContentsMargins(8, 8, 8, 8)
+
         self._effects_tabs = QTabWidget()
 
         # Reverb tab
@@ -116,7 +120,8 @@ class GlobalPanel(QGroupBox):
         )
         self._effects_tabs.addTab(self._chorus_group, 'Chorus')
 
-        left_layout.addWidget(self._effects_tabs)
+        effects_layout.addWidget(self._effects_tabs)
+        left_layout.addWidget(effects_group)
         layout.addLayout(left_layout)
 
         # Right side: Modwheel

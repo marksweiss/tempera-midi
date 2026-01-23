@@ -1,18 +1,19 @@
 """QSS styling constants for Tempera GUI."""
 
 # Emitter colors (for cell grid and emitter selection)
+# Matches Tempera hardware: 1-Blue, 2-Yellow, 3-Pink, 4-Green
 EMITTER_COLORS = {
-    1: '#4A90D9',  # Blue
-    2: '#D94A4A',  # Red
-    3: '#D9C74A',  # Yellow
-    4: '#4AD97E',  # Green
+    1: '#00BFFF',  # Blue (cyan-blue)
+    2: '#FFD700',  # Yellow (golden)
+    3: '#FF69B4',  # Pink (hot pink)
+    4: '#00FF7F',  # Green (spring green)
 }
 
 EMITTER_COLORS_LIGHT = {
-    1: '#7AB3E8',  # Light blue
-    2: '#E87A7A',  # Light red
-    3: '#E8DC7A',  # Light yellow
-    4: '#7AE8A8',  # Light green
+    1: '#87CEFA',  # Light blue
+    2: '#FFEC8B',  # Light yellow
+    3: '#FFB6C1',  # Light pink
+    4: '#98FB98',  # Light green
 }
 
 # Cell grid colors

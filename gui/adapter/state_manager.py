@@ -63,6 +63,17 @@ def _default_global_state() -> dict:
     }
 
 
+def _default_sequencer_state() -> dict:
+    """Default state for sequencer."""
+    return {
+        'mode': 'column',  # 'column' or 'grid'
+        'bpm': 120,
+        'running': False,
+        'column_patterns': {i: {} for i in range(1, 9)},  # {col: {cell: emitter}}
+        'grid_pattern': {},  # {step_index: emitter}
+    }
+
+
 def _default_state() -> dict:
     """Create a fresh default state."""
     return {
@@ -71,6 +82,7 @@ def _default_state() -> dict:
         'global': _default_global_state(),
         'cells': {},  # (column, cell) -> emitter_num
         'active_emitter': 1,
+        'sequencer': _default_sequencer_state(),
     }
 
 
@@ -252,6 +264,93 @@ class StateManager:
             self._state['cells'] = {}
             self._notify('cells', {})
 
+    # --- Sequencer state ---
+
+    def get_sequencer_mode(self) -> str:
+        """Get current sequencer mode ('column' or 'grid')."""
+        return self._state['sequencer']['mode']
+
+    def set_sequencer_mode(self, mode: str, record_undo: bool = True):
+        """Set sequencer mode."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['mode'] = mode
+        self._notify('sequencer.mode', mode)
+
+    def get_sequencer_bpm(self) -> int:
+        """Get sequencer BPM."""
+        return self._state['sequencer']['bpm']
+
+    def set_sequencer_bpm(self, bpm: int, record_undo: bool = True):
+        """Set sequencer BPM."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['bpm'] = bpm
+        self._notify('sequencer.bpm', bpm)
+
+    def get_sequencer_running(self) -> bool:
+        """Get sequencer running state."""
+        return self._state['sequencer']['running']
+
+    def set_sequencer_running(self, running: bool, record_undo: bool = False):
+        """Set sequencer running state (no undo by default)."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['running'] = running
+        self._notify('sequencer.running', running)
+
+    def get_column_pattern(self, column: int) -> dict[int, int]:
+        """Get pattern for a column: {cell: emitter_num}."""
+        return dict(self._state['sequencer']['column_patterns'].get(column, {}))
+
+    def set_column_pattern_cell(self, column: int, cell: int, emitter_num: Optional[int],
+                                 record_undo: bool = True):
+        """Set or clear a cell in a column pattern."""
+        if record_undo:
+            self._push_undo()
+        if emitter_num is None:
+            self._state['sequencer']['column_patterns'][column].pop(cell, None)
+        else:
+            self._state['sequencer']['column_patterns'][column][cell] = emitter_num
+        self._notify(f'sequencer.column_patterns.{column}.{cell}', emitter_num)
+
+    def clear_column_pattern(self, column: int, record_undo: bool = True):
+        """Clear all cells in a column pattern."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['column_patterns'][column] = {}
+        self._notify(f'sequencer.column_patterns.{column}', {})
+
+    def get_grid_pattern(self) -> dict[int, int]:
+        """Get the full grid pattern: {step_index: emitter_num}."""
+        return dict(self._state['sequencer']['grid_pattern'])
+
+    def set_grid_pattern_cell(self, step_index: int, emitter_num: Optional[int],
+                               record_undo: bool = True):
+        """Set or clear a cell in the grid pattern."""
+        if record_undo:
+            self._push_undo()
+        if emitter_num is None:
+            self._state['sequencer']['grid_pattern'].pop(step_index, None)
+        else:
+            self._state['sequencer']['grid_pattern'][step_index] = emitter_num
+        self._notify(f'sequencer.grid_pattern.{step_index}', emitter_num)
+
+    def clear_grid_pattern(self, record_undo: bool = True):
+        """Clear the entire grid pattern."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['grid_pattern'] = {}
+        self._notify('sequencer.grid_pattern', {})
+
+    def clear_all_patterns(self, record_undo: bool = True):
+        """Clear all sequencer patterns."""
+        if record_undo:
+            self._push_undo()
+        self._state['sequencer']['column_patterns'] = {i: {} for i in range(1, 9)}
+        self._state['sequencer']['grid_pattern'] = {}
+        self._notify('sequencer.patterns', None)
+
     # --- Preset management ---
 
     def save_preset(self, filepath: Path):
@@ -262,6 +361,15 @@ class StateManager:
             f'{col},{cell}': emitter
             for (col, cell), emitter in self._state['cells'].items()
         }
+        # Convert sequencer column_patterns int keys to strings
+        if 'sequencer' in state_copy:
+            state_copy['sequencer']['column_patterns'] = {
+                str(col): {str(cell): em for cell, em in pattern.items()}
+                for col, pattern in state_copy['sequencer']['column_patterns'].items()
+            }
+            state_copy['sequencer']['grid_pattern'] = {
+                str(step): em for step, em in state_copy['sequencer']['grid_pattern'].items()
+            }
         with open(filepath, 'w') as f:
             json.dump(state_copy, f, indent=2)
 
@@ -281,6 +389,18 @@ class StateManager:
         # Convert string keys to ints for emitters and tracks
         loaded['emitters'] = {int(k): v for k, v in loaded['emitters'].items()}
         loaded['tracks'] = {int(k): v for k, v in loaded['tracks'].items()}
+
+        # Convert sequencer patterns string keys back to ints
+        if 'sequencer' in loaded:
+            loaded['sequencer']['column_patterns'] = {
+                int(col): {int(cell): em for cell, em in pattern.items()}
+                for col, pattern in loaded['sequencer'].get('column_patterns', {}).items()
+            }
+            loaded['sequencer']['grid_pattern'] = {
+                int(step): em for step, em in loaded['sequencer'].get('grid_pattern', {}).items()
+            }
+        else:
+            loaded['sequencer'] = _default_sequencer_state()
 
         self._state = loaded
         self._notify('*', self._state)

@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QSplitter, QStatusBar, QMenuBar, QMenu, QFileDialog, QMessageBox
+    QStatusBar, QMenuBar, QMenu, QFileDialog, QMessageBox
 )
 
 import qasync
@@ -26,9 +27,8 @@ class MainWindow(QMainWindow):
     Main application window for Tempera MIDI controller.
 
     Layout:
-    - Left: Cell grid (8x8) + Transport controls
-    - Right: Emitter panel (tabbed, most prominent)
-    - Bottom: Track panel + Global effects panel
+    - Left column: Cell grid (8x8) + Transport controls + Track panel
+    - Right column: Emitter panel (top, expands) + Global effects panel (bottom)
     """
 
     def __init__(self, adapter: TemperaAdapter):
@@ -47,54 +47,56 @@ class MainWindow(QMainWindow):
     def _setup_ui(self):
         """Set up the user interface."""
         self.setWindowTitle('Tempera MIDI Controller')
-        self.setMinimumSize(900, 700)
+
+        # Calculate initial window size based on screen
+        self._set_initial_size()
 
         # Central widget
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
-        main_layout.setSpacing(12)
+        main_layout = QHBoxLayout(central)
+        main_layout.setSpacing(16)
         main_layout.setContentsMargins(12, 12, 12, 12)
 
-        # Top section: Grid + Emitter panel
-        top_splitter = QSplitter(Qt.Orientation.Horizontal)
-
-        # Left column: Grid + Transport
+        # Left column: Cell grid + Transport + Track panel (stacked vertically)
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(12)
+        left_layout.setSpacing(16)
 
         self._cell_grid = CellGrid()
-        left_layout.addWidget(self._cell_grid)
+        left_layout.addWidget(self._cell_grid, alignment=Qt.AlignmentFlag.AlignTop)
 
+        # Calculate grid width (matches CellGrid._setup_ui calculation)
+        grid_width = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
+
+        # Transport panel - constrained to cell grid width
         self._transport = TransportPanel()
-        left_layout.addWidget(self._transport)
+        self._transport.setFixedWidth(grid_width)
+        left_layout.addWidget(self._transport, alignment=Qt.AlignmentFlag.AlignTop)
+
+        # Track panel below transport
+        self._track_panel = TrackPanel()
+        self._track_panel.setFixedWidth(grid_width)
+        left_layout.addWidget(self._track_panel, alignment=Qt.AlignmentFlag.AlignTop)
 
         left_layout.addStretch()
-        top_splitter.addWidget(left_widget)
+        left_widget.setFixedWidth(grid_width + 8)  # Small margin
+        main_layout.addWidget(left_widget)
 
-        # Right: Emitter panel
+        # Right column: Emitter panel (top, expands) + Global/Effects panel (bottom)
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(16)
+
         self._emitter_panel = EmitterPanel()
-        top_splitter.addWidget(self._emitter_panel)
-
-        # Set splitter proportions (grid:emitter = 1:2)
-        top_splitter.setSizes([300, 600])
-
-        main_layout.addWidget(top_splitter, stretch=2)
-
-        # Bottom section: Tracks + Global
-        bottom_splitter = QSplitter(Qt.Orientation.Horizontal)
-
-        self._track_panel = TrackPanel()
-        bottom_splitter.addWidget(self._track_panel)
+        right_layout.addWidget(self._emitter_panel, stretch=2)
 
         self._global_panel = GlobalPanel()
-        bottom_splitter.addWidget(self._global_panel)
+        right_layout.addWidget(self._global_panel, stretch=1)
 
-        bottom_splitter.setSizes([400, 500])
-
-        main_layout.addWidget(bottom_splitter, stretch=1)
+        main_layout.addWidget(right_widget, stretch=1)
 
         # Menu bar
         self._setup_menu()
@@ -103,6 +105,49 @@ class MainWindow(QMainWindow):
         self._status_bar = QStatusBar()
         self.setStatusBar(self._status_bar)
         self._status_bar.showMessage('Not connected')
+
+    def _set_initial_size(self):
+        """Calculate and set initial window size to fit all UI elements.
+
+        Uses 90% of screen size or a minimum of 1200x850, whichever fits.
+        If the required size exceeds screen, opens maximized.
+        """
+        # Minimum size needed to show all UI elements comfortably
+        min_width = 1200
+        min_height = 850
+
+        # Get the primary screen's available geometry
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            # Fallback if no screen detected
+            self.setMinimumSize(min_width, min_height)
+            self.resize(min_width, min_height)
+            return
+
+        available = screen.availableGeometry()
+        screen_width = available.width()
+        screen_height = available.height()
+
+        # Target 90% of screen size
+        target_width = int(screen_width * 0.9)
+        target_height = int(screen_height * 0.9)
+
+        # Use the larger of minimum or target (capped at screen size)
+        final_width = max(min_width, target_width)
+        final_height = max(min_height, target_height)
+
+        # If we need more space than available, maximize the window
+        if final_width >= screen_width or final_height >= screen_height:
+            self.setMinimumSize(800, 600)  # Allow some flexibility when maximized
+            self.showMaximized()
+        else:
+            self.setMinimumSize(min_width, min_height)
+            self.resize(final_width, final_height)
+
+            # Center the window on screen
+            x = available.x() + (screen_width - final_width) // 2
+            y = available.y() + (screen_height - final_height) // 2
+            self.move(x, y)
 
     def _setup_menu(self):
         """Set up the menu bar."""
@@ -302,10 +347,20 @@ class MainWindow(QMainWindow):
 
     def _on_cell_clicked(self, column: int, cell: int):
         """Handle cell click (left button)."""
-        asyncio.ensure_future(self._adapter.toggle_cell(column, cell))
-        # Update grid immediately for responsiveness
+        # Get current state BEFORE toggling to predict new state
         current = self._adapter.state.get_cell(column, cell)
-        self._cell_grid.set_cell(column, cell, current)
+        if current is None:
+            # Cell is empty, will be set to active emitter
+            new_value = self._adapter.state.get_active_emitter()
+        else:
+            # Cell has emitter, will be cleared
+            new_value = None
+
+        # Schedule the async operation
+        asyncio.ensure_future(self._adapter.toggle_cell(column, cell))
+
+        # Update grid immediately with predicted new value for responsiveness
+        self._cell_grid.set_cell(column, cell, new_value)
 
     def _on_cell_right_clicked(self, column: int, cell: int):
         """Handle cell right-click (clear)."""

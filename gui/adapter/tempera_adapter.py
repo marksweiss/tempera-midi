@@ -1,5 +1,6 @@
 """Main adapter between GUI and Tempera library."""
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Callable, Optional
@@ -7,6 +8,7 @@ from typing import Callable, Optional
 import mido
 
 from tempera import EmitterPool, TemperaGlobal, Track
+from sequencer import ColumnSequencer, GridSequencer
 from gui.adapter.state_manager import StateManager
 from gui.adapter.debouncer import Debouncer
 
@@ -39,6 +41,11 @@ class TemperaAdapter:
 
         self.state = StateManager()
         self._debouncer = Debouncer(debounce_ms)
+
+        # Sequencer instances
+        self._column_sequencer: Optional[ColumnSequencer] = None
+        self._grid_sequencer: Optional[GridSequencer] = None
+        self._sequencer_task: Optional[asyncio.Task] = None
 
         # Feedback callback for status updates
         self._status_callback: Optional[Callable[[str], None]] = None
@@ -447,3 +454,101 @@ class TemperaAdapter:
         self.state.reset_to_defaults()
         await self._sync_all_state()
         self._notify_status('Reset to defaults')
+
+    # --- Sequencer controls ---
+
+    def _ensure_sequencers(self):
+        """Create sequencer instances if pool is available."""
+        if self._pool and not self._column_sequencer:
+            bpm = self.state.get_sequencer_bpm()
+            self._column_sequencer = ColumnSequencer(self._pool, bpm=bpm)
+            self._grid_sequencer = GridSequencer(self._pool, bpm=bpm)
+
+    def set_sequencer_mode(self, mode: str):
+        """Set sequencer mode ('column' or 'grid')."""
+        self.state.set_sequencer_mode(mode)
+        self._notify_status(f'Sequencer mode: {mode}')
+
+    def set_sequencer_bpm(self, bpm: int):
+        """Set sequencer BPM."""
+        self.state.set_sequencer_bpm(bpm)
+        if self._column_sequencer:
+            self._column_sequencer.set_bpm(bpm)
+        if self._grid_sequencer:
+            self._grid_sequencer.set_bpm(bpm)
+        self._notify_status(f'Sequencer BPM: {bpm}')
+
+    def set_column_pattern_cell(self, column: int, cell: int, active: bool,
+                                 emitter_num: int):
+        """Set a cell in a column pattern."""
+        if active:
+            self.state.set_column_pattern_cell(column, cell, emitter_num)
+        else:
+            self.state.set_column_pattern_cell(column, cell, None)
+
+    def set_grid_pattern_cell(self, step_index: int, active: bool, emitter_num: int):
+        """Set a cell in the grid pattern."""
+        if active:
+            self.state.set_grid_pattern_cell(step_index, emitter_num)
+        else:
+            self.state.set_grid_pattern_cell(step_index, None)
+
+    def clear_all_patterns(self):
+        """Clear all sequencer patterns."""
+        self.state.clear_all_patterns()
+        self._notify_status('Patterns cleared')
+
+    async def start_sequencer(self, loops: int = 0):
+        """Start the sequencer.
+
+        Args:
+            loops: Number of loops (0 = infinite).
+        """
+        if not self._connected or not self._pool:
+            self._notify_status('Cannot start sequencer: not connected')
+            return
+
+        # Stop any running sequencer first
+        await self.stop_sequencer()
+
+        self._ensure_sequencers()
+        mode = self.state.get_sequencer_mode()
+
+        if mode == 'column':
+            # Load patterns into column sequencer
+            for col in range(1, 9):
+                pattern = self.state.get_column_pattern(col)
+                await self._column_sequencer.set_column_pattern(col, pattern)
+            self._sequencer_task = asyncio.create_task(
+                self._column_sequencer.run(loops=loops)
+            )
+        else:
+            # Load pattern into grid sequencer
+            pattern = self.state.get_grid_pattern()
+            await self._grid_sequencer.set_pattern(pattern)
+            self._sequencer_task = asyncio.create_task(
+                self._grid_sequencer.run(loops=loops)
+            )
+
+        self.state.set_sequencer_running(True)
+        self._notify_status(f'Sequencer started ({mode} mode)')
+
+    async def stop_sequencer(self):
+        """Stop the sequencer."""
+        if self._column_sequencer:
+            await self._column_sequencer.stop()
+            await self._column_sequencer.cleanup()
+        if self._grid_sequencer:
+            await self._grid_sequencer.stop()
+            await self._grid_sequencer.cleanup()
+
+        if self._sequencer_task:
+            self._sequencer_task.cancel()
+            try:
+                await self._sequencer_task
+            except asyncio.CancelledError:
+                pass
+            self._sequencer_task = None
+
+        self.state.set_sequencer_running(False)
+        self._notify_status('Sequencer stopped')

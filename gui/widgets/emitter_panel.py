@@ -3,7 +3,7 @@
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QButtonGroup,
-    QScrollArea, QFrame
+    QScrollArea, QFrame, QGridLayout
 )
 
 from gui.widgets.slider_group import SliderGroup
@@ -119,10 +119,17 @@ class EmitterPanel(QWidget):
         self._position_group = SliderGroup('Position / Spray', POSITION_PARAMS, label_width=90)
         self._filter_group = SliderGroup('Tone Filter', FILTER_PARAMS, label_width=90)
 
-        scroll_layout.addWidget(self._basic_group)
-        scroll_layout.addWidget(self._grain_group)
-        scroll_layout.addWidget(self._position_group)
-        scroll_layout.addWidget(self._filter_group)
+        # Arrange in 2x2 grid:
+        # Row 1: Basic | Tone Filter
+        # Row 2: Grain | Position / Spray
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(12)
+        grid_layout.addWidget(self._basic_group, 0, 0)
+        grid_layout.addWidget(self._filter_group, 0, 1)
+        grid_layout.addWidget(self._grain_group, 1, 0)
+        grid_layout.addWidget(self._position_group, 1, 1)
+
+        scroll_layout.addLayout(grid_layout)
         scroll_layout.addStretch()
 
         scroll.setWidget(scroll_content)

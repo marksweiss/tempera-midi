@@ -43,6 +43,11 @@ class SliderGroup(QGroupBox):
         """
         super().__init__(title, parent)
 
+        # Hide border when title is empty (used inside tabs/other containers)
+        if not title:
+            self.setFlat(True)
+            self.setStyleSheet("QGroupBox { border: none; }")
+
         self._sliders: dict[str, LabeledSlider] = {}
 
         layout = QVBoxLayout(self)

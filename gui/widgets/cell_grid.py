@@ -26,7 +26,7 @@ class CellGrid(QWidget):
 
     CELL_SIZE = 36
     CELL_SPACING = 2
-    PADDING = 4
+    PADDING = 8
 
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
@@ -69,32 +69,31 @@ class CellGrid(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        border_pen = QPen(QColor(CELL_BORDER))
-        border_pen.setWidth(1)
-
         for col in range(1, 9):
             for cell in range(1, 9):
                 rect = self._cell_rect(col, cell)
                 key = (col, cell)
 
-                # Determine cell color
                 emitter = self._cells.get(key)
+
                 if emitter is not None:
-                    color = QColor(EMITTER_COLORS[emitter])
-                elif self._hover_cell == key:
-                    color = QColor(CELL_HOVER)
+                    # Cell has emitter: draw colored border only, no fill
+                    border_pen = QPen(QColor(EMITTER_COLORS[emitter]))
+                    border_pen.setWidth(3)
+                    painter.setPen(border_pen)
+                    painter.setBrush(QBrush(QColor(CELL_EMPTY)))
                 else:
-                    color = QColor(CELL_EMPTY)
+                    # Empty cell: subtle border, dark fill
+                    if self._hover_cell == key:
+                        fill_color = QColor(CELL_HOVER)
+                    else:
+                        fill_color = QColor(CELL_EMPTY)
+                    border_pen = QPen(QColor(CELL_BORDER))
+                    border_pen.setWidth(1)
+                    painter.setPen(border_pen)
+                    painter.setBrush(QBrush(fill_color))
 
-                # Draw cell
-                painter.setPen(border_pen)
-                painter.setBrush(QBrush(color))
                 painter.drawRoundedRect(rect, 4, 4)
-
-                # Draw emitter number if assigned
-                if emitter is not None:
-                    painter.setPen(QPen(Qt.GlobalColor.white))
-                    painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(emitter))
 
     def mouseMoveEvent(self, event: QMouseEvent):
         """Handle mouse movement for hover effect."""
