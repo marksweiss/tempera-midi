@@ -1,4 +1,6 @@
-"""Transport controls panel with play/stop and BPM."""
+"""Transport controls panel with play/stop, BPM, and sequencer selection."""
+
+from typing import Optional
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -9,22 +11,26 @@ from PySide6.QtWidgets import (
 
 class TransportPanel(QGroupBox):
     """
-    Transport controls for playback and BPM.
+    Transport controls for playback, BPM, and sequencer selection.
 
     Features:
     - Play button (trigger note)
     - Stop button
+    - Sequencer type selection (8 Track / 1 Track, mutually exclusive, both can be off)
     - BPM spinbox
 
     Signals:
         playClicked(): Emitted when play button clicked
         stopClicked(): Emitted when stop button clicked
         bpmChanged(int): Emitted when BPM value changes
+        sequencerChanged(str or None): Emitted when sequencer selection changes
+            Values: 'column' (8 Track), 'grid' (1 Track), or None (neither)
     """
 
     playClicked = Signal()
     stopClicked = Signal()
     bpmChanged = Signal(int)
+    sequencerChanged = Signal(object)  # str or None
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Transport', parent)
@@ -36,7 +42,7 @@ class TransportPanel(QGroupBox):
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
 
-        # Transport buttons
+        # Transport buttons and sequencer selection
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
 
@@ -51,6 +57,19 @@ class TransportPanel(QGroupBox):
         self._stop_btn.setToolTip('Stop (Escape)')
         self._stop_btn.clicked.connect(self.stopClicked.emit)
         button_layout.addWidget(self._stop_btn)
+
+        # Sequencer type buttons (mutually exclusive, both can be off)
+        self._seq_8track_btn = QPushButton('8 Track Seq')
+        self._seq_8track_btn.setCheckable(True)
+        self._seq_8track_btn.setToolTip('Column Sequencer (8 independent tracks)')
+        self._seq_8track_btn.clicked.connect(self._on_8track_clicked)
+        button_layout.addWidget(self._seq_8track_btn)
+
+        self._seq_1track_btn = QPushButton('1 Track Seq')
+        self._seq_1track_btn.setCheckable(True)
+        self._seq_1track_btn.setToolTip('Grid Sequencer (64-step single sequence)')
+        self._seq_1track_btn.clicked.connect(self._on_1track_clicked)
+        button_layout.addWidget(self._seq_1track_btn)
 
         button_layout.addStretch()
         layout.addLayout(button_layout)
@@ -82,3 +101,50 @@ class TransportPanel(QGroupBox):
     def set_bpm(self, value: int):
         """Set BPM value."""
         self._bpm_spinbox.setValue(value)
+
+    def _on_8track_clicked(self):
+        """Handle 8 Track Seq button click."""
+        if self._seq_8track_btn.isChecked():
+            # Turn off the other button
+            self._seq_1track_btn.setChecked(False)
+            self.sequencerChanged.emit('column')
+        else:
+            # Button was unchecked
+            self.sequencerChanged.emit(None)
+
+    def _on_1track_clicked(self):
+        """Handle 1 Track Seq button click."""
+        if self._seq_1track_btn.isChecked():
+            # Turn off the other button
+            self._seq_8track_btn.setChecked(False)
+            self.sequencerChanged.emit('grid')
+        else:
+            # Button was unchecked
+            self.sequencerChanged.emit(None)
+
+    def get_sequencer(self) -> Optional[str]:
+        """Get the selected sequencer type.
+
+        Returns:
+            'column' for 8 Track Seq, 'grid' for 1 Track Seq, or None if neither selected.
+        """
+        if self._seq_8track_btn.isChecked():
+            return 'column'
+        elif self._seq_1track_btn.isChecked():
+            return 'grid'
+        return None
+
+    def set_sequencer(self, seq_type: Optional[str]):
+        """Set the sequencer selection without emitting signals.
+
+        Args:
+            seq_type: 'column' for 8 Track, 'grid' for 1 Track, or None for neither.
+        """
+        self._seq_8track_btn.blockSignals(True)
+        self._seq_1track_btn.blockSignals(True)
+
+        self._seq_8track_btn.setChecked(seq_type == 'column')
+        self._seq_1track_btn.setChecked(seq_type == 'grid')
+
+        self._seq_8track_btn.blockSignals(False)
+        self._seq_1track_btn.blockSignals(False)

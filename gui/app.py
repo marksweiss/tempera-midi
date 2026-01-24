@@ -240,6 +240,8 @@ class MainWindow(QMainWindow):
         # Transport
         self._transport.playClicked.connect(self._on_play)
         self._transport.stopClicked.connect(self._on_stop)
+        self._transport.sequencerChanged.connect(self._on_sequencer_changed)
+        self._transport.bpmChanged.connect(self._on_bpm_changed)
 
         # State manager listener for undo/redo updates
         self._adapter.state.add_listener(self._on_state_changed)
@@ -400,12 +402,47 @@ class MainWindow(QMainWindow):
         self._adapter.set_global_param(category, param, value, immediate=True)
 
     def _on_play(self):
-        """Handle play button/shortcut."""
-        asyncio.ensure_future(self._adapter.play_note())
+        """Handle play button/shortcut.
+
+        If a sequencer is selected, starts that sequencer.
+        Otherwise, plays a single note on the active emitter.
+        """
+        seq_type = self._transport.get_sequencer()
+        if seq_type is not None:
+            # Start the selected sequencer
+            asyncio.ensure_future(self._adapter.start_sequencer())
+        else:
+            # No sequencer selected, play a single note
+            asyncio.ensure_future(self._adapter.play_note())
 
     def _on_stop(self):
-        """Handle stop button/shortcut."""
-        asyncio.ensure_future(self._adapter.transport_stop())
+        """Handle stop button/shortcut.
+
+        If a sequencer is running, stops it.
+        Also sends MIDI stop message.
+        """
+        asyncio.ensure_future(self._do_stop())
+
+    async def _do_stop(self):
+        """Stop sequencer and send MIDI stop."""
+        await self._adapter.stop_sequencer()
+        await self._adapter.transport_stop()
+
+    def _on_sequencer_changed(self, seq_type):
+        """Handle sequencer type selection change.
+
+        Args:
+            seq_type: 'column' for 8 Track, 'grid' for 1 Track, or None for neither.
+        """
+        if seq_type is not None:
+            self._adapter.set_sequencer_mode(seq_type)
+            # Sync BPM to adapter when sequencer is selected
+            bpm = self._transport.get_bpm()
+            self._adapter.set_sequencer_bpm(bpm)
+
+    def _on_bpm_changed(self, bpm: int):
+        """Handle BPM change from transport."""
+        self._adapter.set_sequencer_bpm(bpm)
 
     def _on_state_changed(self, path: str, value):
         """Handle state change notifications (for undo/redo)."""
