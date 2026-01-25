@@ -6,10 +6,10 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QScreen, QAction, QActionGroup
+from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QStatusBar, QMenuBar, QMenu, QFileDialog, QMessageBox
+    QStatusBar, QFileDialog, QMessageBox, QPushButton
 )
 
 import qasync
@@ -20,7 +20,7 @@ from gui.widgets import (
     create_hint_overlay, ShortcutsDialog
 )
 from gui.shortcuts import ShortcutManager, NavigationManager, Section, NavigationMode
-from gui.preferences import KeyboardLayout, get_preferences
+from gui.preferences import get_preferences
 from gui.styles import MAIN_STYLESHEET
 
 
@@ -109,8 +109,26 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(bottom_layout, stretch=1)
 
-        # Menu bar
-        self._setup_menu()
+        # Help button (top-right, positioned after emitter panel)
+        help_btn = QPushButton('?')
+        help_btn.setFixedSize(32, 32)
+        help_btn.setToolTip('Keyboard Shortcuts Help (F1)')
+        help_btn.setStyleSheet('''
+            QPushButton {
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 16px;
+                background-color: #404040;
+                color: #C0C0C0;
+            }
+            QPushButton:hover {
+                background-color: #505050;
+                color: #E0E0E0;
+            }
+        ''')
+        help_btn.clicked.connect(self._show_shortcuts_dialog)
+        # Add to top layout, after emitter panel
+        top_layout.addWidget(help_btn, alignment=Qt.AlignmentFlag.AlignTop)
 
         # Status bar
         self._status_bar = QStatusBar()
@@ -159,99 +177,6 @@ class MainWindow(QMainWindow):
             x = available.x() + (screen_width - final_width) // 2
             y = available.y() + (screen_height - final_height) // 2
             self.move(x, y)
-
-    def _setup_menu(self):
-        """Set up the menu bar."""
-        menu_bar = self.menuBar()
-
-        # File menu
-        file_menu = menu_bar.addMenu('File')
-
-        connect_action = file_menu.addAction('Connect')
-        connect_action.triggered.connect(self._on_connect)
-
-        disconnect_action = file_menu.addAction('Disconnect')
-        disconnect_action.triggered.connect(self._on_disconnect)
-
-        file_menu.addSeparator()
-
-        save_action = file_menu.addAction('Save Preset...')
-        save_action.setShortcut('Ctrl+S')
-        save_action.triggered.connect(self._on_save_preset)
-
-        load_action = file_menu.addAction('Load Preset...')
-        load_action.setShortcut('Ctrl+O')
-        load_action.triggered.connect(self._on_load_preset)
-
-        file_menu.addSeparator()
-
-        quit_action = file_menu.addAction('Quit')
-        quit_action.setShortcut('Ctrl+Q')
-        quit_action.triggered.connect(self.close)
-
-        # Edit menu
-        edit_menu = menu_bar.addMenu('Edit')
-
-        undo_action = edit_menu.addAction('Undo')
-        undo_action.setShortcut('Ctrl+Z')
-        undo_action.triggered.connect(self._on_undo)
-
-        redo_action = edit_menu.addAction('Redo')
-        redo_action.setShortcut('Ctrl+Shift+Z')
-        redo_action.triggered.connect(self._on_redo)
-
-        edit_menu.addSeparator()
-
-        reset_action = edit_menu.addAction('Reset to Defaults')
-        reset_action.triggered.connect(self._on_reset)
-
-        # View menu
-        view_menu = menu_bar.addMenu('View')
-
-        # Keyboard Layout submenu
-        layout_menu = view_menu.addMenu('Keyboard Layout')
-        layout_group = QActionGroup(self)
-        layout_group.setExclusive(True)
-
-        self._left_hand_action = QAction('Left Hand (WASD)', self, checkable=True)
-        self._left_hand_action.setChecked(
-            self._prefs.keyboard_layout == KeyboardLayout.LEFT_HAND
-        )
-        self._left_hand_action.triggered.connect(
-            lambda: self._set_keyboard_layout(KeyboardLayout.LEFT_HAND)
-        )
-        layout_group.addAction(self._left_hand_action)
-        layout_menu.addAction(self._left_hand_action)
-
-        self._right_hand_action = QAction('Right Hand (Arrows)', self, checkable=True)
-        self._right_hand_action.setChecked(
-            self._prefs.keyboard_layout == KeyboardLayout.RIGHT_HAND
-        )
-        self._right_hand_action.triggered.connect(
-            lambda: self._set_keyboard_layout(KeyboardLayout.RIGHT_HAND)
-        )
-        layout_group.addAction(self._right_hand_action)
-        layout_menu.addAction(self._right_hand_action)
-
-        view_menu.addSeparator()
-
-        # Show Keyboard Hints toggle
-        self._hints_action = QAction('Show Keyboard Hints', self, checkable=True)
-        self._hints_action.setShortcut('F1')
-        self._hints_action.setChecked(self._prefs.hints_visible)
-        self._hints_action.triggered.connect(self._toggle_hints)
-        view_menu.addAction(self._hints_action)
-
-        # Listen for preference changes to update menu state
-        self._prefs.keyboardLayoutChanged.connect(self._on_layout_changed)
-        self._prefs.hintsVisibleChanged.connect(self._on_hints_changed)
-
-        # Help menu
-        help_menu = menu_bar.addMenu('Help')
-
-        shortcuts_action = help_menu.addAction('Keyboard Shortcuts...')
-        shortcuts_action.setShortcut('Ctrl+/')
-        shortcuts_action.triggered.connect(self._show_shortcuts_dialog)
 
     def _setup_shortcuts(self):
         """Set up keyboard shortcuts.
@@ -636,28 +561,6 @@ class MainWindow(QMainWindow):
             groups = self._emitter_panel.slider_groups
             if 0 <= subsection < len(groups):
                 groups[subsection].reset_focused_to_default()
-
-    # --- View menu handlers ---
-
-    def _set_keyboard_layout(self, layout: KeyboardLayout):
-        """Set keyboard layout preference."""
-        self._prefs.keyboard_layout = layout
-
-    def _on_layout_changed(self, layout: KeyboardLayout):
-        """Handle keyboard layout change."""
-        self._left_hand_action.setChecked(layout == KeyboardLayout.LEFT_HAND)
-        self._right_hand_action.setChecked(layout == KeyboardLayout.RIGHT_HAND)
-
-    def _toggle_hints(self):
-        """Toggle keyboard hints visibility."""
-        self._prefs.toggle_hints()
-
-    def _on_hints_changed(self, visible: bool):
-        """Handle hints visibility change."""
-        self._hints_action.setChecked(visible)
-        # Update hint overlay visibility
-        if hasattr(self, '_hint_overlay'):
-            self._hint_overlay._on_visibility_changed(visible)
 
     def _show_shortcuts_dialog(self):
         """Show the keyboard shortcuts reference dialog."""
