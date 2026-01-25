@@ -52,6 +52,19 @@ class MainWindow(QMainWindow):
         # Load initial state into UI
         self._sync_ui_from_state()
 
+    def _schedule_async(self, coro):
+        """Safely schedule an async coroutine if an event loop is running.
+
+        In test environments without a running event loop, this is a no-op
+        to avoid 'Task was destroyed but pending' warnings.
+        """
+        try:
+            asyncio.get_running_loop()
+            asyncio.ensure_future(coro)
+        except RuntimeError:
+            # No running event loop (e.g., in tests) - skip async task
+            pass
+
     def _setup_ui(self):
         """Set up the user interface."""
         self.setWindowTitle('Tempera MIDI Controller')
@@ -320,7 +333,7 @@ class MainWindow(QMainWindow):
 
     def _on_connect(self):
         """Handle connect menu action."""
-        asyncio.ensure_future(self._connect())
+        self._schedule_async(self._connect())
 
     async def _connect(self):
         """Connect to Tempera."""
@@ -330,7 +343,7 @@ class MainWindow(QMainWindow):
 
     def _on_disconnect(self):
         """Handle disconnect menu action."""
-        asyncio.ensure_future(self._adapter.disconnect())
+        self._schedule_async(self._adapter.disconnect())
 
     def _on_save_preset(self):
         """Handle save preset action."""
@@ -348,12 +361,12 @@ class MainWindow(QMainWindow):
             self, 'Load Preset', '', 'JSON Files (*.json)'
         )
         if filepath:
-            asyncio.ensure_future(self._adapter.load_preset(Path(filepath)))
+            self._schedule_async(self._adapter.load_preset(Path(filepath)))
             self._sync_ui_from_state()
 
     def _on_undo(self):
         """Handle undo action."""
-        asyncio.ensure_future(self._do_undo())
+        self._schedule_async(self._do_undo())
 
     async def _do_undo(self):
         if await self._adapter.undo():
@@ -361,7 +374,7 @@ class MainWindow(QMainWindow):
 
     def _on_redo(self):
         """Handle redo action."""
-        asyncio.ensure_future(self._do_redo())
+        self._schedule_async(self._do_redo())
 
     async def _do_redo(self):
         if await self._adapter.redo():
@@ -375,7 +388,7 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            asyncio.ensure_future(self._adapter.reset_to_defaults())
+            self._schedule_async(self._adapter.reset_to_defaults())
             self._sync_ui_from_state()
 
     def _on_select_emitter(self, emitter_num: int):
@@ -389,7 +402,7 @@ class MainWindow(QMainWindow):
 
     def _on_emitter_selected(self, emitter_num: int):
         """Handle emitter selection from panel."""
-        asyncio.ensure_future(self._adapter.set_active_emitter(emitter_num))
+        self._schedule_async(self._adapter.set_active_emitter(emitter_num))
         self._cell_grid.set_active_emitter(emitter_num)
 
     def _on_emitter_param_changed(self, emitter_num: int, param: str, value: int):
@@ -412,14 +425,14 @@ class MainWindow(QMainWindow):
             new_value = None
 
         # Schedule the async operation
-        asyncio.ensure_future(self._adapter.toggle_cell(column, cell))
+        self._schedule_async(self._adapter.toggle_cell(column, cell))
 
         # Update grid immediately with predicted new value for responsiveness
         self._cell_grid.set_cell(column, cell, new_value)
 
     def _on_cell_right_clicked(self, column: int, cell: int):
         """Handle cell right-click (clear)."""
-        asyncio.ensure_future(self._adapter.remove_from_cell(column, cell))
+        self._schedule_async(self._adapter.remove_from_cell(column, cell))
         self._cell_grid.clear_cell(column, cell)
 
     def _on_track_volume_changed(self, track_num: int, value: int):
@@ -432,7 +445,7 @@ class MainWindow(QMainWindow):
 
     def _on_track_record(self, track_num: int):
         """Handle track record button."""
-        asyncio.ensure_future(self._adapter.track_record_on(track_num))
+        self._schedule_async(self._adapter.track_record_on(track_num))
 
     def _on_modwheel_changed(self, value: int):
         """Handle modwheel change during drag."""
@@ -459,10 +472,10 @@ class MainWindow(QMainWindow):
         seq_type = self._transport.get_sequencer()
         if seq_type is not None:
             # Start the selected sequencer
-            asyncio.ensure_future(self._adapter.start_sequencer())
+            self._schedule_async(self._adapter.start_sequencer())
         else:
             # No sequencer selected, play a single note
-            asyncio.ensure_future(self._adapter.play_note())
+            self._schedule_async(self._adapter.play_note())
 
     def _on_stop(self):
         """Handle stop button/shortcut.
@@ -470,7 +483,7 @@ class MainWindow(QMainWindow):
         If a sequencer is running, stops it.
         Also sends MIDI stop message.
         """
-        asyncio.ensure_future(self._do_stop())
+        self._schedule_async(self._do_stop())
 
     async def _do_stop(self):
         """Stop sequencer and send MIDI stop."""
@@ -739,7 +752,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Handle window close."""
-        asyncio.ensure_future(self._adapter.disconnect())
+        self._schedule_async(self._adapter.disconnect())
         event.accept()
 
 
