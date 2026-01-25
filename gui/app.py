@@ -19,6 +19,7 @@ from gui.widgets import (
     CellGrid, EmitterPanel, TrackPanel, GlobalPanel, TransportPanel,
     create_hint_overlay, ShortcutsDialog
 )
+from gui.envelope.envelope_panel import EnvelopePanel
 from gui.shortcuts import ShortcutManager, NavigationManager, Section, NavigationMode
 from gui.preferences import get_preferences
 from gui.styles import MAIN_STYLESHEET
@@ -67,6 +68,10 @@ class MainWindow(QMainWindow):
 
         # Calculate grid width (matches CellGrid._setup_ui calculation)
         grid_width = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
+
+        # Envelope panel at top
+        self._envelope_panel = EnvelopePanel()
+        main_layout.addWidget(self._envelope_panel)
 
         # Top section: Grid + Transport (left) | Emitter panel (right)
         top_layout = QHBoxLayout()
@@ -250,6 +255,41 @@ class MainWindow(QMainWindow):
         # State manager listener for undo/redo updates
         self._adapter.state.add_listener(self._on_state_changed)
 
+        # Envelope panel
+        self._envelope_panel.envelopeChanged.connect(self._on_envelope_changed)
+        self._envelope_panel.enabledToggled.connect(self._on_envelope_toggled)
+
+        # Envelope position callback for playhead
+        self._adapter.set_envelope_position_callback(self._on_envelope_position)
+
+        # Panel control focus requests (mouse click focus)
+        self._emitter_panel.controlFocusRequested.connect(
+            lambda sub, ctrl: self._nav.focus_control(Section.EMITTER, sub, ctrl)
+        )
+        self._global_panel.controlFocusRequested.connect(
+            lambda sub, ctrl: self._nav.focus_control(Section.GLOBAL, sub, ctrl)
+        )
+        self._track_panel.controlFocusRequested.connect(
+            lambda sub, ctrl: self._nav.focus_control(Section.TRACKS, sub, ctrl)
+        )
+
+        # Panel keyboard navigation signals - update NavigationManager state
+        self._emitter_panel.subsectionNavigated.connect(
+            lambda idx: self._on_panel_subsection_navigated(Section.EMITTER, idx)
+        )
+        self._emitter_panel.controlNavigated.connect(
+            lambda idx: self._on_panel_control_navigated(idx)
+        )
+        self._global_panel.subsectionNavigated.connect(
+            lambda idx: self._on_panel_subsection_navigated(Section.GLOBAL, idx)
+        )
+        self._global_panel.controlNavigated.connect(
+            lambda idx: self._on_panel_control_navigated(idx)
+        )
+        self._track_panel.subsectionNavigated.connect(
+            lambda idx: self._on_panel_subsection_navigated(Section.TRACKS, idx)
+        )
+
     def _sync_ui_from_state(self):
         """Synchronize UI from current state."""
         state = self._adapter.state.state
@@ -340,7 +380,12 @@ class MainWindow(QMainWindow):
 
     def _on_select_emitter(self, emitter_num: int):
         """Handle emitter selection via keyboard."""
+        # Update state directly (synchronously) so it's immediately available
+        self._adapter.state.set_active_emitter(emitter_num)
         self._emitter_panel.select_emitter(emitter_num)
+        self._cell_grid.set_active_emitter(emitter_num)
+        # Update envelope panel to reflect the new emitter
+        self._update_envelope_panel_for_focus()
 
     def _on_emitter_selected(self, emitter_num: int):
         """Handle emitter selection from panel."""
@@ -468,6 +513,9 @@ class MainWindow(QMainWindow):
         if widget:
             widget.setFocus()
 
+        # Update envelope panel for new section
+        self._update_envelope_panel_for_focus()
+
     def _on_nav_path_changed(self, path: str):
         """Handle navigation path update for status bar."""
         # Only show navigation path when actively navigating
@@ -491,6 +539,9 @@ class MainWindow(QMainWindow):
         elif action == 'reset_default':
             # Reset focused control to default
             self._reset_focused_control()
+        elif action == 'toggle_envelope':
+            # Toggle envelope for focused control
+            self._toggle_focused_envelope()
 
     def _on_subsection_changed(self, index: int):
         """Handle subsection focus change from NavigationManager."""
@@ -504,15 +555,21 @@ class MainWindow(QMainWindow):
             if index >= 0:
                 self._track_panel.set_track_focus(index + 1)
 
+        # Update envelope panel to show envelope for newly focused control
+        self._update_envelope_panel_for_focus()
+
     def _on_control_changed(self, index: int):
         """Handle control focus change from NavigationManager."""
         section = self._nav.section
         if section == Section.GLOBAL:
-            self._global_panel.enter_control_mode()
+            self._global_panel.enter_control_mode(index)
         elif section == Section.EMITTER:
-            self._emitter_panel.enter_control_mode()
+            self._emitter_panel.enter_control_mode(index)
         elif section == Section.TRACKS:
-            self._track_panel.enter_control_mode()
+            self._track_panel.enter_control_mode(index)
+
+        # Update envelope panel for newly focused control
+        self._update_envelope_panel_for_focus()
 
     def _on_mode_changed(self, mode: NavigationMode):
         """Handle mode change from NavigationManager."""
@@ -525,6 +582,23 @@ class MainWindow(QMainWindow):
                 self._emitter_panel.exit_control_mode()
             elif section == Section.TRACKS:
                 self._track_panel.exit_control_mode()
+
+    def _on_panel_subsection_navigated(self, section: Section, index: int):
+        """Handle subsection navigation from panel keyboard input.
+
+        Updates NavigationManager state to match panel's new subsection.
+        """
+        if self._nav.section == section:
+            self._nav.subsection = index
+            self._update_envelope_panel_for_focus()
+
+    def _on_panel_control_navigated(self, index: int):
+        """Handle control navigation from panel keyboard input.
+
+        Updates NavigationManager state to match panel's new control focus.
+        """
+        self._nav.control = index
+        self._update_envelope_panel_for_focus()
 
     def _on_value_adjust(self, delta: int):
         """Handle value adjustment from NavigationManager."""
@@ -566,6 +640,102 @@ class MainWindow(QMainWindow):
         """Show the keyboard shortcuts reference dialog."""
         dialog = ShortcutsDialog(self)
         dialog.exec()
+
+    # --- Envelope handlers ---
+
+    def _get_focused_control_key(self) -> tuple[str, str]:
+        """Get the control key and display name for the currently focused control.
+
+        Returns:
+            Tuple of (control_key, display_name) or (None, None) if no control focused.
+        """
+        section = self._nav.section
+        subsection = self._nav.subsection
+        control = self._nav.control
+
+        if section == Section.EMITTER:
+            emitter_num = self._adapter.state.get_active_emitter()
+            # Map subsection + control to parameter
+            # Subsection 0: Basic (volume, octave, effects_send)
+            # Subsection 1: Tone Filter (tone_filter_width, tone_filter_center)
+            # Subsection 2: Grain (grain_length_cell, grain_length_note, grain_density,
+            #                      grain_shape, grain_shape_attack, grain_pan, grain_tune_spread)
+            # Subsection 3: Position/Spray (relative_x, relative_y, spray_x, spray_y)
+            params_by_subsection = [
+                [('volume', 'Volume'), ('octave', 'Octave'), ('effects_send', 'Effects Send')],
+                [('tone_filter_width', 'Filter Width'), ('tone_filter_center', 'Filter Center')],
+                [('grain_length_cell', 'Grain Length Cell'), ('grain_length_note', 'Grain Length Note'),
+                 ('grain_density', 'Grain Density'), ('grain_shape', 'Grain Shape'),
+                 ('grain_shape_attack', 'Grain Shape Attack'), ('grain_pan', 'Grain Pan'),
+                 ('grain_tune_spread', 'Grain Tune Spread')],
+                [('relative_x', 'Position X'), ('relative_y', 'Position Y'),
+                 ('spray_x', 'Spray X'), ('spray_y', 'Spray Y')],
+            ]
+            if 0 <= subsection < len(params_by_subsection):
+                params = params_by_subsection[subsection]
+                if 0 <= control < len(params):
+                    param, name = params[control]
+                    return f'emitter.{emitter_num}.{param}', f'Emitter {emitter_num} - {name}'
+
+        elif section == Section.TRACKS:
+            track_num = subsection + 1
+            if 1 <= track_num <= 8:
+                return f'track.{track_num}.volume', f'Track {track_num} - Volume'
+
+        elif section == Section.GLOBAL:
+            # Map subsection + control to global parameter
+            # Subsection 0: ADSR (attack, decay, sustain, release)
+            # Subsection 1: Reverb (size, color, mix)
+            # Subsection 2: Delay (feedback, time, color, mix)
+            # Subsection 3: Chorus (depth, speed, flange, mix)
+            # Subsection 4: Modwheel (single control)
+            params_by_subsection = [
+                [('adsr', 'attack', 'ADSR Attack'), ('adsr', 'decay', 'ADSR Decay'),
+                 ('adsr', 'sustain', 'ADSR Sustain'), ('adsr', 'release', 'ADSR Release')],
+                [('reverb', 'size', 'Reverb Size'), ('reverb', 'color', 'Reverb Color'),
+                 ('reverb', 'mix', 'Reverb Mix')],
+                [('delay', 'feedback', 'Delay Feedback'), ('delay', 'time', 'Delay Time'),
+                 ('delay', 'color', 'Delay Color'), ('delay', 'mix', 'Delay Mix')],
+                [('chorus', 'depth', 'Chorus Depth'), ('chorus', 'speed', 'Chorus Speed'),
+                 ('chorus', 'flange', 'Chorus Flange'), ('chorus', 'mix', 'Chorus Mix')],
+                [('modwheel', None, 'Modwheel')],
+            ]
+            if 0 <= subsection < len(params_by_subsection):
+                params = params_by_subsection[subsection]
+                if 0 <= control < len(params):
+                    category, param, name = params[control]
+                    if param:
+                        return f'global.{category}.{param}', name
+                    return f'global.{category}', name
+
+        return None, None
+
+    def _update_envelope_panel_for_focus(self):
+        """Update envelope panel to show envelope for focused control."""
+        control_key, display_name = self._get_focused_control_key()
+        if control_key:
+            envelope = self._adapter.state.get_envelope(control_key)
+            self._envelope_panel.set_control(control_key, envelope, display_name)
+        else:
+            self._envelope_panel.set_control(None, None, None)
+
+    def _toggle_focused_envelope(self):
+        """Toggle envelope for the currently focused control."""
+        control_key, _ = self._get_focused_control_key()
+        if control_key:
+            self._envelope_panel.toggle_enabled()
+
+    def _on_envelope_changed(self, control_key: str, envelope):
+        """Handle envelope modification from panel."""
+        self._adapter.state.set_envelope(control_key, envelope)
+
+    def _on_envelope_toggled(self, control_key: str, enabled: bool):
+        """Handle envelope enable/disable from panel."""
+        self._adapter.state.set_envelope_enabled(control_key, enabled)
+
+    def _on_envelope_position(self, position: float):
+        """Handle envelope position update for playhead display."""
+        self._envelope_panel.set_playhead_position(position)
 
     def closeEvent(self, event):
         """Handle window close."""

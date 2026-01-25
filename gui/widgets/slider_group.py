@@ -20,11 +20,13 @@ class SliderGroup(QGroupBox):
         sliderChanged(str, int): Emitted when any slider value changes (param_name, value)
         sliderSet(str, int): Emitted when any slider is released (param_name, value)
         focusedControlChanged(int, str): Emitted when focused control changes (index, param_name)
+        controlClicked(int, str): Emitted when a slider is clicked (index, param_name)
     """
 
     sliderChanged = Signal(str, int)
     sliderSet = Signal(str, int)
     focusedControlChanged = Signal(int, str)
+    controlClicked = Signal(int, str)
 
     def __init__(
         self,
@@ -81,6 +83,7 @@ class SliderGroup(QGroupBox):
             # Connect signals with parameter name
             slider.valueChanged.connect(lambda v, n=name: self.sliderChanged.emit(n, v))
             slider.valueSet.connect(lambda v, n=name: self.sliderSet.emit(n, v))
+            slider.clicked.connect(lambda n=name: self._on_slider_clicked(n))
 
             layout.addWidget(slider)
             self._sliders[name] = slider
@@ -111,6 +114,11 @@ class SliderGroup(QGroupBox):
     def get_all_values(self) -> dict[str, int]:
         """Get all slider values."""
         return {name: slider.value() for name, slider in self._sliders.items()}
+
+    def _on_slider_clicked(self, param_name: str):
+        """Handle slider click - emit controlClicked with index and name."""
+        index = self._slider_order.index(param_name)
+        self.controlClicked.emit(index, param_name)
 
     @property
     def parameter_names(self) -> list[str]:

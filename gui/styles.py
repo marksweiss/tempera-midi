@@ -32,6 +32,14 @@ HINT_BADGE_BG = 'rgba(60, 60, 60, 0.9)'
 HINT_BADGE_TEXT = '#FFFFFF'
 HINT_BADGE_BORDER = '#606060'
 
+# Envelope colors
+ENVELOPE_ACTIVE_CYAN = '#00CED1'  # Dark turquoise - active envelope
+ENVELOPE_INACTIVE_GREY = '#606060'  # Grey - inactive envelope
+ENVELOPE_BACKGROUND = '#1E1E1E'  # Dark background for canvas
+ENVELOPE_TOGGLE_ON = '#4A90D9'  # Blue for enabled toggle (matches sequencer buttons)
+ENVELOPE_TOGGLE_OFF = '#404040'  # Standard button grey
+ENVELOPE_PLAYHEAD = '#FFFFFF'  # White playhead line
+
 # Main application stylesheet
 MAIN_STYLESHEET = """
 QMainWindow {

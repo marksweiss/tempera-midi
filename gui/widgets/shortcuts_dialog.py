@@ -15,7 +15,7 @@ class ShortcutsDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle('Keyboard Shortcuts Help')
-        self.setFixedSize(400, 380)
+        self.setFixedSize(400, 420)
 
         self._setup_ui()
 
@@ -41,6 +41,7 @@ class ShortcutsDialog(QDialog):
             '<p><b>F</b> - Select a section, then a control in a section, then go back</p>'
             '<p><b>W/S</b> - Move between controls</p>'
             '<p><b>A/D</b> - Adjust control value</p>'
+            '<p><b>R</b> - Toggle envelope for focused control</p>'
             '<p><b>1-4</b> - Select emitter 1-4</p>'
             '<p><b>Space</b> - Toggle cell / Play</p>'
             '<p><b>Escape</b> - Stop</p>'

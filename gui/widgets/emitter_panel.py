@@ -54,11 +54,16 @@ class EmitterPanel(QGroupBox):
         emitterSelected(int): Emitted when emitter selection changes
         parameterChanged(int, str, int): Emitted on slider change (emitter, param, value)
         parameterSet(int, str, int): Emitted on slider release (emitter, param, value)
+        controlFocusRequested(int, int): Emitted when a control is clicked (subsection_index, control_index)
     """
 
     emitterSelected = Signal(int)
     parameterChanged = Signal(int, str, int)
     parameterSet = Signal(int, str, int)
+    controlFocusRequested = Signal(int, int)
+    # Signals for keyboard navigation within panel
+    subsectionNavigated = Signal(int)  # Emitted when subsection changes via keyboard (new index)
+    controlNavigated = Signal(int)  # Emitted when control changes via keyboard (new index)
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Emitter', parent)
@@ -147,6 +152,21 @@ class EmitterPanel(QGroupBox):
                       self._position_group, self._filter_group]:
             group.sliderChanged.connect(self._on_slider_changed)
             group.sliderSet.connect(self._on_slider_set)
+
+        # Connect click signals for mouse focus (order matches slider_groups property)
+        # Basic=0, Filter=1, Grain=2, Position=3
+        self._basic_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(0, ctrl_idx)
+        )
+        self._filter_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(1, ctrl_idx)
+        )
+        self._grain_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(2, ctrl_idx)
+        )
+        self._position_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
+        )
 
     def _on_emitter_clicked(self, emitter_num: int):
         """Handle emitter button click."""
@@ -317,18 +337,26 @@ class EmitterPanel(QGroupBox):
             if self._in_control_mode:
                 # Move to previous control within subsection
                 groups[self._focused_subsection].focus_prev_control()
+                self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
             else:
                 # Move to previous subsection
-                self._focused_subsection = max(0, self._focused_subsection - 1)
-                self.set_subsection_focus(self._focused_subsection)
+                new_subsection = max(0, self._focused_subsection - 1)
+                if new_subsection != self._focused_subsection:
+                    self._focused_subsection = new_subsection
+                    self.set_subsection_focus(self._focused_subsection)
+                    self.subsectionNavigated.emit(self._focused_subsection)
         elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
             if self._in_control_mode:
                 # Move to next control within subsection
                 groups[self._focused_subsection].focus_next_control()
+                self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
             else:
                 # Move to next subsection
-                self._focused_subsection = min(num_subsections - 1, self._focused_subsection + 1)
-                self.set_subsection_focus(self._focused_subsection)
+                new_subsection = min(num_subsections - 1, self._focused_subsection + 1)
+                if new_subsection != self._focused_subsection:
+                    self._focused_subsection = new_subsection
+                    self.set_subsection_focus(self._focused_subsection)
+                    self.subsectionNavigated.emit(self._focused_subsection)
         elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
             if self._in_control_mode:
                 # Adjust value down
@@ -350,12 +378,16 @@ class EmitterPanel(QGroupBox):
         else:
             super().keyPressEvent(event)
 
-    def enter_control_mode(self):
-        """Enter control mode - start navigating individual controls."""
+    def enter_control_mode(self, control_index: int = 0):
+        """Enter control mode - start navigating individual controls.
+
+        Args:
+            control_index: The control index to focus (default 0)
+        """
         self._in_control_mode = True
         groups = self.slider_groups
         if 0 <= self._focused_subsection < len(groups):
-            groups[self._focused_subsection].set_control_focus(0)
+            groups[self._focused_subsection].set_control_focus(control_index)
 
     def exit_control_mode(self):
         """Exit control mode - return to subsection navigation."""

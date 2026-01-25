@@ -1,6 +1,6 @@
 """Track volume controls panel."""
 
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QEvent
 from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGroupBox,
@@ -45,11 +45,15 @@ class TrackPanel(QGroupBox):
         volumeChanged(int, int): Emitted when volume changes (track_num, value)
         volumeSet(int, int): Emitted when slider released (track_num, value)
         recordClicked(int): Emitted when record button clicked (track_num)
+        controlFocusRequested(int, int): Emitted when a track slider is clicked (track_index, 0)
     """
 
     volumeChanged = Signal(int, int)
     volumeSet = Signal(int, int)
     recordClicked = Signal(int)
+    controlFocusRequested = Signal(int, int)
+    # Signals for keyboard navigation within panel
+    subsectionNavigated = Signal(int)  # Emitted when track changes via keyboard (track_index 0-based)
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Tracks', parent)
@@ -116,6 +120,9 @@ class TrackPanel(QGroupBox):
         # Connect slider signals
         slider.valueChanged.connect(lambda v, t=track_num: self._on_value_changed(t, v))
         slider.sliderReleased.connect(lambda t=track_num: self._on_slider_released(t))
+
+        # Install event filter for click detection
+        slider.installEventFilter(self)
 
         # Track number label
         track_label = QLabel(str(track_num))
@@ -269,19 +276,25 @@ class TrackPanel(QGroupBox):
         # Left/Right or A/D to select track
         if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
             self.focus_prev_track()
+            # Emit signal with 0-based track index
+            if self._focused_track > 0:
+                self.subsectionNavigated.emit(self._focused_track - 1)
         elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
             self.focus_next_track()
+            # Emit signal with 0-based track index
+            if self._focused_track > 0:
+                self.subsectionNavigated.emit(self._focused_track - 1)
         # Up/Down or W/S to adjust volume
         elif key in (Qt.Key.Key_Up, Qt.Key.Key_W):
-            self.adjust_focused_volume(1)
-        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
-            self.adjust_focused_volume(-1)
-        # Shift for coarse adjustment
-        elif event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-            if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 self.adjust_focused_volume(10)
-            elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+            else:
+                self.adjust_focused_volume(1)
+        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 self.adjust_focused_volume(-10)
+            else:
+                self.adjust_focused_volume(-1)
         # X or Delete to reset
         elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
             self.reset_focused_to_default()
@@ -302,9 +315,18 @@ class TrackPanel(QGroupBox):
         if new_focus is None or not self.isAncestorOf(new_focus):
             self.set_panel_focused(False)
 
-    def enter_control_mode(self):
-        """Enter control mode - start navigating tracks."""
+    def enter_control_mode(self, control_index: int = 0):
+        """Enter control mode - start navigating tracks.
+
+        For TrackPanel, the subsection represents the track, and control_index
+        is not used since each track only has one control (volume). The track
+        focus should already be set via set_track_focus before this is called.
+
+        Args:
+            control_index: Not used for TrackPanel (kept for API consistency)
+        """
         self._in_control_mode = True
+        # Only set default focus if no track is focused yet
         if self._focused_track < 1:
             self.set_track_focus(1)
 
@@ -312,3 +334,15 @@ class TrackPanel(QGroupBox):
         """Exit control mode - return to panel focus."""
         self._in_control_mode = False
         self.clear_track_focus()
+
+    def eventFilter(self, obj, event):
+        """Filter events to detect track slider clicks."""
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                # Find which track this slider belongs to
+                for track_num, slider in self._sliders.items():
+                    if obj == slider:
+                        # Track index is track_num - 1 (0-based), control is always 0
+                        self.controlFocusRequested.emit(track_num - 1, 0)
+                        break
+        return super().eventFilter(obj, event)

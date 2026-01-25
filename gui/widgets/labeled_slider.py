@@ -1,6 +1,6 @@
 """Labeled slider widget with value display."""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSlider
 
 from gui.styles import get_slider_focus_style
@@ -15,10 +15,12 @@ class LabeledSlider(QWidget):
     Signals:
         valueChanged(int): Emitted when value changes during drag
         valueSet(int): Emitted when slider is released (final value)
+        clicked(): Emitted when the slider is clicked (for mouse focus)
     """
 
     valueChanged = Signal(int)
     valueSet = Signal(int)
+    clicked = Signal()
 
     def __init__(
         self,
@@ -160,3 +162,9 @@ class LabeledSlider(QWidget):
     def slider(self) -> QSlider:
         """Get the underlying QSlider widget."""
         return self._slider
+
+    def mousePressEvent(self, event):
+        """Handle mouse press to emit clicked signal for focus management."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)

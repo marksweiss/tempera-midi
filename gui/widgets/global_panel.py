@@ -1,6 +1,6 @@
 """Global effects and modwheel controls panel."""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
@@ -54,12 +54,17 @@ class GlobalPanel(QGroupBox):
         modwheelSet(int): Emitted when modwheel slider released
         parameterChanged(str, str, int): Emitted on slider change (category, param, value)
         parameterSet(str, str, int): Emitted on slider release (category, param, value)
+        controlFocusRequested(int, int): Emitted when a control is clicked (subsection_index, control_index)
     """
 
     modwheelChanged = Signal(int)
     modwheelSet = Signal(int)
     parameterChanged = Signal(str, str, int)
     parameterSet = Signal(str, str, int)
+    controlFocusRequested = Signal(int, int)
+    # Signals for keyboard navigation within panel
+    subsectionNavigated = Signal(int)  # Emitted when subsection changes via keyboard (new index)
+    controlNavigated = Signal(int)  # Emitted when control changes via keyboard (new index)
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Global', parent)
@@ -149,8 +154,26 @@ class GlobalPanel(QGroupBox):
         self._modwheel.valueChanged.connect(self._on_modwheel_changed)
         self._modwheel.sliderReleased.connect(self._on_modwheel_released)
 
+        # Install event filter on modwheel for click detection
+        self._modwheel.installEventFilter(self)
+
         modwheel_layout.addStretch()
         layout.addLayout(modwheel_layout)
+
+        # Connect click signals for mouse focus
+        # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        self._adsr_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(0, ctrl_idx)
+        )
+        self._reverb_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(1, ctrl_idx)
+        )
+        self._delay_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(2, ctrl_idx)
+        )
+        self._chorus_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
+        )
 
     def _on_modwheel_changed(self, value: int):
         """Handle modwheel value change."""
@@ -313,10 +336,14 @@ class GlobalPanel(QGroupBox):
                 else:
                     # Move to previous control within subsection
                     groups[self._focused_subsection].focus_prev_control()
+                    self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
             else:
                 # Move to previous subsection
-                self._focused_subsection = max(0, self._focused_subsection - 1)
-                self.set_subsection_focus(self._focused_subsection)
+                new_subsection = max(0, self._focused_subsection - 1)
+                if new_subsection != self._focused_subsection:
+                    self._focused_subsection = new_subsection
+                    self.set_subsection_focus(self._focused_subsection)
+                    self.subsectionNavigated.emit(self._focused_subsection)
         elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
@@ -328,10 +355,14 @@ class GlobalPanel(QGroupBox):
                 else:
                     # Move to next control within subsection
                     groups[self._focused_subsection].focus_next_control()
+                    self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
             else:
                 # Move to next subsection
-                self._focused_subsection = min(num_subsections - 1, self._focused_subsection + 1)
-                self.set_subsection_focus(self._focused_subsection)
+                new_subsection = min(num_subsections - 1, self._focused_subsection + 1)
+                if new_subsection != self._focused_subsection:
+                    self._focused_subsection = new_subsection
+                    self.set_subsection_focus(self._focused_subsection)
+                    self.subsectionNavigated.emit(self._focused_subsection)
         elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
@@ -374,8 +405,12 @@ class GlobalPanel(QGroupBox):
         else:
             super().keyPressEvent(event)
 
-    def enter_control_mode(self):
-        """Enter control mode - start navigating individual controls."""
+    def enter_control_mode(self, control_index: int = 0):
+        """Enter control mode - start navigating individual controls.
+
+        Args:
+            control_index: The control index to focus (default 0)
+        """
         self._in_control_mode = True
         if self._focused_subsection == 4:
             # Modwheel is already focused, no need to set control focus
@@ -383,7 +418,7 @@ class GlobalPanel(QGroupBox):
         else:
             groups = self.slider_groups
             if 0 <= self._focused_subsection < len(groups):
-                groups[self._focused_subsection].set_control_focus(0)
+                groups[self._focused_subsection].set_control_focus(control_index)
 
     def exit_control_mode(self):
         """Exit control mode - return to subsection navigation."""
@@ -421,3 +456,11 @@ class GlobalPanel(QGroupBox):
         new_focus = QApplication.focusWidget()
         if new_focus is None or not self.isAncestorOf(new_focus):
             self.set_panel_focused(False)
+
+    def eventFilter(self, obj, event):
+        """Filter events to detect modwheel clicks."""
+        if obj == self._modwheel and event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                # Modwheel is subsection 4, control 0 (only one control)
+                self.controlFocusRequested.emit(4, 0)
+        return super().eventFilter(obj, event)

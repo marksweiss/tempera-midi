@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from gui.envelope.envelope import Envelope
+
 
 def _default_emitter_state() -> dict:
     """Default state for a single emitter."""
@@ -74,6 +76,18 @@ def _default_sequencer_state() -> dict:
     }
 
 
+def _default_envelopes_state() -> dict[str, Envelope]:
+    """Default empty envelopes for all controllable parameters.
+
+    Envelope keys follow the pattern:
+    - emitter.{1-4}.{param} (e.g., emitter.1.volume)
+    - track.{1-8}.volume
+    - global.{category}.{param} (e.g., global.reverb.size)
+    - global.modwheel
+    """
+    return {}
+
+
 def _default_state() -> dict:
     """Create a fresh default state."""
     return {
@@ -83,6 +97,7 @@ def _default_state() -> dict:
         'cells': {},  # (column, cell) -> emitter_num
         'active_emitter': 1,
         'sequencer': _default_sequencer_state(),
+        'envelopes': _default_envelopes_state(),  # control_key -> Envelope
     }
 
 
@@ -351,6 +366,71 @@ class StateManager:
         self._state['sequencer']['grid_pattern'] = {}
         self._notify('sequencer.patterns', None)
 
+    # --- Envelope state ---
+
+    def get_envelope(self, control_key: str) -> Envelope:
+        """Get the envelope for a control.
+
+        Args:
+            control_key: Control identifier (e.g., 'emitter.1.volume', 'track.3.volume',
+                         'global.reverb.mix', 'global.modwheel')
+
+        Returns:
+            The envelope for this control (creates empty one if not exists)
+        """
+        if control_key not in self._state['envelopes']:
+            self._state['envelopes'][control_key] = Envelope()
+        return self._state['envelopes'][control_key]
+
+    def set_envelope(self, control_key: str, envelope: Envelope, record_undo: bool = True):
+        """Set the envelope for a control.
+
+        Args:
+            control_key: Control identifier
+            envelope: The envelope to set
+            record_undo: Whether to record this change for undo
+        """
+        if record_undo:
+            self._push_undo()
+        self._state['envelopes'][control_key] = envelope.copy()
+        self._notify(f'envelopes.{control_key}', envelope)
+
+    def set_envelope_enabled(self, control_key: str, enabled: bool, record_undo: bool = True):
+        """Enable or disable an envelope.
+
+        Args:
+            control_key: Control identifier
+            enabled: Whether the envelope is enabled
+            record_undo: Whether to record this change for undo
+        """
+        envelope = self.get_envelope(control_key)
+        if envelope.enabled != enabled:
+            if record_undo:
+                self._push_undo()
+            envelope.enabled = enabled
+            self._notify(f'envelopes.{control_key}.enabled', enabled)
+
+    def get_all_envelopes(self) -> dict[str, Envelope]:
+        """Get all envelopes."""
+        return dict(self._state['envelopes'])
+
+    def get_enabled_envelopes(self) -> dict[str, Envelope]:
+        """Get all enabled envelopes."""
+        return {k: v for k, v in self._state['envelopes'].items() if v.enabled}
+
+    def clear_envelope(self, control_key: str, record_undo: bool = True):
+        """Clear an envelope's points (keeps enabled state).
+
+        Args:
+            control_key: Control identifier
+            record_undo: Whether to record this change for undo
+        """
+        if control_key in self._state['envelopes']:
+            if record_undo:
+                self._push_undo()
+            self._state['envelopes'][control_key].clear()
+            self._notify(f'envelopes.{control_key}', self._state['envelopes'][control_key])
+
     # --- Preset management ---
 
     def save_preset(self, filepath: Path):
@@ -369,6 +449,12 @@ class StateManager:
             }
             state_copy['sequencer']['grid_pattern'] = {
                 str(step): em for step, em in state_copy['sequencer']['grid_pattern'].items()
+            }
+        # Convert Envelope objects to dicts for JSON
+        if 'envelopes' in state_copy:
+            state_copy['envelopes'] = {
+                key: env.to_dict() if isinstance(env, Envelope) else env
+                for key, env in state_copy['envelopes'].items()
             }
         with open(filepath, 'w') as f:
             json.dump(state_copy, f, indent=2)
@@ -401,6 +487,15 @@ class StateManager:
             }
         else:
             loaded['sequencer'] = _default_sequencer_state()
+
+        # Convert envelope dicts back to Envelope objects
+        if 'envelopes' in loaded:
+            loaded['envelopes'] = {
+                key: Envelope.from_dict(env_data) if isinstance(env_data, dict) else env_data
+                for key, env_data in loaded['envelopes'].items()
+            }
+        else:
+            loaded['envelopes'] = _default_envelopes_state()
 
         self._state = loaded
         self._notify('*', self._state)

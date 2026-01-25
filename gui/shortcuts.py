@@ -40,6 +40,7 @@ LEFT_HAND_KEYS = {
     'toggle_focus': 'F',  # Single toggle action for enter/exit focus
     'toggle_cell': 'Space',
     'reset_default': 'X',
+    'toggle_envelope': 'R',  # Toggle envelope for focused control
 }
 
 # Key mappings for right-hand (Arrow) layout
@@ -56,6 +57,7 @@ RIGHT_HAND_KEYS = {
     'toggle_focus': 'Return',  # Single toggle action
     'toggle_cell': 'Space',  # Use Space for cell toggle, Return for focus
     'reset_default': 'Del',
+    'toggle_envelope': 'R',  # Toggle envelope for focused control (same as left-hand)
 }
 
 # Shared shortcuts (work with both layouts)
@@ -309,6 +311,8 @@ class NavigationManager(QObject):
             self.actionTriggered.emit('toggle_cell')
         elif name == 'reset_default':
             self.actionTriggered.emit('reset_default')
+        elif name == 'toggle_envelope':
+            self.actionTriggered.emit('toggle_envelope')
 
     def _cycle_section(self, delta: int):
         """Cycle through sections."""
@@ -437,3 +441,29 @@ class NavigationManager(QObject):
         keys = dict(LEFT_HAND_KEYS if layout == KeyboardLayout.LEFT_HAND else RIGHT_HAND_KEYS)
         keys.update(SHARED_KEYS)
         return keys
+
+    def focus_control(self, section: Section, subsection: int, control: int):
+        """Set focus to a specific control (from mouse click).
+
+        This allows mouse clicks to focus controls, achieving the same state
+        as keyboard navigation. The NavigationManager remains the single
+        source of truth for focus state.
+
+        Args:
+            section: The section containing the control
+            subsection: The subsection index within the section
+            control: The control index within the subsection
+        """
+        section_changed = section != self._section
+
+        self._section = section
+        self._subsection = subsection
+        self._control = control
+        self._mode = NavigationMode.CONTROL
+
+        if section_changed:
+            self.sectionChanged.emit(section)
+        self.subsectionChanged.emit(subsection)
+        self.controlChanged.emit(control)
+        self.modeChanged.emit(self._mode)
+        self._update_path()

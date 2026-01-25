@@ -280,6 +280,11 @@ Run all tests:
 uv run python -m unittest discover test
 ```
 
+Run GUI tests only:
+```bash
+QT_QPA_PLATFORM=offscreen uv run python -m unittest discover test/gui_tests -v
+```
+
 ### Integration Tests
 
 Integration tests use mido to parse and send real MIDI messages. There are two types:

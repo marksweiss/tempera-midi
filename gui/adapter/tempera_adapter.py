@@ -11,6 +11,7 @@ from tempera import EmitterPool, TemperaGlobal, Track
 from sequencer import ColumnSequencer, GridSequencer
 from gui.adapter.state_manager import StateManager
 from gui.adapter.debouncer import Debouncer
+from gui.envelope.envelope_manager import EnvelopeManager
 
 
 class TemperaAdapter:
@@ -46,6 +47,16 @@ class TemperaAdapter:
         self._column_sequencer: Optional[ColumnSequencer] = None
         self._grid_sequencer: Optional[GridSequencer] = None
         self._sequencer_task: Optional[asyncio.Task] = None
+
+        # Envelope manager for automation
+        self._envelope_manager = EnvelopeManager(bpm=120)
+        self._envelope_manager.set_tick_callback(self._on_envelope_tick)
+
+        # Track last sent values to avoid redundant MIDI messages
+        self._last_sent_values: dict[str, int] = {}
+
+        # Callback for envelope position updates (for UI playhead)
+        self._envelope_position_callback: Optional[Callable[[float], None]] = None
 
         # Feedback callback for status updates
         self._status_callback: Optional[Callable[[str], None]] = None
@@ -115,6 +126,104 @@ class TemperaAdapter:
         """Send status update to callback if set."""
         if self._status_callback:
             self._status_callback(message)
+
+    def set_envelope_position_callback(self, callback: Optional[Callable[[float], None]]):
+        """Set callback for envelope position updates (for UI playhead).
+
+        The callback receives the current position (0.0 to 1.0).
+        """
+        self._envelope_position_callback = callback
+
+    @property
+    def envelope_manager(self) -> EnvelopeManager:
+        """Get the envelope manager instance."""
+        return self._envelope_manager
+
+    def _on_envelope_tick(self, position: float):
+        """Called on each envelope manager tick to apply envelope modulation.
+
+        Args:
+            position: Current position in 8-beat cycle (0.0 to 1.0)
+        """
+        # Notify UI for playhead
+        if self._envelope_position_callback:
+            self._envelope_position_callback(position)
+
+        if not self._connected:
+            return
+
+        # Get all enabled envelopes
+        enabled_envelopes = self.state.get_enabled_envelopes()
+
+        for control_key, envelope in enabled_envelopes.items():
+            # Get base value from state
+            base_value = self._get_base_value(control_key)
+            if base_value is None:
+                continue
+
+            # Apply envelope modulation
+            modulated_value = self._envelope_manager.apply_envelope_to_value(
+                base_value, envelope
+            )
+
+            # Only send if value changed
+            if self._last_sent_values.get(control_key) != modulated_value:
+                self._last_sent_values[control_key] = modulated_value
+                asyncio.create_task(self._send_modulated_value(control_key, modulated_value))
+
+    def _get_base_value(self, control_key: str) -> Optional[int]:
+        """Get the base value for a control from state.
+
+        Args:
+            control_key: Control identifier (e.g., 'emitter.1.volume')
+
+        Returns:
+            Base value (0-127) or None if not found
+        """
+        parts = control_key.split('.')
+
+        if parts[0] == 'emitter' and len(parts) >= 3:
+            emitter_num = int(parts[1])
+            param = parts[2]
+            return self.state.get_emitter_param(emitter_num, param)
+
+        elif parts[0] == 'track' and len(parts) >= 3:
+            track_num = int(parts[1])
+            return self.state.get_track_volume(track_num)
+
+        elif parts[0] == 'global':
+            if len(parts) == 2:
+                # global.modwheel
+                return self.state.get_global_param(parts[1])
+            elif len(parts) >= 3:
+                # global.reverb.mix
+                return self.state.get_global_param(parts[1], parts[2])
+
+        return None
+
+    async def _send_modulated_value(self, control_key: str, value: int):
+        """Send a modulated value to hardware.
+
+        Args:
+            control_key: Control identifier
+            value: Modulated value (0-127)
+        """
+        parts = control_key.split('.')
+
+        if parts[0] == 'emitter' and len(parts) >= 3:
+            emitter_num = int(parts[1])
+            param = parts[2]
+            await self._send_emitter_param(emitter_num, param, value)
+
+        elif parts[0] == 'track' and len(parts) >= 3:
+            track_num = int(parts[1])
+            await self._send_track_volume(track_num, value)
+
+        elif parts[0] == 'global':
+            if len(parts) == 2:
+                await self._send_modwheel(value)
+            elif len(parts) >= 3:
+                await self._send_global_param(parts[1], parts[2], value)
 
     @staticmethod
     def list_midi_ports() -> list[str]:
@@ -476,6 +585,8 @@ class TemperaAdapter:
             self._column_sequencer.set_bpm(bpm)
         if self._grid_sequencer:
             self._grid_sequencer.set_bpm(bpm)
+        # Also update envelope manager BPM
+        self._envelope_manager.bpm = bpm
         self._notify_status(f'Sequencer BPM: {bpm}')
 
     def set_column_pattern_cell(self, column: int, cell: int, active: bool,
@@ -531,6 +642,11 @@ class TemperaAdapter:
             )
 
         self.state.set_sequencer_running(True)
+
+        # Start envelope manager for automation
+        self._envelope_manager.bpm = self.state.get_sequencer_bpm()
+        self._envelope_manager.start()
+
         self._notify_status(f'Sequencer started ({mode} mode)')
 
     async def stop_sequencer(self):
@@ -549,6 +665,12 @@ class TemperaAdapter:
             except asyncio.CancelledError:
                 pass
             self._sequencer_task = None
+
+        # Stop envelope manager
+        await self._envelope_manager.stop()
+
+        # Clear last sent values so next start sends fresh values
+        self._last_sent_values.clear()
 
         self.state.set_sequencer_running(False)
         self._notify_status('Sequencer stopped')
