@@ -31,11 +31,14 @@ class GUITestCase(unittest.TestCase):
         """Create QApplication once for all tests in the class."""
         # Import here to ensure env var is set first
         from PySide6.QtWidgets import QApplication
+        from PySide6.QtGui import QFont
 
         # Create QApplication if it doesn't exist
         if QApplication.instance() is None:
             # Pass empty args for headless testing
             cls._app = QApplication([])
+            # Set explicit font to avoid "Sans Serif" lookup warning on offscreen platform
+            cls._app.setFont(QFont("Helvetica"))
         else:
             cls._app = QApplication.instance()
 

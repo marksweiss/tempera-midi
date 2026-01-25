@@ -134,10 +134,11 @@ class EmitterPanel(QGroupBox):
         # Row 2: Grain | Position / Spray
         grid_layout = QGridLayout()
         grid_layout.setSpacing(12)
-        grid_layout.addWidget(self._basic_group, 0, 0)
-        grid_layout.addWidget(self._filter_group, 0, 1)
-        grid_layout.addWidget(self._grain_group, 1, 0)
-        grid_layout.addWidget(self._position_group, 1, 1)
+        # Align to top so groups don't stretch vertically
+        grid_layout.addWidget(self._basic_group, 0, 0, Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self._filter_group, 0, 1, Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self._grain_group, 1, 0, Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self._position_group, 1, 1, Qt.AlignmentFlag.AlignTop)
 
         scroll_layout.addLayout(grid_layout)
         scroll_layout.addStretch()

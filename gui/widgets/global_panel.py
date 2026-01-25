@@ -97,6 +97,15 @@ class GlobalPanel(QGroupBox):
 
         self._effects_tabs = QTabWidget()
 
+        # Helper to wrap slider group in container with stretch at bottom
+        def _wrap_in_container(slider_group: SliderGroup) -> QWidget:
+            container = QWidget()
+            container_layout = QVBoxLayout(container)
+            container_layout.setContentsMargins(0, 0, 0, 0)
+            container_layout.addWidget(slider_group)
+            container_layout.addStretch()
+            return container
+
         # Reverb tab
         self._reverb_group = SliderGroup('', REVERB_PARAMS, label_width=70)
         self._reverb_group.sliderChanged.connect(
@@ -105,7 +114,7 @@ class GlobalPanel(QGroupBox):
         self._reverb_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('reverb', p, v)
         )
-        self._effects_tabs.addTab(self._reverb_group, 'Reverb')
+        self._effects_tabs.addTab(_wrap_in_container(self._reverb_group), 'Reverb')
 
         # Delay tab
         self._delay_group = SliderGroup('', DELAY_PARAMS, label_width=70)
@@ -115,7 +124,7 @@ class GlobalPanel(QGroupBox):
         self._delay_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('delay', p, v)
         )
-        self._effects_tabs.addTab(self._delay_group, 'Delay')
+        self._effects_tabs.addTab(_wrap_in_container(self._delay_group), 'Delay')
 
         # Chorus tab
         self._chorus_group = SliderGroup('', CHORUS_PARAMS, label_width=70)
@@ -125,7 +134,7 @@ class GlobalPanel(QGroupBox):
         self._chorus_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('chorus', p, v)
         )
-        self._effects_tabs.addTab(self._chorus_group, 'Chorus')
+        self._effects_tabs.addTab(_wrap_in_container(self._chorus_group), 'Chorus')
 
         effects_layout.addWidget(self._effects_tabs)
         layout.addWidget(effects_group)

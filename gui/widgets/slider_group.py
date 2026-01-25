@@ -4,7 +4,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSizePolicy
 
 from gui.widgets.labeled_slider import LabeledSlider
 from gui.styles import get_section_focus_style
@@ -55,6 +55,9 @@ class SliderGroup(QGroupBox):
         if not title:
             self.setFlat(True)
             self.setStyleSheet("QGroupBox { border: none; }")
+
+        # Prevent vertical expansion - keep tight spacing
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         self._sliders: dict[str, LabeledSlider] = {}
         self._slider_order: list[str] = []  # Ordered list of parameter names

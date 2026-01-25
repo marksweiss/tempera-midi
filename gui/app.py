@@ -62,8 +62,9 @@ class MainWindow(QMainWindow):
             asyncio.get_running_loop()
             asyncio.ensure_future(coro)
         except RuntimeError:
-            # No running event loop (e.g., in tests) - skip async task
-            pass
+            # No running event loop (e.g., in tests) - close the coroutine
+            # to avoid 'coroutine was never awaited' warning
+            coro.close()
 
     def _setup_ui(self):
         """Set up the user interface."""

@@ -49,7 +49,7 @@ QMainWindow {
 QWidget {
     background-color: #2B2B2B;
     color: #E0E0E0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: "Helvetica Neue", Helvetica, Arial;
     font-size: 13px;
 }
 

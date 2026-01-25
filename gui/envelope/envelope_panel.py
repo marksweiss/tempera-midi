@@ -3,7 +3,7 @@
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QPointF
-from PySide6.QtGui import QPainter, QPen, QBrush, QPainterPath, QMouseEvent, QColor
+from PySide6.QtGui import QPainter, QPen, QPainterPath, QMouseEvent, QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QSizePolicy
 )
@@ -20,9 +20,11 @@ class EnvelopeCanvas(QFrame):
 
     Signals:
         envelopeChanged(Envelope): Emitted when the envelope is modified by drawing
+        drawingStarted(): Emitted when user starts drawing (to auto-enable envelope)
     """
 
     envelopeChanged = Signal(object)  # Envelope
+    drawingStarted = Signal()
 
     # Canvas dimensions
     MIN_HEIGHT = 80
@@ -128,7 +130,7 @@ class EnvelopeCanvas(QFrame):
         if self._envelope and not self._envelope.is_empty():
             curve_color = QColor(ENVELOPE_ACTIVE_CYAN if self._enabled else ENVELOPE_INACTIVE_GREY)
             pen = QPen(curve_color)
-            pen.setWidth(2)
+            pen.setWidth(1)
             painter.setPen(pen)
 
             # Build path from points
@@ -136,23 +138,22 @@ class EnvelopeCanvas(QFrame):
             points = self._envelope.points
 
             if points:
-                # Start from first point
-                start = self._point_to_canvas(points[0].time, points[0].value)
-                path.moveTo(start)
+                # Start from left edge at the same y-level as the first point
+                first_point = points[0]
+                left_edge = self._point_to_canvas(0.0, first_point.value)
+                path.moveTo(left_edge)
 
-                # Draw lines to each subsequent point
-                for point in points[1:]:
+                # Draw lines through all points
+                for point in points:
                     pos = self._point_to_canvas(point.time, point.value)
                     path.lineTo(pos)
 
-                painter.drawPath(path)
+                # Extend to right edge at the same y-level as the last point
+                last_point = points[-1]
+                right_edge = self._point_to_canvas(1.0, last_point.value)
+                path.lineTo(right_edge)
 
-                # Draw point markers
-                marker_brush = QBrush(curve_color)
-                painter.setBrush(marker_brush)
-                for point in points:
-                    pos = self._point_to_canvas(point.time, point.value)
-                    painter.drawEllipse(pos, 4, 4)
+                painter.drawPath(path)
 
         # Draw playhead
         if self._playhead_position is not None and 0.0 <= self._playhead_position <= 1.0:
@@ -168,15 +169,15 @@ class EnvelopeCanvas(QFrame):
         """Start drawing envelope on mouse press."""
         if event.button() == Qt.MouseButton.LeftButton and self._envelope:
             self._drawing = True
-            # Clear existing points and start from (0, 0)
+            # Clear existing points
             self._envelope.clear()
-            self._envelope.add_point(0.0, 0.0)
 
             # Add point at click position
             time, value = self._canvas_to_point(event.position())
-            if time > 0.0:  # Don't duplicate the origin
-                self._envelope.add_point(time, value)
+            self._envelope.add_point(time, value)
 
+            # Signal that drawing started (to auto-enable envelope)
+            self.drawingStarted.emit()
             self.envelopeChanged.emit(self._envelope)
             self.update()
         elif event.button() == Qt.MouseButton.RightButton and self._envelope:
@@ -247,6 +248,7 @@ class EnvelopePanel(QWidget):
         # Canvas
         self._canvas = EnvelopeCanvas()
         self._canvas.envelopeChanged.connect(self._on_canvas_changed)
+        self._canvas.drawingStarted.connect(self._on_drawing_started)
         layout.addWidget(self._canvas)
 
     def _update_toggle_style(self):
@@ -337,6 +339,12 @@ class EnvelopePanel(QWidget):
         if self._current_control_key and self._current_envelope:
             self._current_envelope.enabled = enabled
             self.enabledToggled.emit(self._current_control_key, enabled)
+
+    def _on_drawing_started(self):
+        """Handle drawing started - auto-enable the envelope."""
+        if not self._toggle_btn.isChecked():
+            self._toggle_btn.setChecked(True)
+            self._on_toggle_clicked()
 
     def _on_canvas_changed(self, envelope: Envelope):
         """Handle envelope change from canvas."""
