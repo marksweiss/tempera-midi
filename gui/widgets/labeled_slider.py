@@ -3,10 +3,14 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSlider
 
+from gui.styles import get_slider_focus_style
+
 
 class LabeledSlider(QWidget):
     """
     A horizontal slider with a label on the left and value display on the right.
+
+    Supports keyboard focus indication for one-handed navigation.
 
     Signals:
         valueChanged(int): Emitted when value changes during drag
@@ -111,3 +115,48 @@ class LabeledSlider(QWidget):
         self._slider.setEnabled(enabled)
         self._label.setEnabled(enabled)
         self._value_label.setEnabled(enabled)
+
+    def set_focused(self, focused: bool):
+        """Set visual focus state for keyboard navigation.
+
+        Args:
+            focused: Whether this slider should appear focused
+        """
+        self._slider.setStyleSheet(get_slider_focus_style(focused))
+
+    def adjust_value(self, delta: int):
+        """Adjust value by delta, clamping to range.
+
+        Args:
+            delta: Amount to add to current value (positive or negative)
+        """
+        new_value = self._slider.value() + delta
+        new_value = max(self._slider.minimum(), min(self._slider.maximum(), new_value))
+        if new_value != self._slider.value():
+            self._slider.setValue(new_value)
+            self._value_label.setText(str(new_value))
+            self.valueChanged.emit(new_value)
+            self.valueSet.emit(new_value)
+
+    def get_default_value(self) -> int:
+        """Get the default/initial value."""
+        # Default is typically the midpoint or a stored value
+        return getattr(self, '_default_value', 64)
+
+    def set_default_value(self, value: int):
+        """Store the default value for reset functionality."""
+        self._default_value = value
+
+    def reset_to_default(self):
+        """Reset slider to its default value."""
+        default = self.get_default_value()
+        if self._slider.value() != default:
+            self._slider.setValue(default)
+            self._value_label.setText(str(default))
+            self.valueChanged.emit(default)
+            self.valueSet.emit(default)
+
+    @property
+    def slider(self) -> QSlider:
+        """Get the underlying QSlider widget."""
+        return self._slider

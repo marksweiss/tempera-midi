@@ -1,13 +1,14 @@
 """Emitter controls panel with all parameter sliders."""
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QButtonGroup,
-    QScrollArea, QFrame, QGridLayout
+    QScrollArea, QFrame, QGridLayout, QGroupBox, QApplication
 )
 
 from gui.widgets.slider_group import SliderGroup
-from gui.styles import get_emitter_button_style, EMITTER_COLORS
+from gui.styles import get_emitter_button_style, EMITTER_COLORS, get_section_focus_style
 
 
 # Parameter definitions for each slider group
@@ -40,7 +41,7 @@ FILTER_PARAMS = [
 ]
 
 
-class EmitterPanel(QWidget):
+class EmitterPanel(QGroupBox):
     """
     Panel for controlling all parameters of the 4 emitters.
 
@@ -60,15 +61,19 @@ class EmitterPanel(QWidget):
     parameterSet = Signal(int, str, int)
 
     def __init__(self, parent: QWidget = None):
-        super().__init__(parent)
+        super().__init__('Emitter', parent)
 
         self._current_emitter = 1
+        self._panel_focused = False
+        self._focused_subsection = 0  # Currently focused subsection (0-3)
+        self._in_control_mode = False  # Whether we're navigating controls within a subsection
 
         # Store values for all emitters
         self._emitter_values: dict[int, dict[str, int]] = {
             i: self._get_default_values() for i in range(1, 5)
         }
 
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._setup_ui()
 
     def _get_default_values(self) -> dict[str, int]:
@@ -228,3 +233,133 @@ class EmitterPanel(QWidget):
     def get_all_parameters(self, emitter_num: int) -> dict[str, int]:
         """Get all parameters for an emitter."""
         return dict(self._emitter_values[emitter_num])
+
+    # --- Keyboard navigation ---
+
+    @property
+    def slider_groups(self) -> list[SliderGroup]:
+        """Get list of slider groups in navigation order."""
+        return [self._basic_group, self._filter_group, self._grain_group, self._position_group]
+
+    @property
+    def subsection_names(self) -> list[str]:
+        """Get names of subsections."""
+        return ['Basic', 'Tone Filter', 'Grain', 'Position / Spray']
+
+    def set_subsection_focus(self, index: int):
+        """Focus a specific subsection (slider group).
+
+        Args:
+            index: Subsection index (0-3)
+        """
+        self._focused_subsection = index
+        groups = self.slider_groups
+        for i, group in enumerate(groups):
+            group.set_group_focused(i == index)
+            # Don't call setFocus() on child - keep focus on panel to avoid race condition
+
+    def get_current_subsection(self) -> int:
+        """Get currently focused subsection index."""
+        groups = self.slider_groups
+        for i, group in enumerate(groups):
+            if group.hasFocus():
+                return i
+        return 0
+
+    def get_navigation_path(self) -> str:
+        """Get current navigation path string."""
+        subsection = self.get_current_subsection()
+        group = self.slider_groups[subsection]
+        path = f"Emitter {self._current_emitter} > {self.subsection_names[subsection]}"
+        if group.focused_name:
+            label = group.get_control_label(group.focused_index)
+            value = group.get_value(group.focused_name)
+            path += f" > {label}: {value}"
+        return path
+
+    def set_panel_focused(self, focused: bool):
+        """Set whether this panel is the active section.
+
+        Note: This only controls the panel border highlight, not subsection
+        highlights. Subsection focus is controlled via set_subsection_focus().
+        """
+        self._panel_focused = focused
+        self.setStyleSheet(get_section_focus_style(focused))
+        # Clear all subsection focus and control focus when panel loses focus
+        if not focused:
+            for group in self.slider_groups:
+                group.set_group_focused(False)
+                group.clear_control_focus()
+            self._in_control_mode = False
+
+    def focusInEvent(self, event: QFocusEvent):
+        """Handle focus gained - show panel highlight only."""
+        super().focusInEvent(event)
+        self.set_panel_focused(True)
+        # Don't auto-highlight subsections - NavigationManager controls that
+
+    def focusOutEvent(self, event: QFocusEvent):
+        """Handle focus lost - only clear if focus left the panel hierarchy."""
+        super().focusOutEvent(event)
+        # Only clear if focus went OUTSIDE this panel hierarchy
+        new_focus = QApplication.focusWidget()
+        if new_focus is None or not self.isAncestorOf(new_focus):
+            self.set_panel_focused(False)
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard input for navigation within the panel."""
+        key = event.key()
+        groups = self.slider_groups
+        num_subsections = len(groups)
+
+        # Handle navigation keys
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
+            if self._in_control_mode:
+                # Move to previous control within subsection
+                groups[self._focused_subsection].focus_prev_control()
+            else:
+                # Move to previous subsection
+                self._focused_subsection = max(0, self._focused_subsection - 1)
+                self.set_subsection_focus(self._focused_subsection)
+        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+            if self._in_control_mode:
+                # Move to next control within subsection
+                groups[self._focused_subsection].focus_next_control()
+            else:
+                # Move to next subsection
+                self._focused_subsection = min(num_subsections - 1, self._focused_subsection + 1)
+                self.set_subsection_focus(self._focused_subsection)
+        elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
+            if self._in_control_mode:
+                # Adjust value down
+                if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                    groups[self._focused_subsection].adjust_focused_value(-10)
+                else:
+                    groups[self._focused_subsection].adjust_focused_value(-1)
+        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
+            if self._in_control_mode:
+                # Adjust value up
+                if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                    groups[self._focused_subsection].adjust_focused_value(10)
+                else:
+                    groups[self._focused_subsection].adjust_focused_value(1)
+        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
+            if self._in_control_mode:
+                # Reset control to default
+                groups[self._focused_subsection].reset_focused_to_default()
+        else:
+            super().keyPressEvent(event)
+
+    def enter_control_mode(self):
+        """Enter control mode - start navigating individual controls."""
+        self._in_control_mode = True
+        groups = self.slider_groups
+        if 0 <= self._focused_subsection < len(groups):
+            groups[self._focused_subsection].set_control_focus(0)
+
+    def exit_control_mode(self):
+        """Exit control mode - return to subsection navigation."""
+        self._in_control_mode = False
+        groups = self.slider_groups
+        if 0 <= self._focused_subsection < len(groups):
+            groups[self._focused_subsection].clear_control_focus()

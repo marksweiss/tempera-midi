@@ -20,6 +20,17 @@ EMITTER_COLORS_LIGHT = {
 CELL_EMPTY = '#3A3A3A'
 CELL_HOVER = '#5A5A5A'
 CELL_BORDER = '#2A2A2A'
+CELL_CURSOR = '#4A90D9'  # Blue cursor outline
+
+# Focus colors
+FOCUS_BORDER = '#4A90D9'  # Blue focus ring
+FOCUS_GLOW = '#4A90D9'    # Blue glow for focused controls
+SECTION_ACTIVE_BORDER = '#5AA0E9'  # Lighter blue for active section
+
+# Hint badge colors
+HINT_BADGE_BG = 'rgba(60, 60, 60, 0.9)'
+HINT_BADGE_TEXT = '#FFFFFF'
+HINT_BADGE_BORDER = '#606060'
 
 # Main application stylesheet
 MAIN_STYLESHEET = """
@@ -316,3 +327,91 @@ def get_emitter_button_style(emitter_num: int, selected: bool = False) -> str:
                 border-color: {light_color};
             }}
         """
+
+
+def get_section_focus_style(focused: bool = False) -> str:
+    """Get style for a section container (GroupBox) with focus indicator."""
+    if focused:
+        return f"""
+            QGroupBox {{
+                border: 2px solid {SECTION_ACTIVE_BORDER};
+                border-radius: 4px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-weight: bold;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 8px;
+                color: {SECTION_ACTIVE_BORDER};
+            }}
+        """
+    else:
+        return """
+            QGroupBox {
+                border: 1px solid #404040;
+                border-radius: 4px;
+                margin-top: 12px;
+                padding-top: 8px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 8px;
+                color: #A0A0A0;
+            }
+        """
+
+
+def get_slider_focus_style(focused: bool = False) -> str:
+    """Get style for a slider with focus glow effect."""
+    if focused:
+        return f"""
+            QSlider::handle:horizontal {{
+                background: {FOCUS_GLOW};
+                border: 2px solid {SECTION_ACTIVE_BORDER};
+                width: 16px;
+                margin: -6px 0;
+                border-radius: 9px;
+            }}
+            QSlider::handle:vertical {{
+                background: {FOCUS_GLOW};
+                border: 2px solid {SECTION_ACTIVE_BORDER};
+                height: 16px;
+                margin: 0 -6px;
+                border-radius: 9px;
+            }}
+        """
+    else:
+        return """
+            QSlider::handle:horizontal {
+                background: #606060;
+                border: 1px solid #505050;
+                width: 14px;
+                margin: -5px 0;
+                border-radius: 7px;
+            }
+            QSlider::handle:vertical {
+                background: #606060;
+                border: 1px solid #505050;
+                height: 14px;
+                margin: 0 -5px;
+                border-radius: 7px;
+            }
+        """
+
+
+# Hint badge stylesheet
+HINT_BADGE_STYLE = f"""
+    QLabel {{
+        background-color: {HINT_BADGE_BG};
+        color: {HINT_BADGE_TEXT};
+        border: 1px solid {HINT_BADGE_BORDER};
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 10px;
+        font-weight: bold;
+    }}
+"""

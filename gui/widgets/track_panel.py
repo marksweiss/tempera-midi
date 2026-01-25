@@ -1,10 +1,13 @@
 """Track volume controls panel."""
 
 from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGroupBox,
-    QSlider, QLabel, QPushButton
+    QSlider, QLabel, QPushButton, QApplication
 )
+
+from gui.styles import get_slider_focus_style, get_section_focus_style
 
 # Style for record buttons - red circle like a tape deck record button
 RECORD_BUTTON_STYLE = """
@@ -56,7 +59,13 @@ class TrackPanel(QGroupBox):
         self._record_buttons: dict[int, QPushButton] = {}
         self._record_timers: dict[int, QTimer] = {}
 
+        # Keyboard navigation state
+        self._focused_track = -1  # -1 means no track focused
+        self._panel_focused = False
+        self._in_control_mode = False  # Whether we're navigating tracks
+
         self._setup_ui()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
     def _setup_ui(self):
         """Set up the user interface."""
@@ -175,3 +184,131 @@ class TrackPanel(QGroupBox):
     def get_all_volumes(self) -> dict[int, int]:
         """Get all track volumes."""
         return {t: s.value() for t, s in self._sliders.items()}
+
+    # --- Keyboard navigation ---
+
+    def set_panel_focused(self, focused: bool):
+        """Set whether this panel is the active section."""
+        self._panel_focused = focused
+        self.setStyleSheet(get_section_focus_style(focused))
+        # Clear track focus when panel loses focus
+        if not focused:
+            self.clear_track_focus()
+            self._in_control_mode = False
+
+    def set_track_focus(self, track_num: int):
+        """Focus a specific track (1-8) or -1 to unfocus all.
+
+        Args:
+            track_num: Track number (1-8), or -1 to unfocus
+        """
+        # Clear previous focus
+        if self._focused_track > 0 and self._focused_track in self._sliders:
+            self._sliders[self._focused_track].setStyleSheet(get_slider_focus_style(False))
+
+        # Set new focus
+        self._focused_track = track_num if 1 <= track_num <= 8 else -1
+
+        if self._focused_track > 0:
+            self._sliders[self._focused_track].setStyleSheet(get_slider_focus_style(True))
+
+    def focus_next_track(self):
+        """Move focus to next track, wrapping at end."""
+        if self._focused_track < 1:
+            self.set_track_focus(1)
+        else:
+            new_track = (self._focused_track % 8) + 1
+            self.set_track_focus(new_track)
+
+    def focus_prev_track(self):
+        """Move focus to previous track, wrapping at start."""
+        if self._focused_track < 1:
+            self.set_track_focus(8)
+        else:
+            new_track = ((self._focused_track - 2) % 8) + 1
+            self.set_track_focus(new_track)
+
+    def clear_track_focus(self):
+        """Clear focus from all tracks."""
+        self.set_track_focus(-1)
+
+    def adjust_focused_volume(self, delta: int):
+        """Adjust volume of focused track.
+
+        Args:
+            delta: Amount to add (positive or negative)
+        """
+        if self._focused_track > 0 and self._focused_track in self._sliders:
+            slider = self._sliders[self._focused_track]
+            new_value = slider.value() + delta
+            new_value = max(0, min(127, new_value))
+            if new_value != slider.value():
+                slider.setValue(new_value)
+                self._value_labels[self._focused_track].setText(str(new_value))
+                self.volumeChanged.emit(self._focused_track, new_value)
+                self.volumeSet.emit(self._focused_track, new_value)
+
+    def reset_focused_to_default(self):
+        """Reset focused track to default volume (100)."""
+        if self._focused_track > 0:
+            self.set_volume(self._focused_track, 100)
+            self.volumeChanged.emit(self._focused_track, 100)
+            self.volumeSet.emit(self._focused_track, 100)
+
+    def get_navigation_path(self) -> str:
+        """Get current navigation path string."""
+        if self._focused_track > 0:
+            volume = self._sliders[self._focused_track].value()
+            return f"Tracks > Track {self._focused_track}: {volume}"
+        return "Tracks"
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard input for track navigation."""
+        key = event.key()
+
+        # Left/Right or A/D to select track
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
+            self.focus_prev_track()
+        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
+            self.focus_next_track()
+        # Up/Down or W/S to adjust volume
+        elif key in (Qt.Key.Key_Up, Qt.Key.Key_W):
+            self.adjust_focused_volume(1)
+        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+            self.adjust_focused_volume(-1)
+        # Shift for coarse adjustment
+        elif event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
+                self.adjust_focused_volume(10)
+            elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+                self.adjust_focused_volume(-10)
+        # X or Delete to reset
+        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
+            self.reset_focused_to_default()
+        else:
+            super().keyPressEvent(event)
+
+    def focusInEvent(self, event: QFocusEvent):
+        """Handle focus gained - show panel highlight only."""
+        super().focusInEvent(event)
+        self.set_panel_focused(True)
+        # Don't auto-focus a track - NavigationManager controls that
+
+    def focusOutEvent(self, event: QFocusEvent):
+        """Handle focus lost - only clear if focus left the panel hierarchy."""
+        super().focusOutEvent(event)
+        # Only clear if focus went OUTSIDE this panel hierarchy
+        new_focus = QApplication.focusWidget()
+        if new_focus is None or not self.isAncestorOf(new_focus):
+            self.set_panel_focused(False)
+
+    def enter_control_mode(self):
+        """Enter control mode - start navigating tracks."""
+        self._in_control_mode = True
+        if self._focused_track < 1:
+            self.set_track_focus(1)
+
+    def exit_control_mode(self):
+        """Exit control mode - return to panel focus."""
+        self._in_control_mode = False
+        self.clear_track_focus()

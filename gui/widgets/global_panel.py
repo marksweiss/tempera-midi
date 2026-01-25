@@ -1,12 +1,14 @@
 """Global effects and modwheel controls panel."""
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QTabWidget, QSlider, QLabel
+    QTabWidget, QSlider, QLabel, QApplication
 )
 
 from gui.widgets.slider_group import SliderGroup
+from gui.styles import get_section_focus_style, get_slider_focus_style
 
 
 # Parameter definitions
@@ -62,6 +64,10 @@ class GlobalPanel(QGroupBox):
     def __init__(self, parent: QWidget = None):
         super().__init__('Global', parent)
 
+        self._panel_focused = False
+        self._focused_subsection = 0  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        self._in_control_mode = False  # Whether we're navigating controls within a subsection
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._setup_ui()
 
     def _setup_ui(self):
@@ -216,3 +222,202 @@ class GlobalPanel(QGroupBox):
             'delay': self._delay_group.get_all_values(),
             'chorus': self._chorus_group.get_all_values(),
         }
+
+    # --- Keyboard navigation ---
+
+    # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+    SUBSECTION_NAMES = ['ADSR', 'Reverb', 'Delay', 'Chorus', 'Modwheel']
+
+    @property
+    def slider_groups(self) -> list[SliderGroup]:
+        """Get list of slider groups (excludes modwheel)."""
+        return [self._adsr_group, self._reverb_group, self._delay_group, self._chorus_group]
+
+    def set_subsection_focus(self, index: int):
+        """Focus a specific subsection.
+
+        Args:
+            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        """
+        self._focused_subsection = index
+        groups = self.slider_groups
+        # Clear all group focus
+        for group in groups:
+            group.set_group_focused(False)
+
+        # Clear modwheel focus
+        self._modwheel.setStyleSheet(get_slider_focus_style(False))
+
+        if index == 4:
+            # Highlight modwheel (don't call setFocus to avoid race condition)
+            self._modwheel.setStyleSheet(get_slider_focus_style(True))
+        elif 0 <= index < len(groups):
+            # Focus a slider group (visual only, don't call setFocus)
+            groups[index].set_group_focused(True)
+            # For effects tabs, switch to the appropriate tab
+            if index >= 1:
+                self._effects_tabs.setCurrentIndex(index - 1)
+
+    def get_current_subsection(self) -> int:
+        """Get currently focused subsection index."""
+        if self._modwheel.hasFocus():
+            return 4
+        groups = self.slider_groups
+        for i, group in enumerate(groups):
+            if group.hasFocus():
+                return i
+        return 0
+
+    def adjust_modwheel(self, delta: int):
+        """Adjust modwheel value."""
+        new_value = self._modwheel.value() + delta
+        new_value = max(0, min(127, new_value))
+        if new_value != self._modwheel.value():
+            self._modwheel.setValue(new_value)
+            self._modwheel_value.setText(str(new_value))
+            self.modwheelChanged.emit(new_value)
+            self.modwheelSet.emit(new_value)
+
+    def get_navigation_path(self) -> str:
+        """Get current navigation path string."""
+        subsection = self.get_current_subsection()
+        path = f"Global > {self.SUBSECTION_NAMES[subsection]}"
+
+        if subsection == 4:
+            # Modwheel
+            path += f": {self._modwheel.value()}"
+        elif subsection < 4:
+            group = self.slider_groups[subsection]
+            if group.focused_name:
+                label = group.get_control_label(group.focused_index)
+                value = group.get_value(group.focused_name)
+                path += f" > {label}: {value}"
+
+        return path
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard input for navigation within the panel."""
+        key = event.key()
+        groups = self.slider_groups
+        num_subsections = 5  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+
+        # Handle navigation keys
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
+            if self._in_control_mode:
+                if self._focused_subsection == 4:
+                    # Modwheel: increase value
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        self.adjust_modwheel(10)
+                    else:
+                        self.adjust_modwheel(1)
+                else:
+                    # Move to previous control within subsection
+                    groups[self._focused_subsection].focus_prev_control()
+            else:
+                # Move to previous subsection
+                self._focused_subsection = max(0, self._focused_subsection - 1)
+                self.set_subsection_focus(self._focused_subsection)
+        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
+            if self._in_control_mode:
+                if self._focused_subsection == 4:
+                    # Modwheel: decrease value
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        self.adjust_modwheel(-10)
+                    else:
+                        self.adjust_modwheel(-1)
+                else:
+                    # Move to next control within subsection
+                    groups[self._focused_subsection].focus_next_control()
+            else:
+                # Move to next subsection
+                self._focused_subsection = min(num_subsections - 1, self._focused_subsection + 1)
+                self.set_subsection_focus(self._focused_subsection)
+        elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
+            if self._in_control_mode:
+                if self._focused_subsection == 4:
+                    # Modwheel: decrease value
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        self.adjust_modwheel(-10)
+                    else:
+                        self.adjust_modwheel(-1)
+                else:
+                    # Adjust value down
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        groups[self._focused_subsection].adjust_focused_value(-10)
+                    else:
+                        groups[self._focused_subsection].adjust_focused_value(-1)
+        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
+            if self._in_control_mode:
+                if self._focused_subsection == 4:
+                    # Modwheel: increase value
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        self.adjust_modwheel(10)
+                    else:
+                        self.adjust_modwheel(1)
+                else:
+                    # Adjust value up
+                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                        groups[self._focused_subsection].adjust_focused_value(10)
+                    else:
+                        groups[self._focused_subsection].adjust_focused_value(1)
+        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
+            if self._in_control_mode:
+                if self._focused_subsection == 4:
+                    # Reset modwheel to 0
+                    self._modwheel.setValue(0)
+                    self._modwheel_value.setText('0')
+                    self.modwheelChanged.emit(0)
+                    self.modwheelSet.emit(0)
+                else:
+                    # Reset control to default
+                    groups[self._focused_subsection].reset_focused_to_default()
+        else:
+            super().keyPressEvent(event)
+
+    def enter_control_mode(self):
+        """Enter control mode - start navigating individual controls."""
+        self._in_control_mode = True
+        if self._focused_subsection == 4:
+            # Modwheel is already focused, no need to set control focus
+            pass
+        else:
+            groups = self.slider_groups
+            if 0 <= self._focused_subsection < len(groups):
+                groups[self._focused_subsection].set_control_focus(0)
+
+    def exit_control_mode(self):
+        """Exit control mode - return to subsection navigation."""
+        self._in_control_mode = False
+        groups = self.slider_groups
+        if 0 <= self._focused_subsection < len(groups):
+            groups[self._focused_subsection].clear_control_focus()
+
+    def set_panel_focused(self, focused: bool):
+        """Set whether this panel is the active section.
+
+        Note: This only controls the panel border highlight, not subsection
+        highlights. Subsection focus is controlled via set_subsection_focus().
+        """
+        self._panel_focused = focused
+        self.setStyleSheet(get_section_focus_style(focused))
+        # Clear all subsection focus and control focus when panel loses focus
+        if not focused:
+            for group in self.slider_groups:
+                group.set_group_focused(False)
+                group.clear_control_focus()
+            self._modwheel.setStyleSheet(get_slider_focus_style(False))
+            self._in_control_mode = False
+
+    def focusInEvent(self, event: QFocusEvent):
+        """Handle focus gained - show panel highlight only."""
+        super().focusInEvent(event)
+        self.set_panel_focused(True)
+        # Don't auto-highlight subsections - NavigationManager controls that
+
+    def focusOutEvent(self, event: QFocusEvent):
+        """Handle focus lost - only clear if focus left the panel hierarchy."""
+        super().focusOutEvent(event)
+        # Only clear if focus went OUTSIDE this panel hierarchy
+        new_focus = QApplication.focusWidget()
+        if new_focus is None or not self.isAncestorOf(new_focus):
+            self.set_panel_focused(False)
