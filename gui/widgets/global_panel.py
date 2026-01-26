@@ -92,6 +92,7 @@ class GlobalPanel(QGroupBox):
 
         # ADSR controls (left)
         self._adsr_group = SliderGroup('ADSR Envelope', ADSR_PARAMS, label_width=70)
+        self._adsr_group.set_group_focused(False)  # Set initial style to avoid layout shift
         self._adsr_group.sliderChanged.connect(
             lambda p, v: self.parameterChanged.emit('adsr', p, v)
         )
@@ -102,6 +103,7 @@ class GlobalPanel(QGroupBox):
 
         # Effects group with tabs (center)
         self._effects_group = QGroupBox('Effects')
+        self._effects_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
         effects_layout = QVBoxLayout(self._effects_group)
         effects_layout.setContentsMargins(8, 8, 8, 8)
 
@@ -151,6 +153,7 @@ class GlobalPanel(QGroupBox):
 
         # Right side: Modulator group (like other subsections)
         self._modulator_group = QGroupBox('Modulator')
+        self._modulator_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
         modulator_layout = QVBoxLayout(self._modulator_group)
         modulator_layout.setSpacing(4)
 
@@ -165,6 +168,7 @@ class GlobalPanel(QGroupBox):
         self._modulator_slider.setTracking(True)
         self._modulator_slider.setFixedWidth(32)
         self._modulator_slider.setMinimumHeight(150)
+        self._modulator_slider.setStyleSheet(get_slider_focus_style(False))  # Set initial style
         modulator_layout.addWidget(self._modulator_slider, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self._modulator_slider.valueChanged.connect(self._on_modulator_size_changed)
@@ -175,6 +179,7 @@ class GlobalPanel(QGroupBox):
         for i in range(1, 11):
             self._modulator_selector.addItem(f'Mod {i}', i)
         self._modulator_selector.setFixedWidth(80)
+        self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))  # Set initial style
         self._modulator_selector.currentIndexChanged.connect(self._on_modulator_selected)
         modulator_layout.addWidget(self._modulator_selector, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -214,6 +219,9 @@ class GlobalPanel(QGroupBox):
         self._chorus_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(3)
         )
+
+        # Set initial unfocused style on panel to avoid layout shift on first focus change
+        self.setStyleSheet(get_section_focus_style(False))
 
     def _on_modulator_size_changed(self, value: int):
         """Handle modulator size value change."""

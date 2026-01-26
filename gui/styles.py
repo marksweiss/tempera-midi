@@ -54,7 +54,7 @@ QWidget {
 }
 
 QGroupBox {
-    border: 1px solid #404040;
+    border: 2px solid #404040;
     border-radius: 4px;
     margin-top: 12px;
     padding-top: 8px;
@@ -82,10 +82,10 @@ QSlider::groove:horizontal {
 
 QSlider::handle:horizontal {
     background: #606060;
-    border: 1px solid #505050;
+    border: 2px solid #505050;
     width: 14px;
     margin: -5px 0;
-    border-radius: 7px;
+    border-radius: 8px;
 }
 
 QSlider::handle:horizontal:hover {
@@ -110,10 +110,10 @@ QSlider::groove:vertical {
 
 QSlider::handle:vertical {
     background: #606060;
-    border: 1px solid #505050;
+    border: 2px solid #505050;
     height: 14px;
     margin: 0 -5px;
-    border-radius: 7px;
+    border-radius: 8px;
 }
 
 QSlider::handle:vertical:hover {
@@ -339,104 +339,66 @@ def get_emitter_button_style(emitter_num: int, selected: bool = False) -> str:
 
 def get_section_focus_style(focused: bool = False) -> str:
     """Get style for a section container (GroupBox) with focus indicator."""
-    if focused:
-        return f"""
-            QGroupBox {{
-                border: 2px solid {SECTION_ACTIVE_BORDER};
-                border-radius: 4px;
-                margin-top: 12px;
-                padding-top: 8px;
-                font-weight: bold;
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 8px;
-                color: {SECTION_ACTIVE_BORDER};
-            }}
-        """
-    else:
-        return """
-            QGroupBox {
-                border: 1px solid #404040;
-                border-radius: 4px;
-                margin-top: 12px;
-                padding-top: 8px;
-                font-weight: bold;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 8px;
-                color: #A0A0A0;
-            }
-        """
+    border_color = SECTION_ACTIVE_BORDER if focused else '#404040'
+    title_color = SECTION_ACTIVE_BORDER if focused else '#A0A0A0'
+    return f"""
+        QGroupBox {{
+            border: 2px solid {border_color};
+            border-radius: 4px;
+            margin-top: 12px;
+            padding-top: 8px;
+            font-weight: bold;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 8px;
+            color: {title_color};
+        }}
+    """
 
 
 def get_slider_focus_style(focused: bool = False) -> str:
     """Get style for a slider with focus glow effect."""
     if focused:
-        return f"""
-            QSlider::handle:horizontal {{
-                background: {FOCUS_GLOW};
-                border: 2px solid {SECTION_ACTIVE_BORDER};
-                width: 16px;
-                margin: -6px 0;
-                border-radius: 9px;
-            }}
-            QSlider::handle:vertical {{
-                background: {FOCUS_GLOW};
-                border: 2px solid {SECTION_ACTIVE_BORDER};
-                height: 16px;
-                margin: 0 -6px;
-                border-radius: 9px;
-            }}
-        """
+        bg_color = FOCUS_GLOW
+        border_color = SECTION_ACTIVE_BORDER
     else:
-        return """
-            QSlider::handle:horizontal {
-                background: #606060;
-                border: 1px solid #505050;
-                width: 14px;
-                margin: -5px 0;
-                border-radius: 7px;
-            }
-            QSlider::handle:vertical {
-                background: #606060;
-                border: 1px solid #505050;
-                height: 14px;
-                margin: 0 -5px;
-                border-radius: 7px;
-            }
-        """
+        bg_color = '#606060'
+        border_color = '#505050'
+
+    return f"""
+        QSlider::handle:horizontal {{
+            background: {bg_color};
+            border: 2px solid {border_color};
+            width: 14px;
+            margin: -5px 0;
+            border-radius: 8px;
+        }}
+        QSlider::handle:vertical {{
+            background: {bg_color};
+            border: 2px solid {border_color};
+            height: 14px;
+            margin: 0 -5px;
+            border-radius: 8px;
+        }}
+    """
 
 
 def get_combobox_focus_style(focused: bool = False) -> str:
     """Get style for a combobox with focus indicator."""
-    if focused:
-        return f"""
-            QComboBox {{
-                border: 2px solid {SECTION_ACTIVE_BORDER};
-                border-radius: 4px;
-                padding: 4px 8px;
-                background-color: #3A3A3A;
-            }}
-            QComboBox::drop-down {{
-                border: none;
-            }}
-        """
-    else:
-        return """
-            QComboBox {
-                border: 1px solid #505050;
-                border-radius: 4px;
-                padding: 4px 8px;
-                background-color: #3A3A3A;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-        """
+    border_color = SECTION_ACTIVE_BORDER if focused else '#505050'
+    return f"""
+        QComboBox {{
+            border: 2px solid {border_color};
+            border-radius: 4px;
+            padding: 4px 8px;
+            background-color: #3A3A3A;
+        }}
+        QComboBox::drop-down {{
+            border: none;
+        }}
+    """
 
 
 # Hint badge stylesheet

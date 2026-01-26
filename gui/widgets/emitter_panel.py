@@ -190,6 +190,12 @@ class EmitterPanel(QGroupBox):
             lambda: self.subsectionFocusRequested.emit(3)
         )
 
+        # Set initial unfocused styles to avoid layout shift on first focus change
+        for group in [self._basic_group, self._grain_group,
+                      self._position_group, self._filter_group]:
+            group.set_group_focused(False)
+        self.setStyleSheet(get_section_focus_style(False))
+
     def _on_emitter_clicked(self, emitter_num: int):
         """Handle emitter button click."""
         if emitter_num == self._current_emitter:

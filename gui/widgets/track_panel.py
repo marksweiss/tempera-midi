@@ -99,6 +99,9 @@ class TrackPanel(QGroupBox):
 
         main_layout.addLayout(tracks_layout)
 
+        # Set initial unfocused style on panel to avoid layout shift on first focus change
+        self.setStyleSheet(get_section_focus_style(False))
+
     def _create_track_control(self, track_num: int) -> QWidget:
         """Create controls for a single track."""
         widget = QWidget()
@@ -121,6 +124,7 @@ class TrackPanel(QGroupBox):
         slider.setTracking(True)
         slider.setFixedWidth(24)
         slider.setMinimumHeight(160)
+        slider.setStyleSheet(get_slider_focus_style(False))  # Set initial style
         self._sliders[track_num] = slider
         layout.addWidget(slider, alignment=Qt.AlignmentFlag.AlignCenter)
 
