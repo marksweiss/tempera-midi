@@ -178,9 +178,10 @@ class GlobalPanel(QGroupBox):
         self._modulator_selector.currentIndexChanged.connect(self._on_modulator_selected)
         modulator_layout.addWidget(self._modulator_selector, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # Install event filter on modulator controls for click detection
+        # Install event filter on modulator controls and group for click detection
         self._modulator_slider.installEventFilter(self)
         self._modulator_selector.installEventFilter(self)
+        self._modulator_group.installEventFilter(self)
 
         modulator_layout.addStretch()
         layout.addWidget(self._modulator_group)
@@ -534,7 +535,7 @@ class GlobalPanel(QGroupBox):
             self.set_panel_focused(False)
 
     def eventFilter(self, obj, event):
-        """Filter events to detect modulator control clicks."""
+        """Filter events to detect modulator control and group clicks."""
         if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
                 if obj == self._modulator_slider:
@@ -543,4 +544,7 @@ class GlobalPanel(QGroupBox):
                 elif obj == self._modulator_selector:
                     # Modulator dropdown is subsection 4, control 0
                     self.controlFocusRequested.emit(4, 0)
+                elif obj == self._modulator_group:
+                    # Clicking on modulator group header/empty space focuses subsection 4
+                    self.subsectionFocusRequested.emit(4)
         return super().eventFilter(obj, event)
