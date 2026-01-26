@@ -153,6 +153,59 @@ class GUITestHarness:
 
         self.process_events()
 
+    def click_section(self, section: Section) -> None:
+        """Simulate clicking on a section panel (not on a specific control).
+
+        This triggers panel focus without entering control mode, similar to
+        clicking on empty space within a panel.
+        """
+        panel = self._get_panel(section)
+        if panel is None:
+            raise ValueError(f"No panel for section: {section}")
+
+        if section == Section.GRID:
+            # CellGrid doesn't have sectionClicked signal
+            panel.setFocus()
+        else:
+            # Emit the sectionClicked signal that panel.mousePressEvent would emit
+            # This simulates clicking on empty space within the panel
+            panel.sectionClicked.emit()
+        self.process_events()
+
+    def click_subsection(self, section: Section, subsection: int) -> None:
+        """Simulate clicking on a subsection header.
+
+        This triggers subsection focus (SUBSECTION mode), similar to clicking
+        on a SliderGroup's header or empty area.
+
+        Args:
+            section: The section containing the subsection
+            subsection: Subsection index within the section (0-based)
+        """
+        panel = self._get_panel(section)
+        if panel is None:
+            raise ValueError(f"No panel for section: {section}")
+
+        if section == Section.TRACKS:
+            raise ValueError("TrackPanel does not have subsections with headers")
+
+        # Emit the subsectionFocusRequested signal that SliderGroup.mousePressEvent would emit
+        panel.subsectionFocusRequested.emit(subsection)
+        self.process_events()
+
+    def get_all_subsection_focused(self, section: Section) -> list[bool]:
+        """Get focused state of all subsections in a section.
+
+        Returns a list of booleans indicating which subsections have
+        their visual focus style applied (blue border).
+        """
+        panel = self._get_panel(section)
+        if section == Section.TRACKS:
+            return []  # Tracks don't have subsection groups
+
+        groups = panel.slider_groups
+        return [group._group_focused for group in groups]
+
     def select_modulator(self, modulator_num: int) -> None:
         """Select a modulator (1-10) in the Global panel.
 

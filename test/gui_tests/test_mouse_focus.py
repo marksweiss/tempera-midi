@@ -145,6 +145,73 @@ class TestClickDuringModes(GUITestCase):
         self.harness.assert_state_consistent()
 
 
+class TestSliderVisualFocus(GUITestCase):
+    """Tests verifying slider blue glow after mouse clicks.
+
+    These tests specifically verify that clicking on a slider shows the
+    visual blue focus indicator (not just updating NavigationManager state).
+    """
+
+    def test_click_emitter_control_shows_blue_glow(self):
+        """Clicking slider shows blue focus indicator."""
+        self.harness.click_control(Section.EMITTER, 0, 0)  # Basic > Volume
+
+        # Verify NavigationManager state
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+        # Verify visual focus styling - focused_index should be set
+        group_state = self.harness.get_slider_group_state(Section.EMITTER, 0)
+        self.assertEqual(group_state.focused_index, 0)
+
+    def test_click_different_slider_transfers_focus(self):
+        """Clicking different slider transfers blue glow."""
+        self.harness.click_control(Section.EMITTER, 0, 0)  # Volume
+        self.harness.click_control(Section.EMITTER, 0, 1)  # Octave
+
+        group_state = self.harness.get_slider_group_state(Section.EMITTER, 0)
+        self.assertEqual(group_state.focused_index, 1)  # Now on Octave
+
+    def test_click_slider_in_different_group_moves_focus(self):
+        """Clicking slider in different group moves visual focus to new group."""
+        # Focus Volume in Basic group
+        self.harness.click_control(Section.EMITTER, 0, 0)
+        basic_state = self.harness.get_slider_group_state(Section.EMITTER, 0)
+        self.assertTrue(basic_state.group_focused)
+        self.assertEqual(basic_state.focused_index, 0)
+
+        # Click slider in Grain group
+        self.harness.click_control(Section.EMITTER, 2, 0)
+
+        # Basic group should no longer be the focused group
+        # (focused_index may persist for return navigation)
+        basic_state = self.harness.get_slider_group_state(Section.EMITTER, 0)
+        self.assertFalse(basic_state.group_focused)
+
+        # Grain group should now be focused with its slider
+        grain_state = self.harness.get_slider_group_state(Section.EMITTER, 2)
+        self.assertTrue(grain_state.group_focused)
+        self.assertEqual(grain_state.focused_index, 0)
+
+    def test_focus_persists_after_click(self):
+        """Focus remains until another control is selected."""
+        self.harness.click_control(Section.EMITTER, 0, 0)
+
+        # Process additional events (simulate time passing)
+        self.harness.process_events()
+
+        # Focus should still be on the clicked control
+        group_state = self.harness.get_slider_group_state(Section.EMITTER, 0)
+        self.assertEqual(group_state.focused_index, 0)
+
+    def test_global_slider_click_shows_focus(self):
+        """Clicking Global panel slider shows blue focus."""
+        self.harness.click_control(Section.GLOBAL, 1, 0)  # Reverb > Size
+
+        group_state = self.harness.get_slider_group_state(Section.GLOBAL, 1)
+        self.assertEqual(group_state.focused_index, 0)
+        self.harness.assert_state_consistent()
+
+
 class TestClickConsistency(GUITestCase):
     """Tests for consistent state after various click sequences."""
 

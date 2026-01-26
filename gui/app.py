@@ -288,6 +288,25 @@ class MainWindow(QMainWindow):
             lambda sub, ctrl: self._nav.focus_control(Section.TRACKS, sub, ctrl)
         )
 
+        # Panel section click signals (mouse click on panel background)
+        self._emitter_panel.sectionClicked.connect(
+            lambda: self._nav.focus_section(Section.EMITTER)
+        )
+        self._global_panel.sectionClicked.connect(
+            lambda: self._nav.focus_section(Section.GLOBAL)
+        )
+        self._track_panel.sectionClicked.connect(
+            lambda: self._nav.focus_section(Section.TRACKS)
+        )
+
+        # Panel subsection focus requests (mouse click on subsection header)
+        self._emitter_panel.subsectionFocusRequested.connect(
+            lambda sub: self._nav.focus_subsection(Section.EMITTER, sub)
+        )
+        self._global_panel.subsectionFocusRequested.connect(
+            lambda sub: self._nav.focus_subsection(Section.GLOBAL, sub)
+        )
+
         # Panel keyboard navigation signals - update NavigationManager state
         self._emitter_panel.subsectionNavigated.connect(
             lambda idx: self._on_panel_subsection_navigated(Section.EMITTER, idx)
@@ -595,8 +614,24 @@ class MainWindow(QMainWindow):
     def _on_mode_changed(self, mode: NavigationMode):
         """Handle mode change from NavigationManager."""
         section = self._nav.section
+
+        # When switching to SECTION mode, clear all subsection/control state on panels
+        if mode == NavigationMode.SECTION:
+            if section == Section.GLOBAL:
+                self._global_panel.exit_control_mode()
+                # Clear subsection highlighting
+                for group in self._global_panel.slider_groups:
+                    group.set_group_focused(False)
+            elif section == Section.EMITTER:
+                self._emitter_panel.exit_control_mode()
+                # Clear subsection highlighting
+                for group in self._emitter_panel.slider_groups:
+                    group.set_group_focused(False)
+            elif section == Section.TRACKS:
+                self._track_panel.exit_control_mode()
+
         # When switching back to SUBSECTION mode, exit control mode on panels
-        if mode == NavigationMode.SUBSECTION:
+        elif mode == NavigationMode.SUBSECTION:
             if section == Section.GLOBAL:
                 self._global_panel.exit_control_mode()
             elif section == Section.EMITTER:

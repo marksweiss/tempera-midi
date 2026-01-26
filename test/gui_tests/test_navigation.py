@@ -229,5 +229,180 @@ class TestTrackNavigation(GUITestCase):
         self.harness.assert_state_consistent()
 
 
+class TestMouseClickFocusHighlighting(GUITestCase):
+    """Tests for mouse click vs keyboard focus highlighting."""
+
+    def test_click_on_emitter_highlights_only_panel(self):
+        """Clicking on Emitter section should highlight only panel, not subsections."""
+        # Click on emitter panel (not on a specific control)
+        self.harness.click_section(Section.EMITTER)
+
+        # Verify panel is highlighted
+        panel_state = self.harness.get_panel_state(Section.EMITTER)
+        self.assertTrue(panel_state.panel_focused)
+
+        # Verify NO subsections are highlighted
+        subsection_states = self.harness.get_all_subsection_focused(Section.EMITTER)
+        for i, is_focused in enumerate(subsection_states):
+            self.assertFalse(is_focused, f"Subsection {i} should not be focused")
+
+    def test_click_on_global_highlights_only_panel(self):
+        """Clicking on Global section should highlight only panel, not subsections."""
+        self.harness.click_section(Section.GLOBAL)
+
+        panel_state = self.harness.get_panel_state(Section.GLOBAL)
+        self.assertTrue(panel_state.panel_focused)
+
+        subsection_states = self.harness.get_all_subsection_focused(Section.GLOBAL)
+        for i, is_focused in enumerate(subsection_states):
+            self.assertFalse(is_focused, f"Subsection {i} should not be focused")
+
+    def test_keyboard_e_same_as_click_on_emitter(self):
+        """Keyboard 'E' and mouse click should produce identical subsection states."""
+        # Get state after keyboard
+        self.harness.press_shortcut('E')
+        keyboard_subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+
+        # Reset to Grid
+        self.harness.press_shortcut('Q')
+
+        # Get state after mouse click
+        self.harness.click_section(Section.EMITTER)
+        mouse_subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+
+        # All subsections should be unfocused in both cases
+        self.assertEqual(keyboard_subsections, mouse_subsections)
+        self.assertEqual(keyboard_subsections, [False, False, False, False])
+
+    def test_click_on_fresh_state(self):
+        """Clicking on section from fresh state should not highlight subsections."""
+        # No prior navigation - this is the key test case for the bug
+        self.harness.click_section(Section.EMITTER)
+
+        subsection_states = self.harness.get_all_subsection_focused(Section.EMITTER)
+        self.assertEqual(subsection_states, [False, False, False, False])
+
+    def test_click_on_global_effects_container_not_highlighted(self):
+        """Effects container QGroupBox should not inherit panel's blue border."""
+        self.harness.click_section(Section.GLOBAL)
+
+        # Verify panel is highlighted
+        panel_state = self.harness.get_panel_state(Section.GLOBAL)
+        self.assertTrue(panel_state.panel_focused)
+
+        # Verify Effects container is NOT highlighted (has unfocused style)
+        effects_group = self.harness.window._global_panel._effects_group
+        stylesheet = effects_group.styleSheet()
+        # Should have unfocused style (gray border), not empty or blue
+        self.assertIn('#404040', stylesheet)  # Gray border color from unfocused style
+        self.assertNotIn('#5AA0E9', stylesheet)  # Should NOT have blue border
+
+
+class TestSubsectionClickFocus(GUITestCase):
+    """Tests for clicking on subsection headers."""
+
+    def test_click_subsection_enters_subsection_mode(self):
+        """Clicking subsection header enters SUBSECTION mode."""
+        self.harness.click_subsection(Section.EMITTER, 0)
+        self.harness.assert_mode(NavigationMode.SUBSECTION)
+        self.assertEqual(self.harness.get_nav_state().subsection, 0)
+
+    def test_click_subsection_highlights_only_that_subsection(self):
+        """Only clicked subsection is highlighted."""
+        self.harness.click_subsection(Section.EMITTER, 2)
+        subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+        self.assertEqual(subsections, [False, False, True, False])
+
+    def test_mixed_keyboard_click_sequence(self):
+        """E -> click Grain -> F works correctly."""
+        self.harness.press_shortcut('E')
+        self.harness.click_subsection(Section.EMITTER, 2)  # Grain
+        self.harness.assert_mode(NavigationMode.SUBSECTION)
+
+        self.harness.press_shortcut('F')
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+    def test_keyboard_after_subsection_click(self):
+        """W after subsection click moves to adjacent subsection."""
+        self.harness.click_subsection(Section.EMITTER, 2)
+        self.harness.press_shortcut('W')  # Move up
+        self.assertEqual(self.harness.get_nav_state().subsection, 1)
+
+    def test_click_different_subsection_changes_focus(self):
+        """Clicking a different subsection changes focus."""
+        self.harness.click_subsection(Section.EMITTER, 0)  # Basic
+        self.assertEqual(self.harness.get_nav_state().subsection, 0)
+
+        self.harness.click_subsection(Section.EMITTER, 3)  # Position
+        self.assertEqual(self.harness.get_nav_state().subsection, 3)
+
+        # Verify only Position is highlighted
+        subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+        self.assertEqual(subsections, [False, False, False, True])
+
+    def test_click_global_subsection(self):
+        """Clicking on Global subsection works correctly."""
+        self.harness.click_subsection(Section.GLOBAL, 1)  # Reverb
+        self.harness.assert_mode(NavigationMode.SUBSECTION)
+        self.harness.assert_focus(Section.GLOBAL, subsection=1)
+
+
+class TestSectionClickNavigation(GUITestCase):
+    """Tests for section clicks updating NavigationManager."""
+
+    def test_click_section_updates_nav_manager(self):
+        """Clicking section updates NavigationManager state."""
+        self.harness.press_shortcut('G')  # Global
+        self.harness.click_section(Section.EMITTER)
+
+        nav = self.harness.get_nav_state()
+        self.assertEqual(nav.section, Section.EMITTER)
+        self.harness.assert_mode(NavigationMode.SECTION)
+
+    def test_click_section_resets_from_control_mode(self):
+        """Clicking section resets from CONTROL mode."""
+        self.harness.press_shortcut('E')
+        self.harness.press_shortcut('F')
+        self.harness.press_shortcut('F')
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+        self.harness.click_section(Section.EMITTER)
+        self.harness.assert_mode(NavigationMode.SECTION)
+
+    def test_click_same_section_resets_mode(self):
+        """Clicking current section resets to SECTION mode."""
+        # Enter subsection mode
+        self.harness.press_shortcut('E')
+        self.harness.press_shortcut('F')
+        self.harness.assert_mode(NavigationMode.SUBSECTION)
+
+        # Click on same section
+        self.harness.click_section(Section.EMITTER)
+        self.harness.assert_mode(NavigationMode.SECTION)
+
+    def test_click_different_section_changes_focus(self):
+        """Clicking different section changes to that section."""
+        self.harness.press_shortcut('E')  # Emitter
+        self.harness.click_section(Section.GLOBAL)
+
+        nav = self.harness.get_nav_state()
+        self.assertEqual(nav.section, Section.GLOBAL)
+        self.harness.assert_mode(NavigationMode.SECTION)
+
+    def test_click_section_clears_subsection_highlighting(self):
+        """Clicking section clears any subsection highlighting."""
+        # First enter subsection mode
+        self.harness.press_shortcut('E')
+        self.harness.press_shortcut('F')
+        # Verify subsection is highlighted
+        subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+        self.assertTrue(any(subsections))
+
+        # Click section - should clear subsection highlighting
+        self.harness.click_section(Section.EMITTER)
+        subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
+        self.assertEqual(subsections, [False, False, False, False])
+
+
 if __name__ == '__main__':
     unittest.main()

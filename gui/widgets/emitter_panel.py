@@ -64,6 +64,9 @@ class EmitterPanel(QGroupBox):
     # Signals for keyboard navigation within panel
     subsectionNavigated = Signal(int)  # Emitted when subsection changes via keyboard (new index)
     controlNavigated = Signal(int)  # Emitted when control changes via keyboard (new index)
+    # Signals for mouse click focus
+    sectionClicked = Signal()  # Emitted when panel background is clicked
+    subsectionFocusRequested = Signal(int)  # Emitted when a subsection header is clicked
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Emitter', parent)
@@ -167,6 +170,20 @@ class EmitterPanel(QGroupBox):
         )
         self._position_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
+        )
+
+        # Connect subsection click signals (clicking on group header/empty space)
+        self._basic_group.subsectionClicked.connect(
+            lambda: self.subsectionFocusRequested.emit(0)
+        )
+        self._filter_group.subsectionClicked.connect(
+            lambda: self.subsectionFocusRequested.emit(1)
+        )
+        self._grain_group.subsectionClicked.connect(
+            lambda: self.subsectionFocusRequested.emit(2)
+        )
+        self._position_group.subsectionClicked.connect(
+            lambda: self.subsectionFocusRequested.emit(3)
         )
 
     def _on_emitter_clicked(self, emitter_num: int):
@@ -299,17 +316,16 @@ class EmitterPanel(QGroupBox):
         return path
 
     def set_panel_focused(self, focused: bool):
-        """Set whether this panel is the active section.
-
-        Note: This only controls the panel border highlight, not subsection
-        highlights. Subsection focus is controlled via set_subsection_focus().
-        """
+        """Set whether this panel is the active section."""
         self._panel_focused = focused
         self.setStyleSheet(get_section_focus_style(focused))
-        # Clear all subsection focus and control focus when panel loses focus
+        # Always explicitly set subsection styles to prevent Qt stylesheet cascade
+        # When focused=True: ensure subsections don't inherit panel's blue border
+        # When focused=False: clear all highlights
+        for group in self.slider_groups:
+            group.set_group_focused(False)
         if not focused:
             for group in self.slider_groups:
-                group.set_group_focused(False)
                 group.clear_control_focus()
             self._in_control_mode = False
 
@@ -317,6 +333,10 @@ class EmitterPanel(QGroupBox):
         """Handle focus gained - show panel highlight only."""
         super().focusInEvent(event)
         self.set_panel_focused(True)
+        # Don't emit sectionClicked here - it should only be emitted from
+        # mousePressEvent when user explicitly clicks on panel background.
+        # focusInEvent fires both from clicks AND programmatic focus changes,
+        # and we don't want programmatic changes to reset navigation state.
         # Don't auto-highlight subsections - NavigationManager controls that
 
     def focusOutEvent(self, event: QFocusEvent):

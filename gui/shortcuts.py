@@ -442,6 +442,55 @@ class NavigationManager(QObject):
         keys.update(SHARED_KEYS)
         return keys
 
+    def focus_section(self, section: Section):
+        """Set focus to a section from mouse click.
+
+        This allows mouse clicks to focus sections, achieving the same state
+        as keyboard navigation. The NavigationManager remains the single
+        source of truth for focus state.
+
+        Args:
+            section: The section to focus
+        """
+        if section != self._section:
+            self._section = section
+            self._subsection = 0
+            self._control = 0
+            self._mode = NavigationMode.SECTION
+            self.sectionChanged.emit(section)
+            self.modeChanged.emit(self._mode)
+        elif self._mode != NavigationMode.SECTION:
+            # Same section but deeper mode - reset to SECTION
+            self._subsection = 0
+            self._control = 0
+            self._mode = NavigationMode.SECTION
+            self.modeChanged.emit(self._mode)
+        self._update_path()
+
+    def focus_subsection(self, section: Section, subsection: int):
+        """Set focus to a subsection from mouse click (enters SUBSECTION mode).
+
+        This allows mouse clicks to focus subsections, achieving the same state
+        as keyboard navigation. The NavigationManager remains the single
+        source of truth for focus state.
+
+        Args:
+            section: The section containing the subsection
+            subsection: The subsection index within the section
+        """
+        section_changed = section != self._section
+
+        self._section = section
+        self._subsection = subsection
+        self._control = 0
+        self._mode = NavigationMode.SUBSECTION
+
+        if section_changed:
+            self.sectionChanged.emit(section)
+        self.subsectionChanged.emit(subsection)
+        self.modeChanged.emit(self._mode)
+        self._update_path()
+
     def focus_control(self, section: Section, subsection: int, control: int):
         """Set focus to a specific control (from mouse click).
 

@@ -76,6 +76,9 @@ class LabeledSlider(QWidget):
         self._slider.valueChanged.connect(self._on_value_changed)
         self._slider.sliderReleased.connect(self._on_slider_released)
 
+        # Install event filter to detect clicks on the internal slider
+        self._slider.installEventFilter(self)
+
     def _on_value_changed(self, value: int):
         """Handle continuous value changes during drag."""
         self._value_label.setText(str(value))
@@ -168,3 +171,14 @@ class LabeledSlider(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
+
+    def eventFilter(self, obj, event):
+        """Filter events to detect clicks on the internal slider.
+
+        QSlider consumes mouse events, so we use an event filter to detect
+        clicks and emit the clicked signal for focus management.
+        """
+        if obj == self._slider and event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.clicked.emit()
+        return super().eventFilter(obj, event)

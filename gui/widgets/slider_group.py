@@ -3,7 +3,7 @@
 from typing import Callable, Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSizePolicy
 
 from gui.widgets.labeled_slider import LabeledSlider
@@ -27,6 +27,7 @@ class SliderGroup(QGroupBox):
     sliderSet = Signal(str, int)
     focusedControlChanged = Signal(int, str)
     controlClicked = Signal(int, str)
+    subsectionClicked = Signal()  # Emitted when clicking on empty space (header, gaps)
 
     def __init__(
         self,
@@ -270,3 +271,14 @@ class SliderGroup(QGroupBox):
         """
         super().focusOutEvent(event)
         # Don't auto-clear visual focus - NavigationManager controls this
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """Handle mouse click on group (not on a slider) to focus the subsection.
+
+        If the click was on a slider, this method is never called - the slider
+        handles it first and emits clicked() -> CONTROL mode. This method only
+        fires for clicks on empty space (header, margins, gaps between sliders).
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.subsectionClicked.emit()
+        # Don't call super() - we handled it

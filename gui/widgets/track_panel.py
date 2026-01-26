@@ -54,6 +54,8 @@ class TrackPanel(QGroupBox):
     controlFocusRequested = Signal(int, int)
     # Signals for keyboard navigation within panel
     subsectionNavigated = Signal(int)  # Emitted when track changes via keyboard (track_index 0-based)
+    # Signals for mouse click focus
+    sectionClicked = Signal()  # Emitted when panel background is clicked
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Tracks', parent)
@@ -305,6 +307,10 @@ class TrackPanel(QGroupBox):
         """Handle focus gained - show panel highlight only."""
         super().focusInEvent(event)
         self.set_panel_focused(True)
+        # Don't emit sectionClicked here - it should only be emitted from
+        # mousePressEvent when user explicitly clicks on panel background.
+        # focusInEvent fires both from clicks AND programmatic focus changes,
+        # and we don't want programmatic changes to reset navigation state.
         # Don't auto-focus a track - NavigationManager controls that
 
     def focusOutEvent(self, event: QFocusEvent):

@@ -182,6 +182,16 @@ Classes
 `delay(self, *, feedback: int = None, time: int = None, color: int = None, mix: int = None) ‑> list[mido.messages.messages.Message]`
 :   Change Delay parameters.
 
+`modulator_size(self, modulator_num: int, value: int) ‑> mido.messages.messages.Message`
+:   Change Modulator Size for a specific modulator.
+    
+    Args:
+        modulator_num: Modulator number (1-10)
+        value: Size value (0-127)
+    
+    Returns:
+        MIDI CC message for the modulator size
+
 `modwheel(self, modwheel: int) ‑> mido.messages.messages.Message`
 :   Change Modwheel.
 
