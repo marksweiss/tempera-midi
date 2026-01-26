@@ -712,3 +712,25 @@ class TemperaAdapter:
 
         self.state.set_sequencer_running(False)
         self._notify_status('Sequencer stopped')
+
+    async def update_running_column_pattern(self, column: int):
+        """Update a column pattern on the running sequencer.
+
+        Args:
+            column: Column number (1-8) to update
+        """
+        if (self._column_sequencer
+                and self.state.get_sequencer_running()
+                and self.state.get_sequencer_mode() == 'column'):
+            pattern = self.state.get_column_pattern(column)
+            await self._column_sequencer.set_column_pattern(column, pattern)
+            self._notify_status(f'Updated column {column} pattern')
+
+    async def update_running_grid_pattern(self):
+        """Update the grid pattern on the running sequencer."""
+        if (self._grid_sequencer
+                and self.state.get_sequencer_running()
+                and self.state.get_sequencer_mode() == 'grid'):
+            pattern = self.state.get_grid_pattern()
+            await self._grid_sequencer.set_pattern(pattern)
+            self._notify_status('Updated grid pattern')

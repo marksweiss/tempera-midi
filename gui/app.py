@@ -41,6 +41,9 @@ class MainWindow(QMainWindow):
         self._adapter.set_status_callback(self._update_status)
         self._prefs = get_preferences()
 
+        # Grid mode: 'hardware' | 'column' | 'grid'
+        self._grid_mode = 'hardware'
+
         self._setup_ui()
         self._setup_shortcuts()
         self._setup_navigation()
@@ -337,8 +340,13 @@ class MainWindow(QMainWindow):
         # Sync global parameters
         self._global_panel.set_all_parameters(state['global'])
 
-        # Sync cells
-        self._cell_grid.set_all_cells(state['cells'])
+        # Sync cells based on current grid mode
+        if self._grid_mode == 'hardware':
+            self._cell_grid.set_all_cells(state['cells'])
+        elif self._grid_mode == 'column':
+            self._load_column_patterns_to_grid()
+        else:  # 'grid'
+            self._load_grid_pattern_to_grid()
 
         # Sync active emitter
         self._emitter_panel.select_emitter(state['active_emitter'])
@@ -433,14 +441,27 @@ class MainWindow(QMainWindow):
         self._adapter.set_emitter_param(emitter_num, param, value, immediate=True)
 
     def _on_cell_clicked(self, column: int, cell: int):
-        """Handle cell click (left button)."""
+        """Handle cell click (left button).
+
+        Behavior depends on current grid mode:
+        - hardware: Toggle emitter placement on Tempera hardware
+        - column: Toggle cell in column sequencer pattern
+        - grid: Toggle cell in grid sequencer pattern
+        """
+        if self._grid_mode == 'hardware':
+            self._on_cell_clicked_hardware(column, cell)
+        elif self._grid_mode == 'column':
+            self._on_cell_clicked_column(column, cell)
+        else:  # 'grid'
+            self._on_cell_clicked_grid(column, cell)
+
+    def _on_cell_clicked_hardware(self, column: int, cell: int):
+        """Handle cell click in hardware mode."""
         # Get current state BEFORE toggling to predict new state
         current = self._adapter.state.get_cell(column, cell)
         if current is None:
-            # Cell is empty, will be set to active emitter
             new_value = self._adapter.state.get_active_emitter()
         else:
-            # Cell has emitter, will be cleared
             new_value = None
 
         # Schedule the async operation
@@ -449,10 +470,69 @@ class MainWindow(QMainWindow):
         # Update grid immediately with predicted new value for responsiveness
         self._cell_grid.set_cell(column, cell, new_value)
 
+    def _on_cell_clicked_column(self, column: int, cell: int):
+        """Handle cell click in column sequencer mode."""
+        # Get current pattern cell state
+        pattern = self._adapter.state.get_column_pattern(column)
+        current = pattern.get(cell)
+        emitter = self._adapter.state.get_active_emitter()
+
+        if current is None:
+            # Empty cell - add with active emitter
+            self._adapter.set_column_pattern_cell(column, cell, True, emitter)
+            self._cell_grid.set_cell(column, cell, emitter)
+        else:
+            # Occupied cell - clear it
+            self._adapter.set_column_pattern_cell(column, cell, False, emitter)
+            self._cell_grid.clear_cell(column, cell)
+
+        # Update running sequencer if active
+        self._schedule_async(self._adapter.update_running_column_pattern(column))
+
+    def _on_cell_clicked_grid(self, column: int, cell: int):
+        """Handle cell click in grid sequencer mode."""
+        # Convert (column, cell) to step_index
+        step_index = ((column - 1) * 8) + (cell - 1)
+
+        # Get current pattern cell state
+        pattern = self._adapter.state.get_grid_pattern()
+        current = pattern.get(step_index)
+        emitter = self._adapter.state.get_active_emitter()
+
+        if current is None:
+            # Empty cell - add with active emitter
+            self._adapter.set_grid_pattern_cell(step_index, True, emitter)
+            self._cell_grid.set_cell(column, cell, emitter)
+        else:
+            # Occupied cell - clear it
+            self._adapter.set_grid_pattern_cell(step_index, False, emitter)
+            self._cell_grid.clear_cell(column, cell)
+
+        # Update running sequencer if active
+        self._schedule_async(self._adapter.update_running_grid_pattern())
+
     def _on_cell_right_clicked(self, column: int, cell: int):
-        """Handle cell right-click (clear)."""
-        self._schedule_async(self._adapter.remove_from_cell(column, cell))
-        self._cell_grid.clear_cell(column, cell)
+        """Handle cell right-click (clear).
+
+        Behavior depends on current grid mode:
+        - hardware: Remove emitter from Tempera hardware cell
+        - column: Remove cell from column sequencer pattern
+        - grid: Remove cell from grid sequencer pattern
+        """
+        if self._grid_mode == 'hardware':
+            self._schedule_async(self._adapter.remove_from_cell(column, cell))
+            self._cell_grid.clear_cell(column, cell)
+        elif self._grid_mode == 'column':
+            emitter = self._adapter.state.get_active_emitter()
+            self._adapter.set_column_pattern_cell(column, cell, False, emitter)
+            self._cell_grid.clear_cell(column, cell)
+            self._schedule_async(self._adapter.update_running_column_pattern(column))
+        else:  # 'grid'
+            step_index = ((column - 1) * 8) + (cell - 1)
+            emitter = self._adapter.state.get_active_emitter()
+            self._adapter.set_grid_pattern_cell(step_index, False, emitter)
+            self._cell_grid.clear_cell(column, cell)
+            self._schedule_async(self._adapter.update_running_grid_pattern())
 
     def _on_track_volume_changed(self, track_num: int, value: int):
         """Handle track volume change during drag."""
@@ -526,6 +606,57 @@ class MainWindow(QMainWindow):
             # Sync BPM to adapter when sequencer is selected
             bpm = self._transport.get_bpm()
             self._adapter.set_sequencer_bpm(bpm)
+
+        # Switch grid mode based on sequencer selection
+        if seq_type is None:
+            self._switch_grid_mode('hardware')
+        elif seq_type == 'column':
+            self._switch_grid_mode('column')
+        else:
+            self._switch_grid_mode('grid')
+
+    def _switch_grid_mode(self, mode: str):
+        """Switch the grid display mode.
+
+        Args:
+            mode: 'hardware', 'column', or 'grid'
+        """
+        self._grid_mode = mode
+
+        # Clear grid and load appropriate data
+        self._cell_grid.clear_all()
+
+        if mode == 'hardware':
+            self._cell_grid.set_all_cells(self._adapter.state.state['cells'])
+        elif mode == 'column':
+            self._load_column_patterns_to_grid()
+        else:  # 'grid'
+            self._load_grid_pattern_to_grid()
+
+    def _load_column_patterns_to_grid(self):
+        """Load column sequencer patterns to the grid display."""
+        state = self._adapter.state.state
+        cells = {}
+        for col in range(1, 9):
+            pattern = state['sequencer']['column_patterns'].get(col, {})
+            for cell, emitter in pattern.items():
+                cells[(col, cell)] = emitter
+        self._cell_grid.set_all_cells(cells)
+
+    def _load_grid_pattern_to_grid(self):
+        """Load grid sequencer pattern to the grid display.
+
+        Grid pattern uses step indices 0-63 which map to columns/cells:
+        - column = (step_index // 8) + 1
+        - cell = (step_index % 8) + 1
+        """
+        state = self._adapter.state.state
+        cells = {}
+        for step_index, emitter in state['sequencer']['grid_pattern'].items():
+            column = (step_index // 8) + 1
+            cell = (step_index % 8) + 1
+            cells[(column, cell)] = emitter
+        self._cell_grid.set_all_cells(cells)
 
     def _on_bpm_changed(self, bpm: int):
         """Handle BPM change from transport."""
