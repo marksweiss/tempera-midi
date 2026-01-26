@@ -333,18 +333,26 @@ class NavigationManager(QObject):
         elif name == 'nav_next':
             self.navigate_next()
 
-        # Value adjustment (only in CONTROL mode)
+        # Value adjustment (CONTROL mode) or grid horizontal movement (GRID section)
         elif name == 'value_decrease':
-            if self._mode == NavigationMode.CONTROL:
+            if self._section == Section.GRID:
+                self.actionTriggered.emit('grid_left')
+            elif self._mode == NavigationMode.CONTROL:
                 self.valueAdjust.emit(-1)
         elif name == 'value_increase':
-            if self._mode == NavigationMode.CONTROL:
+            if self._section == Section.GRID:
+                self.actionTriggered.emit('grid_right')
+            elif self._mode == NavigationMode.CONTROL:
                 self.valueAdjust.emit(1)
         elif name == 'value_decrease_large':
-            if self._mode == NavigationMode.CONTROL:
+            if self._section == Section.GRID:
+                self.actionTriggered.emit('grid_left')
+            elif self._mode == NavigationMode.CONTROL:
                 self.valueAdjust.emit(-10)
         elif name == 'value_increase_large':
-            if self._mode == NavigationMode.CONTROL:
+            if self._section == Section.GRID:
+                self.actionTriggered.emit('grid_right')
+            elif self._mode == NavigationMode.CONTROL:
                 self.valueAdjust.emit(10)
 
         # Actions
