@@ -39,6 +39,11 @@ LEFT_HAND_KEYS = {
     # Navigation within section (W/S for prev/next)
     'nav_prev': 'W',
     'nav_next': 'S',
+    # Value adjustment (A/D for decrease/increase)
+    'value_decrease': 'A',
+    'value_increase': 'D',
+    'value_decrease_large': 'Shift+A',
+    'value_increase_large': 'Shift+D',
     # Actions
     'toggle_focus': 'F',  # Single toggle action for enter/exit focus
     'toggle_cell': 'Space',
@@ -59,6 +64,11 @@ RIGHT_HAND_KEYS = {
     # Navigation within section (Up/Down for prev/next)
     'nav_prev': 'Up',
     'nav_next': 'Down',
+    # Value adjustment (Left/Right arrows for decrease/increase)
+    'value_decrease': 'Left',
+    'value_increase': 'Right',
+    'value_decrease_large': 'Shift+Left',
+    'value_increase_large': 'Shift+Right',
     # Actions
     'toggle_focus': 'Return',  # Single toggle action
     'toggle_cell': 'Space',  # Use Space for cell toggle, Return for focus
@@ -323,6 +333,20 @@ class NavigationManager(QObject):
         elif name == 'nav_next':
             self.navigate_next()
 
+        # Value adjustment (only in CONTROL mode)
+        elif name == 'value_decrease':
+            if self._mode == NavigationMode.CONTROL:
+                self.valueAdjust.emit(-1)
+        elif name == 'value_increase':
+            if self._mode == NavigationMode.CONTROL:
+                self.valueAdjust.emit(1)
+        elif name == 'value_decrease_large':
+            if self._mode == NavigationMode.CONTROL:
+                self.valueAdjust.emit(-10)
+        elif name == 'value_increase_large':
+            if self._mode == NavigationMode.CONTROL:
+                self.valueAdjust.emit(10)
+
         # Actions
         elif name == 'toggle_focus':
             self._toggle_focus()
@@ -559,11 +583,25 @@ class NavigationManager(QObject):
         In SUBSECTION mode: go to previous subsection
         In CONTROL mode: go to previous control (wrap within subsection)
         In SECTION mode: no-op (use Q/E/T/G for section navigation)
+
+        Special cases:
+        - GRID section: emit action for grid cursor movement instead
+        - TRACKS section in CONTROL mode: navigate between tracks (subsections)
+          since each track only has one control
         """
+        # Grid uses its own 2D cursor navigation
+        if self._section == Section.GRID:
+            self.actionTriggered.emit('grid_up')
+            return
+
         if self._mode == NavigationMode.SUBSECTION:
             self._navigate_subsection(-1)
         elif self._mode == NavigationMode.CONTROL:
-            self._navigate_control(-1)
+            # For TRACKS, navigate between subsections since each has only 1 control
+            if self._section == Section.TRACKS:
+                self._navigate_subsection(-1)
+            else:
+                self._navigate_control(-1)
         # In SECTION mode, do nothing - use section shortcuts instead
 
     def navigate_next(self):
@@ -572,11 +610,25 @@ class NavigationManager(QObject):
         In SUBSECTION mode: go to next subsection
         In CONTROL mode: go to next control (wrap within subsection)
         In SECTION mode: no-op (use Q/E/T/G for section navigation)
+
+        Special cases:
+        - GRID section: emit action for grid cursor movement instead
+        - TRACKS section in CONTROL mode: navigate between tracks (subsections)
+          since each track only has one control
         """
+        # Grid uses its own 2D cursor navigation
+        if self._section == Section.GRID:
+            self.actionTriggered.emit('grid_down')
+            return
+
         if self._mode == NavigationMode.SUBSECTION:
             self._navigate_subsection(1)
         elif self._mode == NavigationMode.CONTROL:
-            self._navigate_control(1)
+            # For TRACKS, navigate between subsections since each has only 1 control
+            if self._section == Section.TRACKS:
+                self._navigate_subsection(1)
+            else:
+                self._navigate_control(1)
         # In SECTION mode, do nothing - use section shortcuts instead
 
     def _navigate_subsection(self, delta: int):

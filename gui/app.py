@@ -646,8 +646,14 @@ class MainWindow(QMainWindow):
         section = self._nav.section
         if section == Section.GLOBAL:
             subsection = self._nav.subsection
+            control = self._nav.control
             if subsection == 4:  # Modulator
-                self._global_panel.adjust_modulator_size(delta)
+                if control == 0:
+                    # Dropdown - adjust modulator selection
+                    self._global_panel.adjust_modulator_selection(delta)
+                else:
+                    # Slider - adjust modulator size
+                    self._global_panel.adjust_modulator_size(delta)
             elif subsection < 4:
                 groups = self._global_panel.slider_groups
                 if 0 <= subsection < len(groups):
@@ -657,6 +663,9 @@ class MainWindow(QMainWindow):
             groups = self._emitter_panel.slider_groups
             if 0 <= subsection < len(groups):
                 groups[subsection].adjust_focused_value(delta)
+        elif section == Section.TRACKS:
+            # Track volume adjustment - uses visually focused track
+            self._track_panel.adjust_focused_volume(delta)
 
     def _reset_focused_control(self):
         """Reset the currently focused control to its default value."""

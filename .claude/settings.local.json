@@ -19,7 +19,8 @@
       "Bash(tree:*)",
       "Bash(python:*)",
       "Bash(timeout 60 python:*)",
-      "Bash(QT_QPA_PLATFORM=offscreen uv run python:*)"
+      "Bash(QT_QPA_PLATFORM=offscreen uv run python:*)",
+      "Bash(wc:*)"
     ]
   }
 }

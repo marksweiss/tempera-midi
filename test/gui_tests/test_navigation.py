@@ -227,6 +227,41 @@ class TestTrackNavigation(GUITestCase):
         self.assertEqual(nav.subsection, initial + 1)
         self.harness.assert_state_consistent()
 
+    def test_track_navigation_in_control_mode(self):
+        """W/S navigates between tracks even in CONTROL mode (since each track has 1 control)."""
+        # Navigate to Tracks section and enter control mode
+        self.harness.press_shortcut('T')
+        self.harness.press_shortcut('F')  # Subsection mode
+        self.harness.press_shortcut('F')  # Control mode
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+        initial = self.harness.get_nav_state().subsection
+
+        # Navigate to next track with S key - should work even in CONTROL mode
+        self.harness.press_shortcut('S')
+
+        nav = self.harness.get_nav_state()
+        # Should move to next track (subsection) even in CONTROL mode
+        self.assertEqual(nav.subsection, initial + 1)
+        # Mode should still be CONTROL
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+    def test_track_navigation_wraps_in_control_mode(self):
+        """W/S wraps around tracks in CONTROL mode."""
+        # Navigate to Tracks section, go to last track
+        self.harness.press_shortcut('T')
+        self.harness.press_shortcut('F')  # Subsection mode
+        # Navigate to last track
+        for _ in range(7):
+            self.harness.press_shortcut('S')
+        self.assertEqual(self.harness.get_nav_state().subsection, 7)
+
+        self.harness.press_shortcut('F')  # Control mode
+
+        # Try to go to next track - should stay at track 8 (clamped, not wrapped)
+        self.harness.press_shortcut('S')
+        self.assertEqual(self.harness.get_nav_state().subsection, 7)  # Still at last track
+
 
 class TestMouseClickFocusHighlighting(GUITestCase):
     """Tests for mouse click vs keyboard focus highlighting."""
@@ -401,6 +436,113 @@ class TestSectionClickNavigation(GUITestCase):
         self.harness.click_section(Section.EMITTER)
         subsections = self.harness.get_all_subsection_focused(Section.EMITTER)
         self.assertEqual(subsections, [False, False, False, False])
+
+
+class TestValueAdjustment(GUITestCase):
+    """Tests for value adjustment via A/D keys."""
+
+    def test_value_adjust_in_control_mode(self):
+        """A/D adjusts value when in CONTROL mode."""
+        # Navigate to Global > ADSR > Attack
+        self.harness.press_shortcut('G')
+        self.harness.press_shortcut('F')  # Subsection mode
+        self.harness.press_shortcut('F')  # Control mode
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+        # Get initial value
+        global_params = self.harness.window._global_panel.get_all_parameters()
+        initial_value = global_params['adsr']['attack']
+
+        # Press D to increase
+        self.harness.press_shortcut('D')
+
+        # Check value increased
+        global_params = self.harness.window._global_panel.get_all_parameters()
+        self.assertEqual(global_params['adsr']['attack'], initial_value + 1)
+
+    def test_value_adjust_not_in_subsection_mode(self):
+        """A/D does not adjust value when in SUBSECTION mode."""
+        # Navigate to Global > ADSR in SUBSECTION mode (not CONTROL)
+        self.harness.press_shortcut('G')
+        self.harness.press_shortcut('F')  # Subsection mode
+        self.harness.assert_mode(NavigationMode.SUBSECTION)
+
+        # Get initial value
+        global_params = self.harness.window._global_panel.get_all_parameters()
+        initial_value = global_params['adsr']['attack']
+
+        # Press D - should NOT change value
+        self.harness.press_shortcut('D')
+
+        # Check value unchanged
+        global_params = self.harness.window._global_panel.get_all_parameters()
+        self.assertEqual(global_params['adsr']['attack'], initial_value)
+
+    def test_modulator_slider_value_adjust(self):
+        """A/D adjusts modulator slider value."""
+        # Navigate to Global > Modulator (subsection 4)
+        self.harness.press_shortcut('G')
+        self.harness.press_shortcut('F')  # Subsection mode
+        # Navigate to Modulator (subsection 4)
+        for _ in range(4):
+            self.harness.press_shortcut('S')
+        nav = self.harness.get_nav_state()
+        self.assertEqual(nav.subsection, 4)
+
+        # Enter control mode, navigate to slider (control 1)
+        self.harness.press_shortcut('F')  # Control mode
+        self.harness.press_shortcut('S')  # Move to slider (control 1)
+        nav = self.harness.get_nav_state()
+        self.assertEqual(nav.control, 1)
+
+        # Get initial size
+        initial_size = self.harness.window._global_panel.get_modulator_size()
+
+        # Press D to increase
+        self.harness.press_shortcut('D')
+
+        # Check size increased
+        self.assertEqual(self.harness.window._global_panel.get_modulator_size(), initial_size + 1)
+
+    def test_modulator_dropdown_value_adjust(self):
+        """A/D adjusts modulator dropdown selection."""
+        # Navigate to Global > Modulator (subsection 4)
+        self.harness.press_shortcut('G')
+        self.harness.press_shortcut('F')  # Subsection mode
+        # Navigate to Modulator (subsection 4)
+        for _ in range(4):
+            self.harness.press_shortcut('S')
+
+        # Enter control mode - starts at control 0 (dropdown)
+        self.harness.press_shortcut('F')
+        nav = self.harness.get_nav_state()
+        self.assertEqual(nav.control, 0)
+
+        # Get initial modulator selection
+        initial_mod = self.harness.window._global_panel.get_modulator_selected()
+
+        # Press D to increase selection
+        self.harness.press_shortcut('D')
+
+        # Check modulator selection increased
+        self.assertEqual(self.harness.window._global_panel.get_modulator_selected(), initial_mod + 1)
+
+    def test_track_value_adjust(self):
+        """A/D adjusts track volume."""
+        # Navigate to Track section
+        self.harness.press_shortcut('T')
+        self.harness.press_shortcut('F')  # Subsection mode (track 1)
+        self.harness.press_shortcut('F')  # Control mode
+        self.harness.assert_mode(NavigationMode.CONTROL)
+
+        # Get initial volume
+        initial_volume = self.harness.window._track_panel.get_volume(1)
+
+        # Press D to increase
+        self.harness.press_shortcut('D')
+
+        # Check volume increased
+        self.assertEqual(self.harness.window._track_panel.get_volume(1), initial_volume + 1)
 
 
 if __name__ == '__main__':
