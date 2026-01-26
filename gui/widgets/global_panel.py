@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.widgets.slider_group import SliderGroup
-from gui.styles import get_section_focus_style, get_slider_focus_style
+from gui.styles import get_section_focus_style, get_slider_focus_style, get_combobox_focus_style
 
 
 # Parameter definitions
@@ -149,13 +149,10 @@ class GlobalPanel(QGroupBox):
         effects_layout.addWidget(self._effects_tabs)
         layout.addWidget(self._effects_group)
 
-        # Right side: Modulator Size with selector
-        modulator_layout = QVBoxLayout()
+        # Right side: Modulator group (like other subsections)
+        self._modulator_group = QGroupBox('Modulator')
+        modulator_layout = QVBoxLayout(self._modulator_group)
         modulator_layout.setSpacing(4)
-
-        modulator_label = QLabel('Mod Size')
-        modulator_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        modulator_layout.addWidget(modulator_label)
 
         self._modulator_size_value = QLabel('0')
         self._modulator_size_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -186,7 +183,7 @@ class GlobalPanel(QGroupBox):
         self._modulator_selector.installEventFilter(self)
 
         modulator_layout.addStretch()
-        layout.addLayout(modulator_layout)
+        layout.addWidget(self._modulator_group)
 
         # Connect click signals for mouse focus
         # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
@@ -337,15 +334,17 @@ class GlobalPanel(QGroupBox):
             group.set_group_focused(False)
             group.clear_control_focus()
 
-        # Clear modulator focus
+        # Clear modulator focus (group, slider, and dropdown)
+        self._modulator_group.setStyleSheet(get_section_focus_style(False))
         self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
+        self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
 
         # Clear effects group highlight (will be set below if needed)
         self._effects_group.setStyleSheet(get_section_focus_style(False))
 
         if index == 4:
-            # Highlight modulator slider (don't call setFocus to avoid race condition)
-            self._modulator_slider.setStyleSheet(get_slider_focus_style(True))
+            # Highlight modulator group (like ADSR), not individual controls
+            self._modulator_group.setStyleSheet(get_section_focus_style(True))
         elif index == 0:
             # ADSR group has a title, so set_group_focused works
             groups[index].set_group_focused(True)
@@ -466,6 +465,15 @@ class GlobalPanel(QGroupBox):
         if self._visual_subsection == 4:
             # Modulator subsection: track which control is focused (0=dropdown, 1=slider)
             self._modulator_control_index = control_index
+            # Update visual highlighting for modulator controls
+            if control_index == 0:
+                # Dropdown is focused
+                self._modulator_selector.setStyleSheet(get_combobox_focus_style(True))
+                self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
+            else:
+                # Slider is focused
+                self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
+                self._modulator_slider.setStyleSheet(get_slider_focus_style(True))
         else:
             groups = self.slider_groups
             if 0 <= self._visual_subsection < len(groups):
@@ -477,9 +485,15 @@ class GlobalPanel(QGroupBox):
         Called by MainWindow in response to NavigationManager exiting CONTROL mode.
         """
         self._visual_control = -1
-        groups = self.slider_groups
-        if 0 <= self._visual_subsection < len(groups):
-            groups[self._visual_subsection].clear_control_focus()
+        if self._visual_subsection == 4:
+            # Modulator subsection: clear control highlights, restore group highlight
+            self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
+            self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
+            self._modulator_group.setStyleSheet(get_section_focus_style(True))
+        else:
+            groups = self.slider_groups
+            if 0 <= self._visual_subsection < len(groups):
+                groups[self._visual_subsection].clear_control_focus()
 
     def set_panel_focused(self, focused: bool):
         """Set whether this panel is the active section."""
@@ -490,12 +504,14 @@ class GlobalPanel(QGroupBox):
         # When focused=False: clear all highlights
         for group in self.slider_groups:
             group.set_group_focused(False)
-        # Set explicit unfocused style on Effects container to override parent cascade
+        # Set explicit unfocused style on Effects container and Modulator group
         self._effects_group.setStyleSheet(get_section_focus_style(False))
+        self._modulator_group.setStyleSheet(get_section_focus_style(False))
         if not focused:
             for group in self.slider_groups:
                 group.clear_control_focus()
             self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
+            self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
             self._visual_subsection = -1
             self._visual_control = -1
 

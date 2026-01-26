@@ -411,6 +411,34 @@ def get_slider_focus_style(focused: bool = False) -> str:
         """
 
 
+def get_combobox_focus_style(focused: bool = False) -> str:
+    """Get style for a combobox with focus indicator."""
+    if focused:
+        return f"""
+            QComboBox {{
+                border: 2px solid {SECTION_ACTIVE_BORDER};
+                border-radius: 4px;
+                padding: 4px 8px;
+                background-color: #3A3A3A;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+            }}
+        """
+    else:
+        return """
+            QComboBox {
+                border: 1px solid #505050;
+                border-radius: 4px;
+                padding: 4px 8px;
+                background-color: #3A3A3A;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+        """
+
+
 # Hint badge stylesheet
 HINT_BADGE_STYLE = f"""
     QLabel {{
