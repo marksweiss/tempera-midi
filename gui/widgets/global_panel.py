@@ -49,6 +49,9 @@ class GlobalPanel(QGroupBox):
     - Tabbed effects (Reverb, Delay, Chorus)
     - Modulator size slider with modulator selector (1-10)
 
+    This panel is purely REACTIVE to NavigationManager signals. It does not
+    track navigation state itself - it queries NavigationManager when needed.
+
     Signals:
         modulatorSizeChanged(int): Emitted when modulator size changes
         modulatorSizeSet(int): Emitted when modulator size slider released
@@ -56,6 +59,8 @@ class GlobalPanel(QGroupBox):
         parameterChanged(str, str, int): Emitted on slider change (category, param, value)
         parameterSet(str, str, int): Emitted on slider release (category, param, value)
         controlFocusRequested(int, int): Emitted when a control is clicked (subsection_index, control_index)
+        sectionClicked(): Emitted when panel background is clicked
+        subsectionFocusRequested(int): Emitted when a subsection header is clicked
     """
 
     modulatorSizeChanged = Signal(int)
@@ -64,9 +69,6 @@ class GlobalPanel(QGroupBox):
     parameterChanged = Signal(str, str, int)
     parameterSet = Signal(str, str, int)
     controlFocusRequested = Signal(int, int)
-    # Signals for keyboard navigation within panel
-    subsectionNavigated = Signal(int)  # Emitted when subsection changes via keyboard (new index)
-    controlNavigated = Signal(int)  # Emitted when control changes via keyboard (new index)
     # Signals for mouse click focus
     sectionClicked = Signal()  # Emitted when panel background is clicked
     subsectionFocusRequested = Signal(int)  # Emitted when a subsection header is clicked
@@ -75,9 +77,11 @@ class GlobalPanel(QGroupBox):
         super().__init__('Global', parent)
 
         self._panel_focused = False
-        self._focused_subsection = 0  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
-        self._in_control_mode = False  # Whether we're navigating controls within a subsection
-        self._modulator_control_index = 0  # 0=dropdown, 1=slider
+        # Visual state - tracks which subsection/control is visually highlighted
+        # This is set by MainWindow in response to NavigationManager signals
+        self._visual_subsection = -1  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
+        self._visual_control = -1  # Currently highlighted control (-1 = none)
+        self._modulator_control_index = 0  # 0=dropdown, 1=slider (for modulator subsection)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._setup_ui()
 
@@ -317,16 +321,21 @@ class GlobalPanel(QGroupBox):
         return [self._adsr_group, self._reverb_group, self._delay_group, self._chorus_group]
 
     def set_subsection_focus(self, index: int):
-        """Focus a specific subsection.
+        """Visually highlight a specific subsection.
+
+        Called by MainWindow in response to NavigationManager.subsectionChanged signal.
 
         Args:
-            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
+            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator, or -1 to clear all
         """
-        self._focused_subsection = index
+        self._visual_subsection = index
+        self._visual_control = -1  # Clear control focus when subsection changes
         groups = self.slider_groups
+
         # Clear all group focus
         for group in groups:
             group.set_group_focused(False)
+            group.clear_control_focus()
 
         # Clear modulator focus
         self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
@@ -347,15 +356,9 @@ class GlobalPanel(QGroupBox):
             # Switch to the appropriate tab
             self._effects_tabs.setCurrentIndex(index - 1)
 
-    def get_current_subsection(self) -> int:
-        """Get currently focused subsection index."""
-        if self._modulator_slider.hasFocus() or self._modulator_selector.hasFocus():
-            return 4
-        groups = self.slider_groups
-        for i, group in enumerate(groups):
-            if group.hasFocus():
-                return i
-        return 0
+    def get_visual_subsection(self) -> int:
+        """Get currently highlighted subsection index."""
+        return self._visual_subsection
 
     def adjust_modulator_size(self, delta: int):
         """Adjust modulator size value."""
@@ -377,7 +380,7 @@ class GlobalPanel(QGroupBox):
 
     def get_navigation_path(self) -> str:
         """Get current navigation path string."""
-        subsection = self.get_current_subsection()
+        subsection = self._visual_subsection if self._visual_subsection >= 0 else 0
         path = f"Global > {self.SUBSECTION_NAMES[subsection]}"
 
         if subsection == 4:
@@ -394,134 +397,89 @@ class GlobalPanel(QGroupBox):
         return path
 
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle keyboard input for navigation within the panel."""
+        """Handle keyboard input for value adjustment only.
+
+        Navigation (W/S keys) is now handled by NavigationManager.
+        This method only handles value adjustment (A/D keys) when a control is focused.
+        """
         key = event.key()
         groups = self.slider_groups
-        num_subsections = 5  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
 
-        # Handle navigation keys
-        if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
-            if self._in_control_mode:
-                if self._focused_subsection == 4:
-                    # Modulator subsection: navigate between controls or adjust value
-                    if self._modulator_control_index == 0:
-                        # On dropdown: decrease selection
-                        self.adjust_modulator_selection(-1)
-                    else:
-                        # On slider: increase value
-                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                            self.adjust_modulator_size(10)
-                        else:
-                            self.adjust_modulator_size(1)
-                else:
-                    # Move to previous control within subsection
-                    groups[self._focused_subsection].focus_prev_control()
-                    self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
-            else:
-                # Move to previous subsection
-                new_subsection = max(0, self._focused_subsection - 1)
-                if new_subsection != self._focused_subsection:
-                    self._focused_subsection = new_subsection
-                    self.set_subsection_focus(self._focused_subsection)
-                    self.subsectionNavigated.emit(self._focused_subsection)
-        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
-            if self._in_control_mode:
-                if self._focused_subsection == 4:
-                    # Modulator subsection: navigate between controls or adjust value
-                    if self._modulator_control_index == 0:
-                        # On dropdown: increase selection
-                        self.adjust_modulator_selection(1)
-                    else:
-                        # On slider: decrease value
-                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                            self.adjust_modulator_size(-10)
-                        else:
-                            self.adjust_modulator_size(-1)
-                else:
-                    # Move to next control within subsection
-                    groups[self._focused_subsection].focus_next_control()
-                    self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
-            else:
-                # Move to next subsection
-                new_subsection = min(num_subsections - 1, self._focused_subsection + 1)
-                if new_subsection != self._focused_subsection:
-                    self._focused_subsection = new_subsection
-                    self.set_subsection_focus(self._focused_subsection)
-                    self.subsectionNavigated.emit(self._focused_subsection)
-        elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
-            if self._in_control_mode:
-                if self._focused_subsection == 4:
-                    # Modulator subsection: adjust value
+        # Only handle value adjustment if a control is visually focused
+        if self._visual_control >= 0:
+            if self._visual_subsection == 4:
+                # Modulator subsection: handle dropdown or slider
+                if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
                     if self._modulator_control_index == 0:
                         # On dropdown: decrease selection
                         self.adjust_modulator_selection(-1)
                     else:
                         # On slider: decrease value
-                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                            self.adjust_modulator_size(-10)
-                        else:
-                            self.adjust_modulator_size(-1)
-                else:
-                    # Adjust value down
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        groups[self._focused_subsection].adjust_focused_value(-10)
-                    else:
-                        groups[self._focused_subsection].adjust_focused_value(-1)
-        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
-            if self._in_control_mode:
-                if self._focused_subsection == 4:
-                    # Modulator subsection: adjust value
+                        delta = -10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else -1
+                        self.adjust_modulator_size(delta)
+                elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
                     if self._modulator_control_index == 0:
                         # On dropdown: increase selection
                         self.adjust_modulator_selection(1)
                     else:
                         # On slider: increase value
-                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                            self.adjust_modulator_size(10)
-                        else:
-                            self.adjust_modulator_size(1)
-                else:
-                    # Adjust value up
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        groups[self._focused_subsection].adjust_focused_value(10)
-                    else:
-                        groups[self._focused_subsection].adjust_focused_value(1)
-        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
-            if self._in_control_mode:
-                if self._focused_subsection == 4:
+                        delta = 10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1
+                        self.adjust_modulator_size(delta)
+                elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
                     # Reset modulator size to 0
                     self._modulator_slider.setValue(0)
                     self._modulator_size_value.setText('0')
                     self.modulatorSizeChanged.emit(0)
                     self.modulatorSizeSet.emit(0)
                 else:
+                    super().keyPressEvent(event)
+            elif 0 <= self._visual_subsection < len(groups):
+                group = groups[self._visual_subsection]
+                if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
+                    # Adjust value down
+                    delta = -10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else -1
+                    group.adjust_focused_value(delta)
+                elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
+                    # Adjust value up
+                    delta = 10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1
+                    group.adjust_focused_value(delta)
+                elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
                     # Reset control to default
-                    groups[self._focused_subsection].reset_focused_to_default()
+                    group.reset_focused_to_default()
+                else:
+                    super().keyPressEvent(event)
+            else:
+                super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
 
     def enter_control_mode(self, control_index: int = 0):
-        """Enter control mode - start navigating individual controls.
+        """Visually highlight a specific control within the current subsection.
+
+        Called by MainWindow in response to NavigationManager entering CONTROL mode.
 
         Args:
-            control_index: The control index to focus (default 0).
+            control_index: The control index to highlight (default 0).
                 For modulator subsection: 0=dropdown, 1=slider.
         """
-        self._in_control_mode = True
-        if self._focused_subsection == 4:
+        self._visual_control = control_index
+        if self._visual_subsection == 4:
             # Modulator subsection: track which control is focused (0=dropdown, 1=slider)
             self._modulator_control_index = control_index
         else:
             groups = self.slider_groups
-            if 0 <= self._focused_subsection < len(groups):
-                groups[self._focused_subsection].set_control_focus(control_index)
+            if 0 <= self._visual_subsection < len(groups):
+                groups[self._visual_subsection].set_control_focus(control_index)
 
     def exit_control_mode(self):
-        """Exit control mode - return to subsection navigation."""
-        self._in_control_mode = False
+        """Clear control highlighting, returning to subsection-level visual state.
+
+        Called by MainWindow in response to NavigationManager exiting CONTROL mode.
+        """
+        self._visual_control = -1
         groups = self.slider_groups
-        if 0 <= self._focused_subsection < len(groups):
-            groups[self._focused_subsection].clear_control_focus()
+        if 0 <= self._visual_subsection < len(groups):
+            groups[self._visual_subsection].clear_control_focus()
 
     def set_panel_focused(self, focused: bool):
         """Set whether this panel is the active section."""
@@ -538,7 +496,8 @@ class GlobalPanel(QGroupBox):
             for group in self.slider_groups:
                 group.clear_control_focus()
             self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
-            self._in_control_mode = False
+            self._visual_subsection = -1
+            self._visual_control = -1
 
     def focusInEvent(self, event: QFocusEvent):
         """Handle focus gained - show panel highlight only."""

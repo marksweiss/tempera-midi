@@ -41,19 +41,24 @@ class TrackPanel(QGroupBox):
     - Track number label
     - Record arm button
 
+    This panel is purely REACTIVE to NavigationManager signals. It does not
+    track navigation state itself - it queries NavigationManager when needed.
+
+    In the navigation model, each track is a "subsection" (0-7), and each track
+    has one control (volume).
+
     Signals:
         volumeChanged(int, int): Emitted when volume changes (track_num, value)
         volumeSet(int, int): Emitted when slider released (track_num, value)
         recordClicked(int): Emitted when record button clicked (track_num)
         controlFocusRequested(int, int): Emitted when a track slider is clicked (track_index, 0)
+        sectionClicked(): Emitted when panel background is clicked
     """
 
     volumeChanged = Signal(int, int)
     volumeSet = Signal(int, int)
     recordClicked = Signal(int)
     controlFocusRequested = Signal(int, int)
-    # Signals for keyboard navigation within panel
-    subsectionNavigated = Signal(int)  # Emitted when track changes via keyboard (track_index 0-based)
     # Signals for mouse click focus
     sectionClicked = Signal()  # Emitted when panel background is clicked
 
@@ -65,10 +70,10 @@ class TrackPanel(QGroupBox):
         self._record_buttons: dict[int, QPushButton] = {}
         self._record_timers: dict[int, QTimer] = {}
 
-        # Keyboard navigation state
-        self._focused_track = -1  # -1 means no track focused
+        # Visual state - tracks which track is visually highlighted
+        # This is set by MainWindow in response to NavigationManager signals
+        self._visual_track = -1  # -1 means no track focused (1-8 when focused)
         self._panel_focused = False
-        self._in_control_mode = False  # Whether we're navigating tracks
 
         self._setup_ui()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -203,39 +208,29 @@ class TrackPanel(QGroupBox):
         # Clear track focus when panel loses focus
         if not focused:
             self.clear_track_focus()
-            self._in_control_mode = False
 
     def set_track_focus(self, track_num: int):
-        """Focus a specific track (1-8) or -1 to unfocus all.
+        """Visually highlight a specific track (1-8) or -1 to unfocus all.
+
+        Called by MainWindow in response to NavigationManager.subsectionChanged signal.
+        Note: track_num is 1-based (1-8), matching the display labels.
 
         Args:
             track_num: Track number (1-8), or -1 to unfocus
         """
         # Clear previous focus
-        if self._focused_track > 0 and self._focused_track in self._sliders:
-            self._sliders[self._focused_track].setStyleSheet(get_slider_focus_style(False))
+        if self._visual_track > 0 and self._visual_track in self._sliders:
+            self._sliders[self._visual_track].setStyleSheet(get_slider_focus_style(False))
 
         # Set new focus
-        self._focused_track = track_num if 1 <= track_num <= 8 else -1
+        self._visual_track = track_num if 1 <= track_num <= 8 else -1
 
-        if self._focused_track > 0:
-            self._sliders[self._focused_track].setStyleSheet(get_slider_focus_style(True))
+        if self._visual_track > 0:
+            self._sliders[self._visual_track].setStyleSheet(get_slider_focus_style(True))
 
-    def focus_next_track(self):
-        """Move focus to next track, wrapping at end."""
-        if self._focused_track < 1:
-            self.set_track_focus(1)
-        else:
-            new_track = (self._focused_track % 8) + 1
-            self.set_track_focus(new_track)
-
-    def focus_prev_track(self):
-        """Move focus to previous track, wrapping at start."""
-        if self._focused_track < 1:
-            self.set_track_focus(8)
-        else:
-            new_track = ((self._focused_track - 2) % 8) + 1
-            self.set_track_focus(new_track)
+    def get_visual_track(self) -> int:
+        """Get currently highlighted track number (1-8), or -1 if none."""
+        return self._visual_track
 
     def clear_track_focus(self):
         """Clear focus from all tracks."""
@@ -247,59 +242,52 @@ class TrackPanel(QGroupBox):
         Args:
             delta: Amount to add (positive or negative)
         """
-        if self._focused_track > 0 and self._focused_track in self._sliders:
-            slider = self._sliders[self._focused_track]
+        if self._visual_track > 0 and self._visual_track in self._sliders:
+            slider = self._sliders[self._visual_track]
             new_value = slider.value() + delta
             new_value = max(0, min(127, new_value))
             if new_value != slider.value():
                 slider.setValue(new_value)
-                self._value_labels[self._focused_track].setText(str(new_value))
-                self.volumeChanged.emit(self._focused_track, new_value)
-                self.volumeSet.emit(self._focused_track, new_value)
+                self._value_labels[self._visual_track].setText(str(new_value))
+                self.volumeChanged.emit(self._visual_track, new_value)
+                self.volumeSet.emit(self._visual_track, new_value)
 
     def reset_focused_to_default(self):
         """Reset focused track to default volume (100)."""
-        if self._focused_track > 0:
-            self.set_volume(self._focused_track, 100)
-            self.volumeChanged.emit(self._focused_track, 100)
-            self.volumeSet.emit(self._focused_track, 100)
+        if self._visual_track > 0:
+            self.set_volume(self._visual_track, 100)
+            self.volumeChanged.emit(self._visual_track, 100)
+            self.volumeSet.emit(self._visual_track, 100)
 
     def get_navigation_path(self) -> str:
         """Get current navigation path string."""
-        if self._focused_track > 0:
-            volume = self._sliders[self._focused_track].value()
-            return f"Tracks > Track {self._focused_track}: {volume}"
+        if self._visual_track > 0:
+            volume = self._sliders[self._visual_track].value()
+            return f"Tracks > Track {self._visual_track}: {volume}"
         return "Tracks"
 
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle keyboard input for track navigation."""
+        """Handle keyboard input for value adjustment only.
+
+        Navigation (W/S keys) is now handled by NavigationManager.
+        This method only handles value adjustment (A/D keys) when a track is focused.
+        """
         key = event.key()
 
-        # Left/Right or A/D to select track
-        if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
-            self.focus_prev_track()
-            # Emit signal with 0-based track index
-            if self._focused_track > 0:
-                self.subsectionNavigated.emit(self._focused_track - 1)
-        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
-            self.focus_next_track()
-            # Emit signal with 0-based track index
-            if self._focused_track > 0:
-                self.subsectionNavigated.emit(self._focused_track - 1)
-        # Up/Down or W/S to adjust volume
-        elif key in (Qt.Key.Key_Up, Qt.Key.Key_W):
-            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                self.adjust_focused_volume(10)
+        # Only handle value adjustment if a track is visually focused
+        if self._visual_track > 0:
+            # A/D or Left/Right to adjust volume (like other panels)
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
+                delta = -10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else -1
+                self.adjust_focused_volume(delta)
+            elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
+                delta = 10 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier else 1
+                self.adjust_focused_volume(delta)
+            # X or Delete to reset
+            elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
+                self.reset_focused_to_default()
             else:
-                self.adjust_focused_volume(1)
-        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
-            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                self.adjust_focused_volume(-10)
-            else:
-                self.adjust_focused_volume(-1)
-        # X or Delete to reset
-        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
-            self.reset_focused_to_default()
+                super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
 
@@ -322,23 +310,26 @@ class TrackPanel(QGroupBox):
             self.set_panel_focused(False)
 
     def enter_control_mode(self, control_index: int = 0):
-        """Enter control mode - start navigating tracks.
+        """Enter control mode - ensure a track is visually highlighted.
 
         For TrackPanel, the subsection represents the track, and control_index
         is not used since each track only has one control (volume). The track
         focus should already be set via set_track_focus before this is called.
 
+        Called by MainWindow in response to NavigationManager entering CONTROL mode.
+
         Args:
             control_index: Not used for TrackPanel (kept for API consistency)
         """
-        self._in_control_mode = True
         # Only set default focus if no track is focused yet
-        if self._focused_track < 1:
+        if self._visual_track < 1:
             self.set_track_focus(1)
 
     def exit_control_mode(self):
-        """Exit control mode - return to panel focus."""
-        self._in_control_mode = False
+        """Clear track highlighting when exiting control mode.
+
+        Called by MainWindow in response to NavigationManager exiting CONTROL mode.
+        """
         self.clear_track_focus()
 
     def eventFilter(self, obj, event):

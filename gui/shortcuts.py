@@ -27,7 +27,7 @@ class NavigationMode(Enum):
 
 
 # Key mappings for left-hand (WASD) layout
-# Note: Navigation keys (WASD) are handled by widget keyPressEvent, not QShortcut
+# Navigation keys (W/S) are now handled centrally by NavigationManager
 LEFT_HAND_KEYS = {
     # Section navigation
     'section_next': 'Tab',
@@ -36,6 +36,9 @@ LEFT_HAND_KEYS = {
     'section_emitter': 'E',
     'section_tracks': 'T',
     'section_global': 'G',
+    # Navigation within section (W/S for prev/next)
+    'nav_prev': 'W',
+    'nav_next': 'S',
     # Actions
     'toggle_focus': 'F',  # Single toggle action for enter/exit focus
     'toggle_cell': 'Space',
@@ -44,7 +47,7 @@ LEFT_HAND_KEYS = {
 }
 
 # Key mappings for right-hand (Arrow) layout
-# Note: Navigation keys (arrows) are handled by widget keyPressEvent, not QShortcut
+# Navigation keys (Up/Down arrows) are now handled centrally by NavigationManager
 RIGHT_HAND_KEYS = {
     # Section navigation
     'section_next': 'Page Down',
@@ -53,6 +56,9 @@ RIGHT_HAND_KEYS = {
     'section_emitter': 'Insert',
     'section_tracks': None,  # Use Page Up/Down to cycle
     'section_global': 'End',
+    # Navigation within section (Up/Down for prev/next)
+    'nav_prev': 'Up',
+    'nav_next': 'Down',
     # Actions
     'toggle_focus': 'Return',  # Single toggle action
     'toggle_cell': 'Space',  # Use Space for cell toggle, Return for focus
@@ -195,6 +201,10 @@ class NavigationManager(QObject):
     Supports both left-hand (WASD) and right-hand (Arrow) layouts.
     Handles navigation state: section, subsection, control, and value modes.
 
+    This is the SINGLE SOURCE OF TRUTH for navigation state. Panels are purely
+    reactive - they query NavigationManager and respond to its signals but
+    never manage navigation state themselves.
+
     Signals:
         sectionChanged(Section): Current section changed
         subsectionChanged(int): Subsection index changed
@@ -232,6 +242,9 @@ class NavigationManager(QObject):
         self._subsection = 0
         self._control = 0
         self._mode = NavigationMode.SECTION
+
+        # Section structure: maps section -> list of control counts per subsection
+        self._section_structure: dict[Section, list[int]] = {}
 
         # Layout-specific shortcuts
         self._nav_shortcuts: dict[str, QShortcut] = {}
@@ -303,6 +316,12 @@ class NavigationManager(QObject):
             self.go_to_section(Section.TRACKS)
         elif name == 'section_global':
             self.go_to_section(Section.GLOBAL)
+
+        # W/S navigation (navigate within section)
+        elif name == 'nav_prev':
+            self.navigate_prev()
+        elif name == 'nav_next':
+            self.navigate_next()
 
         # Actions
         elif name == 'toggle_focus':
@@ -516,3 +535,124 @@ class NavigationManager(QObject):
         self.controlChanged.emit(control)
         self.modeChanged.emit(self._mode)
         self._update_path()
+
+    # --- Section structure and navigation ---
+
+    def register_section_structure(self, section: Section, control_counts: list[int]):
+        """Register the structure of a section.
+
+        This allows NavigationManager to know how many subsections and controls
+        exist in each section, enabling it to handle W/S navigation without
+        querying panels.
+
+        Args:
+            section: The section to register
+            control_counts: List of control counts per subsection.
+                           For example, [3, 2, 7, 4] means subsection 0 has 3 controls,
+                           subsection 1 has 2, etc.
+        """
+        self._section_structure[section] = control_counts
+
+    def navigate_prev(self):
+        """Navigate to previous item (W key / Up arrow).
+
+        In SUBSECTION mode: go to previous subsection
+        In CONTROL mode: go to previous control (wrap within subsection)
+        In SECTION mode: no-op (use Q/E/T/G for section navigation)
+        """
+        if self._mode == NavigationMode.SUBSECTION:
+            self._navigate_subsection(-1)
+        elif self._mode == NavigationMode.CONTROL:
+            self._navigate_control(-1)
+        # In SECTION mode, do nothing - use section shortcuts instead
+
+    def navigate_next(self):
+        """Navigate to next item (S key / Down arrow).
+
+        In SUBSECTION mode: go to next subsection
+        In CONTROL mode: go to next control (wrap within subsection)
+        In SECTION mode: no-op (use Q/E/T/G for section navigation)
+        """
+        if self._mode == NavigationMode.SUBSECTION:
+            self._navigate_subsection(1)
+        elif self._mode == NavigationMode.CONTROL:
+            self._navigate_control(1)
+        # In SECTION mode, do nothing - use section shortcuts instead
+
+    def _navigate_subsection(self, delta: int):
+        """Navigate between subsections within the current section.
+
+        Args:
+            delta: -1 for previous, +1 for next
+        """
+        counts = self._section_structure.get(self._section, [])
+        if not counts:
+            return
+
+        num_subsections = len(counts)
+        new_subsection = self._subsection + delta
+
+        # Clamp to valid range (no wrapping at subsection level)
+        new_subsection = max(0, min(num_subsections - 1, new_subsection))
+
+        if new_subsection != self._subsection:
+            self._subsection = new_subsection
+            self._control = 0  # Reset control when changing subsection
+            self.subsectionChanged.emit(self._subsection)
+            self._update_path()
+
+    def _navigate_control(self, delta: int):
+        """Navigate between controls within the current subsection.
+
+        Args:
+            delta: -1 for previous, +1 for next
+        """
+        counts = self._section_structure.get(self._section, [])
+        if not counts or self._subsection >= len(counts):
+            return
+
+        control_count = counts[self._subsection]
+        if control_count == 0:
+            return
+
+        # Wrap within the subsection
+        new_control = (self._control + delta) % control_count
+
+        if new_control != self._control:
+            self._control = new_control
+            self.controlChanged.emit(self._control)
+            self._update_path()
+
+    def get_subsection_count(self, section: Optional[Section] = None) -> int:
+        """Get number of subsections in a section.
+
+        Args:
+            section: Section to query, or None for current section.
+
+        Returns:
+            Number of subsections, or 0 if section not registered.
+        """
+        if section is None:
+            section = self._section
+        counts = self._section_structure.get(section, [])
+        return len(counts)
+
+    def get_control_count(self, section: Optional[Section] = None,
+                          subsection: Optional[int] = None) -> int:
+        """Get number of controls in a subsection.
+
+        Args:
+            section: Section to query, or None for current section.
+            subsection: Subsection index to query, or None for current subsection.
+
+        Returns:
+            Number of controls, or 0 if section/subsection not registered.
+        """
+        if section is None:
+            section = self._section
+        if subsection is None:
+            subsection = self._subsection
+        counts = self._section_structure.get(section, [])
+        if 0 <= subsection < len(counts):
+            return counts[subsection]
+        return 0

@@ -218,6 +218,17 @@ class MainWindow(QMainWindow):
         """Set up the keyboard navigation manager."""
         self._nav = NavigationManager(self)
 
+        # Register section structures with NavigationManager
+        # This tells NavigationManager how many subsections and controls each section has
+        # Emitter: 4 subsections (Basic=3, Filter=2, Grain=7, Position=4)
+        self._nav.register_section_structure(Section.EMITTER, [3, 2, 7, 4])
+        # Global: 5 subsections (ADSR=4, Reverb=3, Delay=4, Chorus=4, Modulator=2)
+        self._nav.register_section_structure(Section.GLOBAL, [4, 3, 4, 4, 2])
+        # Tracks: 8 subsections (one per track), each with 1 control (volume)
+        self._nav.register_section_structure(Section.TRACKS, [1, 1, 1, 1, 1, 1, 1, 1])
+        # Grid: 8 columns, 8 cells each (handled differently, but register for consistency)
+        self._nav.register_section_structure(Section.GRID, [8, 8, 8, 8, 8, 8, 8, 8])
+
         # Connect navigation signals
         self._nav.sectionChanged.connect(self._on_section_changed)
         self._nav.subsectionChanged.connect(self._on_subsection_changed)
@@ -307,22 +318,9 @@ class MainWindow(QMainWindow):
             lambda sub: self._nav.focus_subsection(Section.GLOBAL, sub)
         )
 
-        # Panel keyboard navigation signals - update NavigationManager state
-        self._emitter_panel.subsectionNavigated.connect(
-            lambda idx: self._on_panel_subsection_navigated(Section.EMITTER, idx)
-        )
-        self._emitter_panel.controlNavigated.connect(
-            lambda idx: self._on_panel_control_navigated(idx)
-        )
-        self._global_panel.subsectionNavigated.connect(
-            lambda idx: self._on_panel_subsection_navigated(Section.GLOBAL, idx)
-        )
-        self._global_panel.controlNavigated.connect(
-            lambda idx: self._on_panel_control_navigated(idx)
-        )
-        self._track_panel.subsectionNavigated.connect(
-            lambda idx: self._on_panel_subsection_navigated(Section.TRACKS, idx)
-        )
+        # Note: Panel keyboard navigation signals (subsectionNavigated, controlNavigated)
+        # have been removed. NavigationManager is now the single source of truth for
+        # navigation state, and panels are purely reactive to its signals.
 
     def _sync_ui_from_state(self):
         """Synchronize UI from current state."""
@@ -639,22 +637,9 @@ class MainWindow(QMainWindow):
             elif section == Section.TRACKS:
                 self._track_panel.exit_control_mode()
 
-    def _on_panel_subsection_navigated(self, section: Section, index: int):
-        """Handle subsection navigation from panel keyboard input.
-
-        Updates NavigationManager state to match panel's new subsection.
-        """
-        if self._nav.section == section:
-            self._nav.subsection = index
-            self._update_envelope_panel_for_focus()
-
-    def _on_panel_control_navigated(self, index: int):
-        """Handle control navigation from panel keyboard input.
-
-        Updates NavigationManager state to match panel's new control focus.
-        """
-        self._nav.control = index
-        self._update_envelope_panel_for_focus()
+    # Note: _on_panel_subsection_navigated and _on_panel_control_navigated have been
+    # removed. NavigationManager now handles all navigation via navigate_prev/navigate_next,
+    # and panels are purely reactive to NavigationManager signals.
 
     def _on_value_adjust(self, delta: int):
         """Handle value adjustment from NavigationManager."""

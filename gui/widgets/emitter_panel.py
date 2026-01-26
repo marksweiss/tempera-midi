@@ -50,20 +50,22 @@ class EmitterPanel(QGroupBox):
     - Slider groups for basic, grain, position, and filter parameters
     - All sliders update when emitter selection changes
 
+    This panel is purely REACTIVE to NavigationManager signals. It does not
+    track navigation state itself - it queries NavigationManager when needed.
+
     Signals:
         emitterSelected(int): Emitted when emitter selection changes
         parameterChanged(int, str, int): Emitted on slider change (emitter, param, value)
         parameterSet(int, str, int): Emitted on slider release (emitter, param, value)
         controlFocusRequested(int, int): Emitted when a control is clicked (subsection_index, control_index)
+        sectionClicked(): Emitted when panel background is clicked
+        subsectionFocusRequested(int): Emitted when a subsection header is clicked
     """
 
     emitterSelected = Signal(int)
     parameterChanged = Signal(int, str, int)
     parameterSet = Signal(int, str, int)
     controlFocusRequested = Signal(int, int)
-    # Signals for keyboard navigation within panel
-    subsectionNavigated = Signal(int)  # Emitted when subsection changes via keyboard (new index)
-    controlNavigated = Signal(int)  # Emitted when control changes via keyboard (new index)
     # Signals for mouse click focus
     sectionClicked = Signal()  # Emitted when panel background is clicked
     subsectionFocusRequested = Signal(int)  # Emitted when a subsection header is clicked
@@ -73,8 +75,10 @@ class EmitterPanel(QGroupBox):
 
         self._current_emitter = 1
         self._panel_focused = False
-        self._focused_subsection = 0  # Currently focused subsection (0-3)
-        self._in_control_mode = False  # Whether we're navigating controls within a subsection
+        # Visual state - tracks which subsection/control is visually highlighted
+        # This is set by MainWindow in response to NavigationManager signals
+        self._visual_subsection = -1  # Currently highlighted subsection (-1 = none)
+        self._visual_control = -1  # Currently highlighted control (-1 = none)
 
         # Store values for all emitters
         self._emitter_values: dict[int, dict[str, int]] = {
@@ -285,28 +289,27 @@ class EmitterPanel(QGroupBox):
         return ['Basic', 'Tone Filter', 'Grain', 'Position / Spray']
 
     def set_subsection_focus(self, index: int):
-        """Focus a specific subsection (slider group).
+        """Visually highlight a specific subsection (slider group).
+
+        Called by MainWindow in response to NavigationManager.subsectionChanged signal.
 
         Args:
-            index: Subsection index (0-3)
+            index: Subsection index (0-3), or -1 to clear all highlighting
         """
-        self._focused_subsection = index
+        self._visual_subsection = index
+        self._visual_control = -1  # Clear control focus when subsection changes
         groups = self.slider_groups
         for i, group in enumerate(groups):
             group.set_group_focused(i == index)
-            # Don't call setFocus() on child - keep focus on panel to avoid race condition
+            group.clear_control_focus()
 
-    def get_current_subsection(self) -> int:
-        """Get currently focused subsection index."""
-        groups = self.slider_groups
-        for i, group in enumerate(groups):
-            if group.hasFocus():
-                return i
-        return 0
+    def get_visual_subsection(self) -> int:
+        """Get currently highlighted subsection index."""
+        return self._visual_subsection
 
     def get_navigation_path(self) -> str:
         """Get current navigation path string."""
-        subsection = self.get_current_subsection()
+        subsection = self._visual_subsection if self._visual_subsection >= 0 else 0
         group = self.slider_groups[subsection]
         path = f"Emitter {self._current_emitter} > {self.subsection_names[subsection]}"
         if group.focused_name:
@@ -327,7 +330,8 @@ class EmitterPanel(QGroupBox):
         if not focused:
             for group in self.slider_groups:
                 group.clear_control_focus()
-            self._in_control_mode = False
+            self._visual_subsection = -1
+            self._visual_control = -1
 
     def focusInEvent(self, event: QFocusEvent):
         """Handle focus gained - show panel highlight only."""
@@ -348,71 +352,56 @@ class EmitterPanel(QGroupBox):
             self.set_panel_focused(False)
 
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle keyboard input for navigation within the panel."""
+        """Handle keyboard input for value adjustment only.
+
+        Navigation (W/S keys) is now handled by NavigationManager.
+        This method only handles value adjustment (A/D keys) when a control is focused.
+        """
         key = event.key()
         groups = self.slider_groups
-        num_subsections = len(groups)
 
-        # Handle navigation keys
-        if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
-            if self._in_control_mode:
-                # Move to previous control within subsection
-                groups[self._focused_subsection].focus_prev_control()
-                self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
-            else:
-                # Move to previous subsection
-                new_subsection = max(0, self._focused_subsection - 1)
-                if new_subsection != self._focused_subsection:
-                    self._focused_subsection = new_subsection
-                    self.set_subsection_focus(self._focused_subsection)
-                    self.subsectionNavigated.emit(self._focused_subsection)
-        elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
-            if self._in_control_mode:
-                # Move to next control within subsection
-                groups[self._focused_subsection].focus_next_control()
-                self.controlNavigated.emit(groups[self._focused_subsection].focused_index)
-            else:
-                # Move to next subsection
-                new_subsection = min(num_subsections - 1, self._focused_subsection + 1)
-                if new_subsection != self._focused_subsection:
-                    self._focused_subsection = new_subsection
-                    self.set_subsection_focus(self._focused_subsection)
-                    self.subsectionNavigated.emit(self._focused_subsection)
-        elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
-            if self._in_control_mode:
+        # Only handle value adjustment if a control is visually focused
+        if self._visual_control >= 0 and 0 <= self._visual_subsection < len(groups):
+            group = groups[self._visual_subsection]
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
                 # Adjust value down
                 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                    groups[self._focused_subsection].adjust_focused_value(-10)
+                    group.adjust_focused_value(-10)
                 else:
-                    groups[self._focused_subsection].adjust_focused_value(-1)
-        elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
-            if self._in_control_mode:
+                    group.adjust_focused_value(-1)
+            elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
                 # Adjust value up
                 if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                    groups[self._focused_subsection].adjust_focused_value(10)
+                    group.adjust_focused_value(10)
                 else:
-                    groups[self._focused_subsection].adjust_focused_value(1)
-        elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
-            if self._in_control_mode:
+                    group.adjust_focused_value(1)
+            elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
                 # Reset control to default
-                groups[self._focused_subsection].reset_focused_to_default()
+                group.reset_focused_to_default()
+            else:
+                super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
 
     def enter_control_mode(self, control_index: int = 0):
-        """Enter control mode - start navigating individual controls.
+        """Visually highlight a specific control within the current subsection.
+
+        Called by MainWindow in response to NavigationManager entering CONTROL mode.
 
         Args:
-            control_index: The control index to focus (default 0)
+            control_index: The control index to highlight (default 0)
         """
-        self._in_control_mode = True
+        self._visual_control = control_index
         groups = self.slider_groups
-        if 0 <= self._focused_subsection < len(groups):
-            groups[self._focused_subsection].set_control_focus(control_index)
+        if 0 <= self._visual_subsection < len(groups):
+            groups[self._visual_subsection].set_control_focus(control_index)
 
     def exit_control_mode(self):
-        """Exit control mode - return to subsection navigation."""
-        self._in_control_mode = False
+        """Clear control highlighting, returning to subsection-level visual state.
+
+        Called by MainWindow in response to NavigationManager exiting CONTROL mode.
+        """
+        self._visual_control = -1
         groups = self.slider_groups
-        if 0 <= self._focused_subsection < len(groups):
-            groups[self._focused_subsection].clear_control_focus()
+        if 0 <= self._visual_subsection < len(groups):
+            groups[self._visual_subsection].clear_control_focus()

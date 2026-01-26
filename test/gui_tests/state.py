@@ -20,11 +20,26 @@ class NavState:
 
 @dataclass
 class PanelState:
-    """Snapshot of a panel's focus state."""
+    """Snapshot of a panel's visual state.
+
+    Note: Panels are now purely reactive to NavigationManager signals.
+    They don't track navigation state themselves, only visual highlighting.
+    """
     panel_focused: bool
-    focused_subsection: int
-    in_control_mode: bool
+    visual_subsection: int  # Which subsection is visually highlighted (-1 = none)
+    visual_control: int  # Which control is visually highlighted (-1 = none)
     stylesheet: str
+
+    # Compatibility properties for tests that use old names
+    @property
+    def focused_subsection(self) -> int:
+        """Alias for visual_subsection for backwards compatibility."""
+        return self.visual_subsection
+
+    @property
+    def in_control_mode(self) -> bool:
+        """Returns True if a control is visually highlighted."""
+        return self.visual_control >= 0
 
 
 @dataclass

@@ -239,7 +239,7 @@ class GUITestHarness:
         )
 
     def get_panel_state(self, section: Section) -> PanelState:
-        """Get focus state of a panel.
+        """Get visual state of a panel.
 
         Args:
             section: The section whose panel state to retrieve
@@ -250,23 +250,23 @@ class GUITestHarness:
 
         # Get common panel state
         panel_focused = getattr(panel, '_panel_focused', False)
-        in_control_mode = getattr(panel, '_in_control_mode', False)
 
         # Handle different panel types
         if section == Section.TRACKS:
-            focused_subsection = getattr(panel, '_focused_track', -1)
+            visual_track = getattr(panel, '_visual_track', -1)
             # Convert from 1-based track to 0-based subsection
-            if focused_subsection > 0:
-                focused_subsection -= 1
-            else:
-                focused_subsection = -1
+            visual_subsection = visual_track - 1 if visual_track > 0 else -1
+            # TrackPanel doesn't have separate control focus - use -1 as placeholder
+            # The harness will skip control mode check for TRACKS section
+            visual_control = -1
         else:
-            focused_subsection = getattr(panel, '_focused_subsection', -1)
+            visual_subsection = getattr(panel, '_visual_subsection', -1)
+            visual_control = getattr(panel, '_visual_control', -1)
 
         return PanelState(
             panel_focused=panel_focused,
-            focused_subsection=focused_subsection,
-            in_control_mode=in_control_mode,
+            visual_subsection=visual_subsection,
+            visual_control=visual_control,
             stylesheet=panel.styleSheet()
         )
 
@@ -436,10 +436,11 @@ class GUITestHarness:
         """Assert state is consistent across all layers.
 
         This is the KEY assertion that catches state synchronization bugs.
-        It verifies:
+        Since panels are now purely reactive to NavigationManager signals,
+        we verify:
         1. Panel focus matches NavigationManager section
-        2. Subsection matches between Nav and Panel
-        3. Control mode matches between Nav and Panel
+        2. Visual subsection matches NavigationManager subsection (when applicable)
+        3. Visual control matches NavigationManager control (when in CONTROL mode)
         4. If in control mode, slider group/slider focus matches
         5. Envelope panel shows the focused control (if in CONTROL mode)
         """
@@ -475,20 +476,22 @@ class GUITestHarness:
                 except ValueError:
                     pass
 
-        # 3. Subsection matches (only check if in subsection/control/value mode)
+        # 3. Visual subsection matches (only check if in subsection/control/value mode)
         if nav.mode in (NavigationMode.SUBSECTION, NavigationMode.CONTROL, NavigationMode.VALUE):
-            if panel.focused_subsection != nav.subsection:
+            if panel.visual_subsection != nav.subsection:
                 errors.append(
-                    f"Nav subsection={nav.subsection}, panel focused_subsection={panel.focused_subsection}"
+                    f"Nav subsection={nav.subsection}, panel visual_subsection={panel.visual_subsection}"
                 )
 
-        # 4. Control mode matches
-        expected_in_control = nav.mode in (NavigationMode.CONTROL, NavigationMode.VALUE)
-        if panel.in_control_mode != expected_in_control:
-            errors.append(
-                f"Nav mode={nav.mode}, expected in_control_mode={expected_in_control}, "
-                f"got panel.in_control_mode={panel.in_control_mode}"
-            )
+        # 4. Visual control mode matches (skip for TRACKS - it uses subsection=track model)
+        if nav.section != Section.TRACKS:
+            expected_in_control = nav.mode in (NavigationMode.CONTROL, NavigationMode.VALUE)
+            actual_in_control = panel.visual_control >= 0
+            if actual_in_control != expected_in_control:
+                errors.append(
+                    f"Nav mode={nav.mode}, expected visual_control>=0={expected_in_control}, "
+                    f"got visual_control={panel.visual_control}"
+                )
 
         # 5. If in control mode, verify slider group/slider focus
         # (Skip for TRACKS since tracks use subsection=track, not control within track)

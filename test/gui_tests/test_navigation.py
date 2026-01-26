@@ -211,21 +211,20 @@ class TestRapidNavigation(GUITestCase):
 class TestTrackNavigation(GUITestCase):
     """Tests for Track panel navigation specifics."""
 
-    def test_track_horizontal_navigation(self):
-        """Track panel uses A/D for horizontal navigation through tracks."""
+    def test_track_navigation_with_ws(self):
+        """Track panel uses W/S for navigation through tracks (via NavigationManager)."""
         # Navigate to Tracks section
         self.harness.press_shortcut('T')
         self.harness.press_shortcut('F')  # Subsection mode
-        self.harness.press_shortcut('F')  # Control mode
 
         initial = self.harness.get_nav_state().subsection
 
-        # Navigate right
-        self.harness.press_shortcut('D')
+        # Navigate to next track with S key (now handled by NavigationManager)
+        self.harness.press_shortcut('S')
 
         nav = self.harness.get_nav_state()
-        # Should move to next track
-        self.assertEqual(nav.subsection, (initial + 1) % 8)
+        # Should move to next track (subsection)
+        self.assertEqual(nav.subsection, initial + 1)
         self.harness.assert_state_consistent()
 
 
