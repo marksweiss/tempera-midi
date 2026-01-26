@@ -93,6 +93,16 @@ class MockTemperaAdapter:
                           immediate=immediate)
         self.state.set_global_param(category, param, value)
 
+    def set_modulator_selected(self, modulator_num: int):
+        """Set selected modulator (1-10)."""
+        self._record_call('set_modulator_selected', modulator_num)
+        self.state.set_modulator_selected(modulator_num)
+
+    def set_modulator_size(self, value: int, immediate: bool = False):
+        """Set modulator size."""
+        self._record_call('set_modulator_size', value, immediate=immediate)
+        self.state.set_modulator_size(value)
+
     # Undo/redo
     async def undo(self) -> bool:
         """Undo last state change."""

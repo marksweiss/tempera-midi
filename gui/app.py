@@ -255,8 +255,9 @@ class MainWindow(QMainWindow):
         self._track_panel.recordClicked.connect(self._on_track_record)
 
         # Global panel
-        self._global_panel.modwheelChanged.connect(self._on_modwheel_changed)
-        self._global_panel.modwheelSet.connect(self._on_modwheel_set)
+        self._global_panel.modulatorSizeChanged.connect(self._on_modulator_size_changed)
+        self._global_panel.modulatorSizeSet.connect(self._on_modulator_size_set)
+        self._global_panel.modulatorSelected.connect(self._on_modulator_selected)
         self._global_panel.parameterChanged.connect(self._on_global_param_changed)
         self._global_panel.parameterSet.connect(self._on_global_param_set)
 
@@ -448,13 +449,19 @@ class MainWindow(QMainWindow):
         """Handle track record button."""
         self._schedule_async(self._adapter.track_record_on(track_num))
 
-    def _on_modwheel_changed(self, value: int):
-        """Handle modwheel change during drag."""
-        self._adapter.set_global_param('modwheel', None, value, immediate=False)
+    def _on_modulator_size_changed(self, value: int):
+        """Handle modulator size change during drag."""
+        self._adapter.set_modulator_size(value, immediate=False)
 
-    def _on_modwheel_set(self, value: int):
-        """Handle modwheel set on release."""
-        self._adapter.set_global_param('modwheel', None, value, immediate=True)
+    def _on_modulator_size_set(self, value: int):
+        """Handle modulator size set on release."""
+        self._adapter.set_modulator_size(value, immediate=True)
+
+    def _on_modulator_selected(self, modulator_num: int):
+        """Handle modulator selection change."""
+        self._adapter.set_modulator_selected(modulator_num)
+        # Update envelope panel to show the newly selected modulator's envelope
+        self._update_envelope_panel_for_focus()
 
     def _on_global_param_changed(self, category: str, param: str, value: int):
         """Handle global parameter change during drag."""
@@ -619,8 +626,8 @@ class MainWindow(QMainWindow):
         section = self._nav.section
         if section == Section.GLOBAL:
             subsection = self._nav.subsection
-            if subsection == 4:  # Modwheel
-                self._global_panel.adjust_modwheel(delta)
+            if subsection == 4:  # Modulator
+                self._global_panel.adjust_modulator_size(delta)
             elif subsection < 4:
                 groups = self._global_panel.slider_groups
                 if 0 <= subsection < len(groups):
@@ -636,10 +643,10 @@ class MainWindow(QMainWindow):
         section = self._nav.section
         if section == Section.GLOBAL:
             subsection = self._nav.subsection
-            if subsection == 4:  # Modwheel
-                self._global_panel.set_modwheel(0)
-                self._global_panel.modwheelChanged.emit(0)
-                self._global_panel.modwheelSet.emit(0)
+            if subsection == 4:  # Modulator
+                self._global_panel.set_modulator_size(0)
+                self._global_panel.modulatorSizeChanged.emit(0)
+                self._global_panel.modulatorSizeSet.emit(0)
             elif subsection < 4:
                 groups = self._global_panel.slider_groups
                 if 0 <= subsection < len(groups):
@@ -702,7 +709,16 @@ class MainWindow(QMainWindow):
             # Subsection 1: Reverb (size, color, mix)
             # Subsection 2: Delay (feedback, time, color, mix)
             # Subsection 3: Chorus (depth, speed, flange, mix)
-            # Subsection 4: Modwheel (single control)
+            # Subsection 4: Modulator (dropdown, size slider)
+            #   - Both controls (dropdown and slider) show envelope for selected modulator
+
+            # Special handling for modulator subsection
+            if subsection == 4:
+                # Both controls (dropdown index 0, slider index 1) show the same envelope
+                # for the currently selected modulator
+                selected_mod = self._adapter.state.get_modulator_selected()
+                return f'global.modulator.{selected_mod}.size', f'Modulator {selected_mod}'
+
             params_by_subsection = [
                 [('adsr', 'attack', 'ADSR Attack'), ('adsr', 'decay', 'ADSR Decay'),
                  ('adsr', 'sustain', 'ADSR Sustain'), ('adsr', 'release', 'ADSR Release')],
@@ -712,15 +728,12 @@ class MainWindow(QMainWindow):
                  ('delay', 'color', 'Delay Color'), ('delay', 'mix', 'Delay Mix')],
                 [('chorus', 'depth', 'Chorus Depth'), ('chorus', 'speed', 'Chorus Speed'),
                  ('chorus', 'flange', 'Chorus Flange'), ('chorus', 'mix', 'Chorus Mix')],
-                [('modwheel', None, 'Modwheel')],
             ]
             if 0 <= subsection < len(params_by_subsection):
                 params = params_by_subsection[subsection]
                 if 0 <= control < len(params):
                     category, param, name = params[control]
-                    if param:
-                        return f'global.{category}.{param}', name
-                    return f'global.{category}', name
+                    return f'global.{category}.{param}', name
 
         return None, None
 

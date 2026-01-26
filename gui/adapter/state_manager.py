@@ -38,7 +38,10 @@ def _default_track_state() -> dict:
 def _default_global_state() -> dict:
     """Default state for global parameters."""
     return {
-        'modwheel': 0,
+        'modulator': {
+            'selected': 1,  # Which modulator (1-10) is selected
+            'size': 0,      # Current size value (0-127)
+        },
         'adsr': {
             'attack': 0,
             'decay': 0,
@@ -83,7 +86,7 @@ def _default_envelopes_state() -> dict[str, Envelope]:
     - emitter.{1-4}.{param} (e.g., emitter.1.volume)
     - track.{1-8}.volume
     - global.{category}.{param} (e.g., global.reverb.size)
-    - global.modwheel
+    - global.modulator.size
     """
     return {}
 
@@ -221,8 +224,8 @@ class StateManager:
     def get_global_param(self, category: str, param: Optional[str] = None) -> Any:
         """Get a global parameter.
 
-        For modwheel, use get_global_param('modwheel').
         For effects, use get_global_param('reverb', 'mix').
+        For modulator, use get_modulator_size() or get_modulator_selected().
         """
         if param is None:
             return self._state['global'][category]
@@ -232,8 +235,8 @@ class StateManager:
                          record_undo: bool = True):
         """Set a global parameter.
 
-        For modwheel, use set_global_param('modwheel', None, value).
         For effects, use set_global_param('reverb', 'mix', value).
+        For modulator, use set_modulator_size() or set_modulator_selected().
         """
         if record_undo:
             self._push_undo()
@@ -243,6 +246,40 @@ class StateManager:
         else:
             self._state['global'][category][param] = value
             self._notify(f'global.{category}.{param}', value)
+
+    # --- Modulator state ---
+
+    def get_modulator_selected(self) -> int:
+        """Get currently selected modulator (1-10)."""
+        return self._state['global']['modulator']['selected']
+
+    def set_modulator_selected(self, modulator_num: int, record_undo: bool = True):
+        """Set the selected modulator.
+
+        Args:
+            modulator_num: Modulator number (1-10)
+            record_undo: Whether to record for undo
+        """
+        if record_undo:
+            self._push_undo()
+        self._state['global']['modulator']['selected'] = modulator_num
+        self._notify('global.modulator.selected', modulator_num)
+
+    def get_modulator_size(self) -> int:
+        """Get current modulator size value (0-127)."""
+        return self._state['global']['modulator']['size']
+
+    def set_modulator_size(self, value: int, record_undo: bool = True):
+        """Set the modulator size value.
+
+        Args:
+            value: Size value (0-127)
+            record_undo: Whether to record for undo
+        """
+        if record_undo:
+            self._push_undo()
+        self._state['global']['modulator']['size'] = value
+        self._notify('global.modulator.size', value)
 
     # --- Cell state ---
 
@@ -373,7 +410,7 @@ class StateManager:
 
         Args:
             control_key: Control identifier (e.g., 'emitter.1.volume', 'track.3.volume',
-                         'global.reverb.mix', 'global.modwheel')
+                         'global.reverb.mix', 'global.modulator.size')
 
         Returns:
             The envelope for this control (creates empty one if not exists)

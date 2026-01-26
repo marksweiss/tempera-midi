@@ -1,10 +1,10 @@
-"""Global effects and modwheel controls panel."""
+"""Global effects and modulator controls panel."""
 
 from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QKeyEvent, QFocusEvent
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-    QTabWidget, QSlider, QLabel, QApplication
+    QTabWidget, QSlider, QLabel, QApplication, QComboBox
 )
 
 from gui.widgets.slider_group import SliderGroup
@@ -42,23 +42,25 @@ CHORUS_PARAMS = [
 
 class GlobalPanel(QGroupBox):
     """
-    Panel for global Tempera controls: ADSR envelope, effects, and modwheel.
+    Panel for global Tempera controls: ADSR envelope, effects, and modulator size.
 
     Features:
     - ADSR envelope controls
     - Tabbed effects (Reverb, Delay, Chorus)
-    - Prominent modwheel slider
+    - Modulator size slider with modulator selector (1-10)
 
     Signals:
-        modwheelChanged(int): Emitted when modwheel changes
-        modwheelSet(int): Emitted when modwheel slider released
+        modulatorSizeChanged(int): Emitted when modulator size changes
+        modulatorSizeSet(int): Emitted when modulator size slider released
+        modulatorSelected(int): Emitted when modulator selection changes
         parameterChanged(str, str, int): Emitted on slider change (category, param, value)
         parameterSet(str, str, int): Emitted on slider release (category, param, value)
         controlFocusRequested(int, int): Emitted when a control is clicked (subsection_index, control_index)
     """
 
-    modwheelChanged = Signal(int)
-    modwheelSet = Signal(int)
+    modulatorSizeChanged = Signal(int)
+    modulatorSizeSet = Signal(int)
+    modulatorSelected = Signal(int)
     parameterChanged = Signal(str, str, int)
     parameterSet = Signal(str, str, int)
     controlFocusRequested = Signal(int, int)
@@ -70,8 +72,9 @@ class GlobalPanel(QGroupBox):
         super().__init__('Global', parent)
 
         self._panel_focused = False
-        self._focused_subsection = 0  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        self._focused_subsection = 0  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
         self._in_control_mode = False  # Whether we're navigating controls within a subsection
+        self._modulator_control_index = 0  # 0=dropdown, 1=slider
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._setup_ui()
 
@@ -139,38 +142,47 @@ class GlobalPanel(QGroupBox):
         effects_layout.addWidget(self._effects_tabs)
         layout.addWidget(effects_group)
 
-        # Right side: Modwheel
-        modwheel_layout = QVBoxLayout()
-        modwheel_layout.setSpacing(4)
+        # Right side: Modulator Size with selector
+        modulator_layout = QVBoxLayout()
+        modulator_layout.setSpacing(4)
 
-        modwheel_label = QLabel('Mod')
-        modwheel_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        modwheel_layout.addWidget(modwheel_label)
+        modulator_label = QLabel('Mod Size')
+        modulator_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        modulator_layout.addWidget(modulator_label)
 
-        self._modwheel_value = QLabel('0')
-        self._modwheel_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        modwheel_layout.addWidget(self._modwheel_value)
+        self._modulator_size_value = QLabel('0')
+        self._modulator_size_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        modulator_layout.addWidget(self._modulator_size_value)
 
-        self._modwheel = QSlider(Qt.Orientation.Vertical)
-        self._modwheel.setMinimum(0)
-        self._modwheel.setMaximum(127)
-        self._modwheel.setValue(0)
-        self._modwheel.setTracking(True)
-        self._modwheel.setFixedWidth(32)
-        self._modwheel.setMinimumHeight(150)
-        modwheel_layout.addWidget(self._modwheel, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._modulator_slider = QSlider(Qt.Orientation.Vertical)
+        self._modulator_slider.setMinimum(0)
+        self._modulator_slider.setMaximum(127)
+        self._modulator_slider.setValue(0)
+        self._modulator_slider.setTracking(True)
+        self._modulator_slider.setFixedWidth(32)
+        self._modulator_slider.setMinimumHeight(150)
+        modulator_layout.addWidget(self._modulator_slider, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self._modwheel.valueChanged.connect(self._on_modwheel_changed)
-        self._modwheel.sliderReleased.connect(self._on_modwheel_released)
+        self._modulator_slider.valueChanged.connect(self._on_modulator_size_changed)
+        self._modulator_slider.sliderReleased.connect(self._on_modulator_size_released)
 
-        # Install event filter on modwheel for click detection
-        self._modwheel.installEventFilter(self)
+        # Modulator selector dropdown (1-10)
+        self._modulator_selector = QComboBox()
+        for i in range(1, 11):
+            self._modulator_selector.addItem(f'Mod {i}', i)
+        self._modulator_selector.setFixedWidth(80)
+        self._modulator_selector.currentIndexChanged.connect(self._on_modulator_selected)
+        modulator_layout.addWidget(self._modulator_selector, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        modwheel_layout.addStretch()
-        layout.addLayout(modwheel_layout)
+        # Install event filter on modulator controls for click detection
+        self._modulator_slider.installEventFilter(self)
+        self._modulator_selector.installEventFilter(self)
+
+        modulator_layout.addStretch()
+        layout.addLayout(modulator_layout)
 
         # Connect click signals for mouse focus
-        # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
         self._adsr_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(0, ctrl_idx)
         )
@@ -184,25 +196,40 @@ class GlobalPanel(QGroupBox):
             lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
         )
 
-    def _on_modwheel_changed(self, value: int):
-        """Handle modwheel value change."""
-        self._modwheel_value.setText(str(value))
-        self.modwheelChanged.emit(value)
+    def _on_modulator_size_changed(self, value: int):
+        """Handle modulator size value change."""
+        self._modulator_size_value.setText(str(value))
+        self.modulatorSizeChanged.emit(value)
 
-    def _on_modwheel_released(self):
-        """Handle modwheel slider release."""
-        self.modwheelSet.emit(self._modwheel.value())
+    def _on_modulator_size_released(self):
+        """Handle modulator size slider release."""
+        self.modulatorSizeSet.emit(self._modulator_slider.value())
 
-    def get_modwheel(self) -> int:
-        """Get modwheel value."""
-        return self._modwheel.value()
+    def _on_modulator_selected(self, index: int):
+        """Handle modulator selection change."""
+        modulator_num = self._modulator_selector.itemData(index)
+        self.modulatorSelected.emit(modulator_num)
 
-    def set_modwheel(self, value: int):
-        """Set modwheel value without emitting signals."""
-        self._modwheel.blockSignals(True)
-        self._modwheel.setValue(value)
-        self._modwheel_value.setText(str(value))
-        self._modwheel.blockSignals(False)
+    def get_modulator_size(self) -> int:
+        """Get modulator size value."""
+        return self._modulator_slider.value()
+
+    def set_modulator_size(self, value: int):
+        """Set modulator size value without emitting signals."""
+        self._modulator_slider.blockSignals(True)
+        self._modulator_slider.setValue(value)
+        self._modulator_size_value.setText(str(value))
+        self._modulator_slider.blockSignals(False)
+
+    def get_modulator_selected(self) -> int:
+        """Get currently selected modulator (1-10)."""
+        return self._modulator_selector.currentData()
+
+    def set_modulator_selected(self, modulator_num: int):
+        """Set selected modulator (1-10) without emitting signals."""
+        self._modulator_selector.blockSignals(True)
+        self._modulator_selector.setCurrentIndex(modulator_num - 1)
+        self._modulator_selector.blockSignals(False)
 
     def get_parameter(self, category: str, param: str) -> int:
         """Get a parameter value."""
@@ -230,14 +257,18 @@ class GlobalPanel(QGroupBox):
         Args:
             values: Dict with structure:
                 {
-                    'modwheel': int,
+                    'modulator': {'selected': int, 'size': int},
                     'adsr': {'attack': int, ...},
                     'reverb': {'size': int, ...},
                     ...
                 }
         """
-        if 'modwheel' in values:
-            self.set_modwheel(values['modwheel'])
+        if 'modulator' in values:
+            mod = values['modulator']
+            if 'selected' in mod:
+                self.set_modulator_selected(mod['selected'])
+            if 'size' in mod:
+                self.set_modulator_size(mod['size'])
 
         for category in ['adsr', 'reverb', 'delay', 'chorus']:
             if category in values:
@@ -248,7 +279,10 @@ class GlobalPanel(QGroupBox):
     def get_all_parameters(self) -> dict:
         """Get all parameter values."""
         return {
-            'modwheel': self._modwheel.value(),
+            'modulator': {
+                'selected': self.get_modulator_selected(),
+                'size': self._modulator_slider.value(),
+            },
             'adsr': self._adsr_group.get_all_values(),
             'reverb': self._reverb_group.get_all_values(),
             'delay': self._delay_group.get_all_values(),
@@ -257,19 +291,19 @@ class GlobalPanel(QGroupBox):
 
     # --- Keyboard navigation ---
 
-    # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
-    SUBSECTION_NAMES = ['ADSR', 'Reverb', 'Delay', 'Chorus', 'Modwheel']
+    # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
+    SUBSECTION_NAMES = ['ADSR', 'Reverb', 'Delay', 'Chorus', 'Modulator']
 
     @property
     def slider_groups(self) -> list[SliderGroup]:
-        """Get list of slider groups (excludes modwheel)."""
+        """Get list of slider groups (excludes modulator)."""
         return [self._adsr_group, self._reverb_group, self._delay_group, self._chorus_group]
 
     def set_subsection_focus(self, index: int):
         """Focus a specific subsection.
 
         Args:
-            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
         """
         self._focused_subsection = index
         groups = self.slider_groups
@@ -277,12 +311,12 @@ class GlobalPanel(QGroupBox):
         for group in groups:
             group.set_group_focused(False)
 
-        # Clear modwheel focus
-        self._modwheel.setStyleSheet(get_slider_focus_style(False))
+        # Clear modulator focus
+        self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
 
         if index == 4:
-            # Highlight modwheel (don't call setFocus to avoid race condition)
-            self._modwheel.setStyleSheet(get_slider_focus_style(True))
+            # Highlight modulator slider (don't call setFocus to avoid race condition)
+            self._modulator_slider.setStyleSheet(get_slider_focus_style(True))
         elif 0 <= index < len(groups):
             # Focus a slider group (visual only, don't call setFocus)
             groups[index].set_group_focused(True)
@@ -292,7 +326,7 @@ class GlobalPanel(QGroupBox):
 
     def get_current_subsection(self) -> int:
         """Get currently focused subsection index."""
-        if self._modwheel.hasFocus():
+        if self._modulator_slider.hasFocus() or self._modulator_selector.hasFocus():
             return 4
         groups = self.slider_groups
         for i, group in enumerate(groups):
@@ -300,15 +334,23 @@ class GlobalPanel(QGroupBox):
                 return i
         return 0
 
-    def adjust_modwheel(self, delta: int):
-        """Adjust modwheel value."""
-        new_value = self._modwheel.value() + delta
+    def adjust_modulator_size(self, delta: int):
+        """Adjust modulator size value."""
+        new_value = self._modulator_slider.value() + delta
         new_value = max(0, min(127, new_value))
-        if new_value != self._modwheel.value():
-            self._modwheel.setValue(new_value)
-            self._modwheel_value.setText(str(new_value))
-            self.modwheelChanged.emit(new_value)
-            self.modwheelSet.emit(new_value)
+        if new_value != self._modulator_slider.value():
+            self._modulator_slider.setValue(new_value)
+            self._modulator_size_value.setText(str(new_value))
+            self.modulatorSizeChanged.emit(new_value)
+            self.modulatorSizeSet.emit(new_value)
+
+    def adjust_modulator_selection(self, delta: int):
+        """Adjust modulator selection."""
+        current = self._modulator_selector.currentIndex()
+        new_index = current + delta
+        new_index = max(0, min(9, new_index))  # 0-9 for modulators 1-10
+        if new_index != current:
+            self._modulator_selector.setCurrentIndex(new_index)
 
     def get_navigation_path(self) -> str:
         """Get current navigation path string."""
@@ -316,8 +358,9 @@ class GlobalPanel(QGroupBox):
         path = f"Global > {self.SUBSECTION_NAMES[subsection]}"
 
         if subsection == 4:
-            # Modwheel
-            path += f": {self._modwheel.value()}"
+            # Modulator
+            mod_num = self.get_modulator_selected()
+            path += f" (Mod {mod_num}): {self._modulator_slider.value()}"
         elif subsection < 4:
             group = self.slider_groups[subsection]
             if group.focused_name:
@@ -331,17 +374,22 @@ class GlobalPanel(QGroupBox):
         """Handle keyboard input for navigation within the panel."""
         key = event.key()
         groups = self.slider_groups
-        num_subsections = 5  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modwheel
+        num_subsections = 5  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
 
         # Handle navigation keys
         if key in (Qt.Key.Key_Up, Qt.Key.Key_W):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
-                    # Modwheel: increase value
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        self.adjust_modwheel(10)
+                    # Modulator subsection: navigate between controls or adjust value
+                    if self._modulator_control_index == 0:
+                        # On dropdown: decrease selection
+                        self.adjust_modulator_selection(-1)
                     else:
-                        self.adjust_modwheel(1)
+                        # On slider: increase value
+                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                            self.adjust_modulator_size(10)
+                        else:
+                            self.adjust_modulator_size(1)
                 else:
                     # Move to previous control within subsection
                     groups[self._focused_subsection].focus_prev_control()
@@ -356,11 +404,16 @@ class GlobalPanel(QGroupBox):
         elif key in (Qt.Key.Key_Down, Qt.Key.Key_S):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
-                    # Modwheel: decrease value
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        self.adjust_modwheel(-10)
+                    # Modulator subsection: navigate between controls or adjust value
+                    if self._modulator_control_index == 0:
+                        # On dropdown: increase selection
+                        self.adjust_modulator_selection(1)
                     else:
-                        self.adjust_modwheel(-1)
+                        # On slider: decrease value
+                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                            self.adjust_modulator_size(-10)
+                        else:
+                            self.adjust_modulator_size(-1)
                 else:
                     # Move to next control within subsection
                     groups[self._focused_subsection].focus_next_control()
@@ -375,11 +428,16 @@ class GlobalPanel(QGroupBox):
         elif key in (Qt.Key.Key_Left, Qt.Key.Key_A):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
-                    # Modwheel: decrease value
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        self.adjust_modwheel(-10)
+                    # Modulator subsection: adjust value
+                    if self._modulator_control_index == 0:
+                        # On dropdown: decrease selection
+                        self.adjust_modulator_selection(-1)
                     else:
-                        self.adjust_modwheel(-1)
+                        # On slider: decrease value
+                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                            self.adjust_modulator_size(-10)
+                        else:
+                            self.adjust_modulator_size(-1)
                 else:
                     # Adjust value down
                     if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
@@ -389,11 +447,16 @@ class GlobalPanel(QGroupBox):
         elif key in (Qt.Key.Key_Right, Qt.Key.Key_D):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
-                    # Modwheel: increase value
-                    if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                        self.adjust_modwheel(10)
+                    # Modulator subsection: adjust value
+                    if self._modulator_control_index == 0:
+                        # On dropdown: increase selection
+                        self.adjust_modulator_selection(1)
                     else:
-                        self.adjust_modwheel(1)
+                        # On slider: increase value
+                        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                            self.adjust_modulator_size(10)
+                        else:
+                            self.adjust_modulator_size(1)
                 else:
                     # Adjust value up
                     if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
@@ -403,11 +466,11 @@ class GlobalPanel(QGroupBox):
         elif key in (Qt.Key.Key_X, Qt.Key.Key_Delete):
             if self._in_control_mode:
                 if self._focused_subsection == 4:
-                    # Reset modwheel to 0
-                    self._modwheel.setValue(0)
-                    self._modwheel_value.setText('0')
-                    self.modwheelChanged.emit(0)
-                    self.modwheelSet.emit(0)
+                    # Reset modulator size to 0
+                    self._modulator_slider.setValue(0)
+                    self._modulator_size_value.setText('0')
+                    self.modulatorSizeChanged.emit(0)
+                    self.modulatorSizeSet.emit(0)
                 else:
                     # Reset control to default
                     groups[self._focused_subsection].reset_focused_to_default()
@@ -418,12 +481,13 @@ class GlobalPanel(QGroupBox):
         """Enter control mode - start navigating individual controls.
 
         Args:
-            control_index: The control index to focus (default 0)
+            control_index: The control index to focus (default 0).
+                For modulator subsection: 0=dropdown, 1=slider.
         """
         self._in_control_mode = True
         if self._focused_subsection == 4:
-            # Modwheel is already focused, no need to set control focus
-            pass
+            # Modulator subsection: track which control is focused (0=dropdown, 1=slider)
+            self._modulator_control_index = control_index
         else:
             groups = self.slider_groups
             if 0 <= self._focused_subsection < len(groups):
@@ -449,7 +513,7 @@ class GlobalPanel(QGroupBox):
             for group in self.slider_groups:
                 group.set_group_focused(False)
                 group.clear_control_focus()
-            self._modwheel.setStyleSheet(get_slider_focus_style(False))
+            self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
             self._in_control_mode = False
 
     def focusInEvent(self, event: QFocusEvent):
@@ -467,9 +531,13 @@ class GlobalPanel(QGroupBox):
             self.set_panel_focused(False)
 
     def eventFilter(self, obj, event):
-        """Filter events to detect modwheel clicks."""
-        if obj == self._modwheel and event.type() == QEvent.Type.MouseButtonPress:
+        """Filter events to detect modulator control clicks."""
+        if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
-                # Modwheel is subsection 4, control 0 (only one control)
-                self.controlFocusRequested.emit(4, 0)
+                if obj == self._modulator_slider:
+                    # Modulator slider is subsection 4, control 1
+                    self.controlFocusRequested.emit(4, 1)
+                elif obj == self._modulator_selector:
+                    # Modulator dropdown is subsection 4, control 0
+                    self.controlFocusRequested.emit(4, 0)
         return super().eventFilter(obj, event)

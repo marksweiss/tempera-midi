@@ -82,7 +82,7 @@ class TemperaAdapter:
             self._debouncer.register(key, self._make_track_callback(t))
 
         # Global parameters
-        self._debouncer.register('global.modwheel', self._send_modwheel)
+        self._debouncer.register('global.modulator.size', self._send_modulator_size)
 
         for param in ['attack', 'decay', 'sustain', 'release']:
             key = f'global.adsr.{param}'
@@ -192,11 +192,15 @@ class TemperaAdapter:
             return self.state.get_track_volume(track_num)
 
         elif parts[0] == 'global':
-            if len(parts) == 2:
-                # global.modwheel
-                return self.state.get_global_param(parts[1])
+            if len(parts) >= 4 and parts[1] == 'modulator':
+                # global.modulator.{N}.size - per-modulator envelope
+                # All modulators share the current size value from state
+                return self.state.get_modulator_size()
+            elif len(parts) >= 3 and parts[1] == 'modulator':
+                # Legacy: global.modulator.size (for backward compat)
+                return self.state.get_modulator_size()
             elif len(parts) >= 3:
-                # global.reverb.mix
+                # global.reverb.mix etc
                 return self.state.get_global_param(parts[1], parts[2])
 
         return None
@@ -220,8 +224,13 @@ class TemperaAdapter:
             await self._send_track_volume(track_num, value)
 
         elif parts[0] == 'global':
-            if len(parts) == 2:
-                await self._send_modwheel(value)
+            if len(parts) >= 4 and parts[1] == 'modulator':
+                # global.modulator.{N}.size - send to specific modulator
+                mod_num = int(parts[2])
+                await self._send_modulator_size_to(mod_num, value)
+            elif len(parts) >= 3 and parts[1] == 'modulator':
+                # Legacy: global.modulator.size
+                await self._send_modulator_size(value)
             elif len(parts) >= 3:
                 await self._send_global_param(parts[1], parts[2], value)
 
@@ -411,14 +420,33 @@ class TemperaAdapter:
 
     # --- Global controls ---
 
-    async def _send_modwheel(self, value: int):
-        """Internal: send modwheel to hardware."""
+    async def _send_modulator_size(self, value: int):
+        """Internal: send modulator size to hardware."""
         if not self._connected or not self._output:
             return
         try:
-            msg = self._tempera_global.modwheel(value)
+            selected = self.state.get_modulator_selected()
+            msg = self._tempera_global.modulator_size(selected, value)
             self._output.send(msg)
-            self._notify_status(f'Modwheel → {value}')
+            self._notify_status(f'Modulator {selected} Size → {value}')
+        except Exception as e:
+            self._notify_status(f'Error: {e}')
+
+    async def _send_modulator_size_to(self, modulator_num: int, value: int):
+        """Internal: send modulator size to a specific modulator.
+
+        Used by envelope automation to send to the correct modulator CC.
+
+        Args:
+            modulator_num: Modulator number (1-10)
+            value: Size value (0-127)
+        """
+        if not self._connected or not self._output:
+            return
+        try:
+            msg = self._tempera_global.modulator_size(modulator_num, value)
+            self._output.send(msg)
+            self._notify_status(f'Modulator {modulator_num} Size → {value}')
         except Exception as e:
             self._notify_status(f'Error: {e}')
 
@@ -439,20 +467,30 @@ class TemperaAdapter:
                          immediate: bool = False):
         """Set a global parameter (debounced).
 
-        For modwheel: set_global_param('modwheel', None, value)
         For effects: set_global_param('reverb', 'mix', value)
+        For modulator: use set_modulator_size() and set_modulator_selected() instead.
         """
         self.state.set_global_param(category, param, value, record_undo=immediate)
 
-        if param is None:
-            key = f'global.{category}'
-        else:
-            key = f'global.{category}.{param}'
+        key = f'global.{category}.{param}'
 
         if immediate:
             self._debouncer.update_immediate(key, value)
         else:
             self._debouncer.update(key, value)
+
+    def set_modulator_size(self, value: int, immediate: bool = False):
+        """Set modulator size (debounced)."""
+        self.state.set_modulator_size(value, record_undo=immediate)
+        key = 'global.modulator.size'
+        if immediate:
+            self._debouncer.update_immediate(key, value)
+        else:
+            self._debouncer.update(key, value)
+
+    def set_modulator_selected(self, modulator_num: int):
+        """Set selected modulator (1-10). Does not send MIDI, just updates state."""
+        self.state.set_modulator_selected(modulator_num)
 
     # --- Playback ---
 
@@ -528,8 +566,8 @@ class TemperaAdapter:
         for track_num, params in state['tracks'].items():
             await self._send_track_volume(track_num, params['volume'])
 
-        # Sync global parameters
-        await self._send_modwheel(state['global']['modwheel'])
+        # Sync global parameters (modulator size)
+        await self._send_modulator_size(state['global']['modulator']['size'])
         for param, value in state['global']['adsr'].items():
             await self._send_global_param('adsr', param, value)
         for param, value in state['global']['reverb'].items():

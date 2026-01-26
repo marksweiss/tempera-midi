@@ -64,6 +64,50 @@ class TestTemperaGlobalIntegration(MidiIntegrationTestBase):
         self.assertEqual(messages[0].type, 'control_change')
         self.assertEqual(messages[0].value, 64)
 
+    def test_modulator_size_modulator_1(self):
+        """Test modulator_size for modulator 1 (CC 110)."""
+        raw_bytes = self.tempera.modulator_size(modulator_num=1, value=64)
+        messages = self.parse_and_send(raw_bytes)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].type, 'control_change')
+        self.assertEqual(messages[0].control, 110)
+        self.assertEqual(messages[0].value, 64)
+
+    def test_modulator_size_modulator_5(self):
+        """Test modulator_size for modulator 5 (CC 114)."""
+        raw_bytes = self.tempera.modulator_size(modulator_num=5, value=100)
+        messages = self.parse_and_send(raw_bytes)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].type, 'control_change')
+        self.assertEqual(messages[0].control, 114)
+        self.assertEqual(messages[0].value, 100)
+
+    def test_modulator_size_modulator_10(self):
+        """Test modulator_size for modulator 10 (CC 119)."""
+        raw_bytes = self.tempera.modulator_size(modulator_num=10, value=127)
+        messages = self.parse_and_send(raw_bytes)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].type, 'control_change')
+        self.assertEqual(messages[0].control, 119)
+        self.assertEqual(messages[0].value, 127)
+
+    def test_modulator_size_all_modulators(self):
+        """Test modulator_size CC mapping for all 10 modulators."""
+        expected_ccs = {1: 110, 2: 111, 3: 112, 4: 113, 5: 114,
+                        6: 115, 7: 116, 8: 117, 9: 118, 10: 119}
+        for mod_num, expected_cc in expected_ccs.items():
+            raw_bytes = self.tempera.modulator_size(modulator_num=mod_num, value=mod_num * 10)
+            messages = self.parse_and_send(raw_bytes)
+            self.assertEqual(messages[0].control, expected_cc,
+                           f"Modulator {mod_num} should use CC {expected_cc}")
+
+    def test_modulator_size_invalid_modulator(self):
+        """Test modulator_size raises error for invalid modulator numbers."""
+        with self.assertRaises(ValueError):
+            self.tempera.modulator_size(modulator_num=0, value=64)
+        with self.assertRaises(ValueError):
+            self.tempera.modulator_size(modulator_num=11, value=64)
+
     def test_adsr_attack(self):
         raw_bytes = self.tempera.adsr(attack=100)
         messages = self.parse_and_send(raw_bytes)

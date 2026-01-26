@@ -3,6 +3,9 @@ from tempera.constants import (
     MODWHEEL, REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
+    MODULATOR_1_SIZE, MODULATOR_2_SIZE, MODULATOR_3_SIZE, MODULATOR_4_SIZE,
+    MODULATOR_5_SIZE, MODULATOR_6_SIZE, MODULATOR_7_SIZE, MODULATOR_8_SIZE,
+    MODULATOR_9_SIZE, MODULATOR_10_SIZE,
 )
 from midi import Midi
 from mido import Message
@@ -38,6 +41,19 @@ CHORUS_CC_MAP = {
     'mix': CHORUS_MIX,
 }
 
+MODULATOR_SIZE_CC_MAP = {
+    1: MODULATOR_1_SIZE,
+    2: MODULATOR_2_SIZE,
+    3: MODULATOR_3_SIZE,
+    4: MODULATOR_4_SIZE,
+    5: MODULATOR_5_SIZE,
+    6: MODULATOR_6_SIZE,
+    7: MODULATOR_7_SIZE,
+    8: MODULATOR_8_SIZE,
+    9: MODULATOR_9_SIZE,
+    10: MODULATOR_10_SIZE,
+}
+
 
 class TemperaGlobal:
     """
@@ -58,6 +74,25 @@ class TemperaGlobal:
         """Change Modwheel."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, MODWHEEL_CC_MAP)[0]
+
+    def modulator_size(
+            self,
+            modulator_num: int,
+            value: int
+    ) -> Message:
+        """Change Modulator Size for a specific modulator.
+
+        Args:
+            modulator_num: Modulator number (1-10)
+            value: Size value (0-127)
+
+        Returns:
+            MIDI CC message for the modulator size
+        """
+        if modulator_num not in MODULATOR_SIZE_CC_MAP:
+            raise ValueError(f"Invalid modulator number: {modulator_num}. Must be 1-10.")
+        cc_num = MODULATOR_SIZE_CC_MAP[modulator_num]
+        return self.midi.cc(cc_num, value)
 
     def adsr(
         self,

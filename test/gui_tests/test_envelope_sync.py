@@ -203,5 +203,83 @@ class TestEnvelopeWithEmitterChange(GUITestCase):
         self.assertIn('.2.', envelope2.control_key)
 
 
+class TestModulatorEnvelopeBehavior(GUITestCase):
+    """Tests for modulator envelope panel behavior.
+
+    Each modulator (1-10) has its own envelope, not a single shared envelope.
+    Both the dropdown selector and size slider show the same envelope for the
+    currently selected modulator.
+    """
+
+    def test_modulator_dropdown_shows_selected_modulator_envelope(self):
+        """Clicking modulator dropdown shows envelope for selected modulator."""
+        # Focus modulator dropdown (subsection 4, control 0)
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=0)
+
+        envelope = self.harness.get_envelope_panel_state()
+
+        # Default selected modulator is 1
+        self.assertEqual(envelope.control_key, 'global.modulator.1.size')
+        self.assertEqual(envelope.display_name, 'Modulator 1')
+
+    def test_modulator_slider_shows_selected_modulator_envelope(self):
+        """Clicking modulator slider shows envelope for selected modulator."""
+        # Focus modulator slider (subsection 4, control 1)
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=1)
+
+        envelope = self.harness.get_envelope_panel_state()
+
+        # Should show same envelope as dropdown
+        self.assertEqual(envelope.control_key, 'global.modulator.1.size')
+        self.assertEqual(envelope.display_name, 'Modulator 1')
+
+    def test_both_modulator_controls_show_same_envelope(self):
+        """Both modulator controls (dropdown and slider) show the same envelope."""
+        # Focus dropdown
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=0)
+        dropdown_envelope = self.harness.get_envelope_panel_state()
+
+        # Focus slider
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=1)
+        slider_envelope = self.harness.get_envelope_panel_state()
+
+        # Both should show the same control key and display name
+        self.assertEqual(dropdown_envelope.control_key, slider_envelope.control_key)
+        self.assertEqual(dropdown_envelope.display_name, slider_envelope.display_name)
+
+    def test_modulator_envelope_key_format(self):
+        """Modulator envelope keys have format global.modulator.{N}.size."""
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=0)
+        envelope = self.harness.get_envelope_panel_state()
+
+        # Key should be global.modulator.{N}.size
+        parts = envelope.control_key.split('.')
+        self.assertEqual(len(parts), 4)
+        self.assertEqual(parts[0], 'global')
+        self.assertEqual(parts[1], 'modulator')
+        self.assertIn(parts[2], [str(i) for i in range(1, 11)])  # 1-10
+        self.assertEqual(parts[3], 'size')
+
+    def test_modulator_selection_change_updates_envelope(self):
+        """Changing modulator selection updates envelope panel."""
+        # Focus modulator subsection
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=0)
+
+        # Get initial envelope (modulator 1)
+        envelope1 = self.harness.get_envelope_panel_state()
+        self.assertEqual(envelope1.control_key, 'global.modulator.1.size')
+
+        # Change selected modulator to 5
+        self.harness.select_modulator(5)
+
+        # Re-focus to get updated envelope
+        self.harness.click_control(Section.GLOBAL, subsection=4, control=0)
+        envelope5 = self.harness.get_envelope_panel_state()
+
+        # Should now show modulator 5
+        self.assertEqual(envelope5.control_key, 'global.modulator.5.size')
+        self.assertEqual(envelope5.display_name, 'Modulator 5')
+
+
 if __name__ == '__main__':
     unittest.main()

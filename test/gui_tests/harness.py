@@ -144,11 +144,32 @@ class GUITestHarness:
                 # Emit the signal that track panel would emit on click
                 panel.controlFocusRequested.emit(subsection, 0)
         elif section == Section.GLOBAL and subsection == 4:
-            # Global modwheel - emit controlFocusRequested
-            panel.controlFocusRequested.emit(4, 0)
+            # Global modulator - emit controlFocusRequested with the control index
+            # control 0 = dropdown, control 1 = slider
+            panel.controlFocusRequested.emit(4, control)
         else:
             # Standard panel with slider groups - emit controlFocusRequested
             panel.controlFocusRequested.emit(subsection, control)
+
+        self.process_events()
+
+    def select_modulator(self, modulator_num: int) -> None:
+        """Select a modulator (1-10) in the Global panel.
+
+        This updates the state manager's selected modulator and triggers
+        the envelope panel update.
+
+        Args:
+            modulator_num: Modulator number (1-10)
+        """
+        if not 1 <= modulator_num <= 10:
+            raise ValueError(f"Modulator number must be 1-10, got {modulator_num}")
+
+        # Update state directly
+        self._adapter.state.set_modulator_selected(modulator_num)
+
+        # Trigger envelope panel update through the window's handler
+        self._window._on_modulator_selected(modulator_num)
 
         self.process_events()
 
@@ -492,6 +513,12 @@ class GUITestHarness:
                 return f'track.{track_num}.volume'
 
         elif nav.section == Section.GLOBAL:
+            # Special handling for modulator subsection (index 4)
+            # Both controls (dropdown and slider) show envelope for selected modulator
+            if nav.subsection == 4:
+                selected_mod = self._adapter.state.get_modulator_selected()
+                return f'global.modulator.{selected_mod}.size'
+
             # Map subsection + control to global parameter
             params_by_subsection = [
                 # ADSR
@@ -502,8 +529,6 @@ class GUITestHarness:
                 [('delay', 'feedback'), ('delay', 'time'), ('delay', 'color'), ('delay', 'mix')],
                 # Chorus
                 [('chorus', 'depth'), ('chorus', 'speed'), ('chorus', 'flange'), ('chorus', 'mix')],
-                # Modwheel
-                [('modwheel', None)],
             ]
             if 0 <= nav.subsection < len(params_by_subsection):
                 params = params_by_subsection[nav.subsection]

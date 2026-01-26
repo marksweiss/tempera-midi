@@ -127,13 +127,13 @@ class TestSubsectionNavigation(GUITestCase):
         self.assertEqual(nav.subsection, 0)
         self.harness.assert_state_consistent()
 
-    def test_global_subsection_includes_modwheel(self):
-        """Global subsection navigation includes modwheel (subsection 4)."""
+    def test_global_subsection_includes_modulator(self):
+        """Global subsection navigation includes modulator (subsection 4)."""
         # Navigate to Global
         self.harness.press_shortcut('G')
         self.harness.press_shortcut('F')
 
-        # Navigate to modwheel (subsection 4)
+        # Navigate to modulator (subsection 4)
         for _ in range(4):
             self.harness.press_shortcut('S')
 
