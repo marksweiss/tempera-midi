@@ -165,5 +165,116 @@ class TestSectionFocusStyles(GUITestCase):
         self.assertIn(SECTION_ACTIVE_BORDER, panel.stylesheet)
 
 
+class TestHighlightingInvariant(GUITestCase):
+    """Tests that exactly one section is highlighted at any time."""
+
+    def test_section_switch_keyboard_clears_old_subsection(self):
+        """Switching sections via keyboard clears old subsection highlighting."""
+        # Setup: Navigate to Emitter, enter subsection mode
+        self.harness.press_shortcut('E')
+        self.harness.press_shortcut('F')  # Enter subsection mode
+
+        # Verify Emitter subsection is highlighted
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertTrue(emitter.panel_focused)
+        self.assertEqual(emitter.visual_subsection, 0)  # First subsection
+
+        # Act: Switch to Global via keyboard
+        self.harness.press_shortcut('G')
+
+        # Assert: Emitter highlighting cleared
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertFalse(emitter.panel_focused)
+        self.assertEqual(emitter.visual_subsection, -1)
+
+        # Assert: Global is now focused
+        global_panel = self.harness.get_panel_state(Section.GLOBAL)
+        self.assertTrue(global_panel.panel_focused)
+
+    def test_subsection_click_different_section_clears_old(self):
+        """Clicking subsection in different section clears old highlighting."""
+        # Setup: Focus Emitter control
+        self.harness.click_control(Section.EMITTER, 0, 0)
+
+        # Verify Emitter is in control mode
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertTrue(emitter.panel_focused)
+        self.assertEqual(emitter.visual_control, 0)
+
+        # Act: Click on Global subsection
+        self.harness.click_subsection(Section.GLOBAL, 0)
+
+        # Assert: Emitter fully cleared
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertFalse(emitter.panel_focused)
+        self.assertEqual(emitter.visual_subsection, -1)
+        self.assertEqual(emitter.visual_control, -1)
+
+        # Assert: Global subsection highlighted
+        global_panel = self.harness.get_panel_state(Section.GLOBAL)
+        self.assertTrue(global_panel.panel_focused)
+        self.assertEqual(global_panel.visual_subsection, 0)
+
+    def test_control_click_different_section_clears_old(self):
+        """Clicking control in different section clears old section completely."""
+        # Setup: Focus Global control
+        self.harness.click_control(Section.GLOBAL, 0, 2)
+
+        # Act: Click Emitter control
+        self.harness.click_control(Section.EMITTER, 1, 0)
+
+        # Assert: Global fully cleared
+        global_panel = self.harness.get_panel_state(Section.GLOBAL)
+        self.assertFalse(global_panel.panel_focused)
+        self.assertEqual(global_panel.visual_subsection, -1)
+        self.assertEqual(global_panel.visual_control, -1)
+
+        # Assert: Emitter now has control focus
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertTrue(emitter.panel_focused)
+        self.assertEqual(emitter.visual_subsection, 1)
+        self.assertEqual(emitter.visual_control, 0)
+
+    def test_only_one_panel_focused_after_navigation_sequence(self):
+        """After any sequence of navigation, exactly one panel is focused."""
+        # Perform various navigation actions
+        actions = ['E', 'F', 'S', 'G', 'F', 'F', 'T', 'F', 'Q', 'E']
+
+        for shortcut in actions:
+            self.harness.press_shortcut(shortcut)
+
+            # Count how many panels are focused
+            focused_count = 0
+            for section in [Section.EMITTER, Section.TRACKS, Section.GLOBAL]:
+                panel = self.harness.get_panel_state(section)
+                if panel.panel_focused:
+                    focused_count += 1
+
+            # If we're in GRID, no panel should be focused
+            nav = self.harness.get_nav_state()
+            if nav.section == Section.GRID:
+                self.assertEqual(focused_count, 0,
+                    f"Expected 0 panels focused in GRID, got {focused_count}")
+            else:
+                self.assertEqual(focused_count, 1,
+                    f"Expected exactly 1 panel focused, got {focused_count}")
+
+    def test_click_background_clears_other_panels(self):
+        """Clicking panel background clears other panels."""
+        # Setup: Focus control in Emitter
+        self.harness.click_control(Section.EMITTER, 0, 0)
+
+        # Act: Click on Tracks panel background
+        self.harness.click_section(Section.TRACKS)
+
+        # Assert: Emitter cleared
+        emitter = self.harness.get_panel_state(Section.EMITTER)
+        self.assertFalse(emitter.panel_focused)
+
+        # Assert: Tracks focused
+        tracks = self.harness.get_panel_state(Section.TRACKS)
+        self.assertTrue(tracks.panel_focused)
+
+
 if __name__ == '__main__':
     unittest.main()

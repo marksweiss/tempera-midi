@@ -670,8 +670,30 @@ class MainWindow(QMainWindow):
 
     # --- Navigation handlers ---
 
+    def _ensure_section_panel_focused(self, section: Section):
+        """Ensure the panel for the given section is focused and all others are not.
+
+        This is the ONLY place panel highlighting should be managed to ensure
+        exactly one section is highlighted at a time.
+
+        Args:
+            section: The section to focus. If GRID, all panels will be unfocused.
+        """
+        section_panels = {
+            Section.EMITTER: self._emitter_panel,
+            Section.GLOBAL: self._global_panel,
+            Section.TRACKS: self._track_panel,
+        }
+
+        for sec, panel in section_panels.items():
+            panel.set_panel_focused(sec == section)
+
     def _on_section_changed(self, section: Section):
         """Handle navigation section change."""
+        # Ensure exactly one panel is focused
+        self._ensure_section_panel_focused(section)
+
+        # Set Qt focus for keyboard events
         section_widgets = {
             Section.GRID: self._cell_grid,
             Section.EMITTER: self._emitter_panel,
@@ -715,6 +737,10 @@ class MainWindow(QMainWindow):
     def _on_subsection_changed(self, index: int):
         """Handle subsection focus change from NavigationManager."""
         section = self._nav.section
+
+        # CRITICAL: Ensure parent panel is focused and others are cleared
+        self._ensure_section_panel_focused(section)
+
         if section == Section.GLOBAL:
             self._global_panel.set_subsection_focus(index)
         elif section == Section.EMITTER:
@@ -728,8 +754,15 @@ class MainWindow(QMainWindow):
         self._update_envelope_panel_for_focus()
 
     def _on_control_changed(self, index: int):
-        """Handle control focus change from NavigationManager."""
+        """Handle control focus change from NavigationManager.
+
+        NOTE: This handler does NOT call _ensure_section_panel_focused() because:
+        1. If section changed, _on_section_changed was already called first
+        2. _on_subsection_changed was already called and set the subsection highlight
+        Calling _ensure_section_panel_focused() here would clear that subsection highlight.
+        """
         section = self._nav.section
+
         if section == Section.GLOBAL:
             self._global_panel.enter_control_mode(index)
         elif section == Section.EMITTER:
@@ -741,7 +774,13 @@ class MainWindow(QMainWindow):
         self._update_envelope_panel_for_focus()
 
     def _on_mode_changed(self, mode: NavigationMode):
-        """Handle mode change from NavigationManager."""
+        """Handle mode change from NavigationManager.
+
+        NOTE: This handler does NOT call _ensure_section_panel_focused() because
+        modeChanged is emitted AFTER sectionChanged/subsectionChanged/controlChanged.
+        Those handlers already ensure the correct panel is focused. Calling it here
+        would clear the subsection/control highlighting that was just set.
+        """
         section = self._nav.section
 
         # When switching to SECTION mode, clear all subsection/control state on panels

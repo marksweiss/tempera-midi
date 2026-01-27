@@ -1,7 +1,7 @@
 """Track volume controls panel."""
 
 from PySide6.QtCore import Qt, Signal, QTimer, QEvent
-from PySide6.QtGui import QKeyEvent, QFocusEvent
+from PySide6.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGroupBox,
     QSlider, QLabel, QPushButton, QApplication
@@ -295,23 +295,32 @@ class TrackPanel(QGroupBox):
         else:
             super().keyPressEvent(event)
 
+    def mousePressEvent(self, event: QMouseEvent):
+        """Handle mouse click on panel background to focus the section."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Only emit if click was directly on panel, not on a child widget
+            child = self.childAt(event.pos())
+            if child is None:
+                self.sectionClicked.emit()
+        super().mousePressEvent(event)
+
     def focusInEvent(self, event: QFocusEvent):
-        """Handle focus gained - show panel highlight only."""
+        """Handle Qt focus - do NOT update visual state here.
+
+        Visual state is controlled exclusively by NavigationManager signals
+        through MainWindow. Qt focus events are ignored for highlighting.
+        """
         super().focusInEvent(event)
-        self.set_panel_focused(True)
-        # Don't emit sectionClicked here - it should only be emitted from
-        # mousePressEvent when user explicitly clicks on panel background.
-        # focusInEvent fires both from clicks AND programmatic focus changes,
-        # and we don't want programmatic changes to reset navigation state.
-        # Don't auto-focus a track - NavigationManager controls that
+        # NO-OP: Visual state managed by app.py handlers
 
     def focusOutEvent(self, event: QFocusEvent):
-        """Handle focus lost - only clear if focus left the panel hierarchy."""
+        """Handle Qt focus lost - do NOT update visual state here.
+
+        Visual state is controlled exclusively by NavigationManager signals
+        through MainWindow. Qt focus events are ignored for highlighting.
+        """
         super().focusOutEvent(event)
-        # Only clear if focus went OUTSIDE this panel hierarchy
-        new_focus = QApplication.focusWidget()
-        if new_focus is None or not self.isAncestorOf(new_focus):
-            self.set_panel_focused(False)
+        # NO-OP: Visual state managed by app.py handlers
 
     def enter_control_mode(self, control_index: int = 0):
         """Enter control mode - ensure a track is visually highlighted.
