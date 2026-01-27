@@ -8,6 +8,8 @@ Or with a specific MIDI port:
     TEMPERA_PORT='Tempera' uv run python main_gui.py
 """
 
+import os
+
 from gui.app import run_app
 
 if __name__ == '__main__':

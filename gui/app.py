@@ -983,6 +983,12 @@ def run_app():
     window = MainWindow(adapter)
     window.show()
 
+    # Auto-connect to Tempera
+    async def auto_connect():
+        await adapter.connect()
+
+    asyncio.ensure_future(auto_connect())
+
     # Run the event loop
     with loop:
         loop.run_forever()

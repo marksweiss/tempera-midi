@@ -518,6 +518,9 @@ class TestChannelMapping(MidiIntegrationTestBase):
 
 def find_tempera_port():
     """Find a MIDI output port matching the Tempera name."""
+    # TEMP DEBUG
+    breakpoint()
+
     output_names = mido.get_output_names()
     for name in output_names:
         if TEMPERA_PORT_NAME.lower() in name.lower():
@@ -542,6 +545,10 @@ class MidiHardwareTestBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+
+        # TEMP DEBUG
+        breakpoint()
+
         cls.tempera_port_name = find_tempera_port()
         if not cls.tempera_port_name:
             available = mido.get_output_names()

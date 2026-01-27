@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 import mido
 
-from tempera import EmitterPool, TemperaGlobal, Track
+from tempera import Emitter, EmitterPool, TemperaGlobal, Track
 from sequencer import ColumnSequencer, GridSequencer
 from gui.adapter.state_manager import StateManager
 from gui.adapter.debouncer import Debouncer
@@ -36,6 +36,7 @@ class TemperaAdapter:
         self._pool: Optional[EmitterPool] = None
         self._tempera_global: Optional[TemperaGlobal] = None
         self._tracks: dict[int, Track] = {}
+        self._emitters_local: dict[int, Emitter] = {}
         self._output: Optional[mido.ports.BaseOutput] = None
         self._connected = False
         self._port_name: Optional[str] = None
@@ -239,6 +240,19 @@ class TemperaAdapter:
         """List available MIDI output ports."""
         return mido.get_output_names()
 
+    @staticmethod
+    def find_tempera_port() -> Optional[str]:
+        """Find Tempera MIDI port by scanning available ports.
+
+        Returns:
+            Port name if found, None otherwise.
+        """
+        ports = mido.get_output_names()
+        for port in ports:
+            if 'Tempera' in port:
+                return port
+        return None
+
     @property
     def is_connected(self) -> bool:
         """Check if connected to Tempera."""
@@ -262,7 +276,14 @@ class TemperaAdapter:
         if self._connected:
             await self.disconnect()
 
-        self._port_name = port_name or os.environ.get('TEMPERA_PORT', 'Tempera')
+        # Priority: explicit arg > env var > auto-detect > default
+        if port_name:
+            self._port_name = port_name
+        elif os.environ.get('TEMPERA_PORT'):
+            self._port_name = os.environ.get('TEMPERA_PORT')
+        else:
+            detected = self.find_tempera_port()
+            self._port_name = detected or 'Tempera'
 
         try:
             # Create EmitterPool
@@ -273,6 +294,7 @@ class TemperaAdapter:
             self._output = mido.open_output(self._port_name)
             self._tempera_global = TemperaGlobal(midi_channel=1)
             self._tracks = {i: Track(track=i, midi_channel=1) for i in range(1, 9)}
+            self._emitters_local = {i: Emitter(emitter=i, midi_channel=2) for i in range(1, 5)}
 
             self._connected = True
             self._notify_status(f'Connected: {self._port_name}')
@@ -295,6 +317,7 @@ class TemperaAdapter:
 
         self._tempera_global = None
         self._tracks = {}
+        self._emitters_local = {}
         self._connected = False
         self._port_name = None
         self._notify_status('Disconnected')
@@ -302,30 +325,39 @@ class TemperaAdapter:
     # --- Emitter controls ---
 
     async def _send_emitter_param(self, emitter_num: int, param: str, value: int):
-        """Internal: send emitter parameter to hardware."""
-        if not self._connected or not self._pool:
+        """Internal: send emitter parameter to hardware via direct send."""
+        if not self._connected or not self._output:
             return
 
         try:
+            emitter = self._emitters_local[emitter_num]
+            msgs = []
+
             if param == 'volume':
-                await self._pool.volume(emitter_num, value)
+                msgs = [emitter.volume(value)]
             elif param == 'octave':
-                await self._pool.octave(emitter_num, value)
+                msgs = [emitter.octave(value)]
             elif param == 'effects_send':
-                await self._pool.effects_send(emitter_num, value)
+                msgs = [emitter.effects_send(value)]
             elif param.startswith('grain_'):
-                # Extract grain parameter name
                 grain_param = param[6:]  # Remove 'grain_' prefix
-                await self._pool.grain(emitter_num, **{grain_param: value})
+                msgs = emitter.grain(**{grain_param: value})
             elif param.startswith('relative_'):
                 axis = param[-1]  # 'x' or 'y'
-                await self._pool.relative_position(emitter_num, **{axis: value})
+                msgs = emitter.relative_position(**{axis: value})
             elif param.startswith('spray_'):
                 axis = param[-1]  # 'x' or 'y'
-                await self._pool.spray(emitter_num, **{axis: value})
+                msgs = emitter.spray(**{axis: value})
             elif param.startswith('tone_filter_'):
                 tf_param = param[12:]  # Remove 'tone_filter_' prefix
-                await self._pool.tone_filter(emitter_num, **{tf_param: value})
+                msgs = emitter.tone_filter(**{tf_param: value})
+
+            # Send messages directly
+            if isinstance(msgs, list):
+                for msg in msgs:
+                    self._output.send(msg)
+            else:
+                self._output.send(msgs)
 
             self._notify_status(f'Emitter {emitter_num} {param} → {value}')
         except Exception as e:
@@ -355,8 +387,9 @@ class TemperaAdapter:
     async def set_active_emitter(self, emitter_num: int):
         """Set the active emitter."""
         self.state.set_active_emitter(emitter_num)
-        if self._connected and self._pool:
-            await self._pool.set_active(emitter_num)
+        if self._connected and self._output:
+            msg = self._emitters_local[emitter_num].set_active()
+            self._output.send(msg)
             self._notify_status(f'Active emitter: {emitter_num}')
 
     # --- Cell controls ---
@@ -364,8 +397,9 @@ class TemperaAdapter:
     async def place_in_cell(self, emitter_num: int, column: int, cell: int):
         """Place an emitter in a cell."""
         self.state.place_in_cell(emitter_num, column, cell)
-        if self._connected and self._pool:
-            await self._pool.place_in_cell(emitter_num, column, cell)
+        if self._connected and self._output:
+            msg = self._emitters_local[emitter_num].place_in_cell(column, cell)
+            self._output.send(msg)
             self._notify_status(f'Emitter {emitter_num} → cell ({column}, {cell})')
 
     async def remove_from_cell(self, column: int, cell: int):
@@ -373,8 +407,9 @@ class TemperaAdapter:
         emitter_num = self.state.get_cell(column, cell)
         if emitter_num is not None:
             self.state.remove_from_cell(column, cell)
-            if self._connected and self._pool:
-                await self._pool.remove_from_cell(emitter_num, column, cell)
+            if self._connected and self._output:
+                msg = self._emitters_local[emitter_num].remove_from_cell(column, cell)
+                self._output.send(msg)
                 self._notify_status(f'Cleared cell ({column}, {cell})')
 
     async def toggle_cell(self, column: int, cell: int):
@@ -580,8 +615,9 @@ class TemperaAdapter:
         # Sync cells - this is trickier as we need to clear old and set new
         # For now, just set all current placements
         for (col, cell), emitter_num in state['cells'].items():
-            if self._pool:
-                await self._pool.place_in_cell(emitter_num, col, cell)
+            if self._output and emitter_num in self._emitters_local:
+                msg = self._emitters_local[emitter_num].place_in_cell(col, cell)
+                self._output.send(msg)
 
     # --- Preset management ---
 
