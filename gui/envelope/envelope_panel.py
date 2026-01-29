@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
 )
 
 from gui.envelope.envelope import Envelope, EnvelopePoint
+from gui.envelope.envelope_presets import EnvelopePreset, generate_preset_points
+from gui.envelope.preset_button import PresetButton
 from gui.styles import (
     ENVELOPE_ACTIVE_CYAN, ENVELOPE_INACTIVE_GREY, ENVELOPE_BACKGROUND,
     ENVELOPE_TOGGLE_ON, ENVELOPE_TOGGLE_OFF, ENVELOPE_PLAYHEAD
@@ -35,6 +37,7 @@ class EnvelopeCanvas(QFrame):
         self._envelope: Optional[Envelope] = None
         self._enabled = False
         self._drawing = False
+        self._drawing_enabled = True  # Whether mouse drawing is allowed
         self._playhead_position: Optional[float] = None
 
         self._setup_ui()
@@ -83,6 +86,11 @@ class EnvelopeCanvas(QFrame):
             self._envelope.clear()
             self.envelopeChanged.emit(self._envelope)
             self.update()
+
+    def set_drawing_enabled(self, enabled: bool):
+        """Enable or disable mouse drawing."""
+        self._drawing_enabled = enabled
+        self.setCursor(Qt.CursorShape.CrossCursor if enabled else Qt.CursorShape.ArrowCursor)
 
     def _canvas_rect(self):
         """Get the drawable area rect."""
@@ -167,6 +175,9 @@ class EnvelopeCanvas(QFrame):
 
     def mousePressEvent(self, event: QMouseEvent):
         """Start drawing envelope on mouse press."""
+        if not self._drawing_enabled:
+            return
+
         if event.button() == Qt.MouseButton.LeftButton and self._envelope:
             self._drawing = True
             # Clear existing points
@@ -217,6 +228,11 @@ class EnvelopePanel(QWidget):
         self._current_control_key: Optional[str] = None
         self._current_envelope: Optional[Envelope] = None
 
+        # Preset state
+        self._active_preset: Optional[EnvelopePreset] = None
+        self._per_cell: bool = False
+        self._pencil_enabled: bool = True
+
         self._setup_ui()
 
     def _setup_ui(self):
@@ -245,10 +261,48 @@ class EnvelopePanel(QWidget):
 
         layout.addLayout(top_bar)
 
+        # Preset bar
+        preset_bar = QHBoxLayout()
+        preset_bar.setContentsMargins(0, 0, 0, 0)
+        preset_bar.setSpacing(4)
+
+        # Preset buttons
+        self._preset_buttons: dict[EnvelopePreset, PresetButton] = {}
+        for preset in EnvelopePreset:
+            btn = PresetButton(preset)
+            btn.clicked.connect(lambda checked, p=preset: self._on_preset_clicked(p, checked))
+            self._preset_buttons[preset] = btn
+            preset_bar.addWidget(btn)
+
+        preset_bar.addStretch()
+
+        # Per Cell button
+        self._per_cell_btn = QPushButton('Per Cell')
+        self._per_cell_btn.setCheckable(True)
+        self._per_cell_btn.setFixedSize(60, 24)
+        self._per_cell_btn.setToolTip('Repeat pattern 8 times (once per cell)')
+        self._per_cell_btn.clicked.connect(self._on_per_cell_clicked)
+        self._update_per_cell_style()
+        preset_bar.addWidget(self._per_cell_btn)
+
+        # Pencil button (free-draw toggle)
+        self._pencil_btn = QPushButton('\u270F')  # Pencil unicode
+        self._pencil_btn.setCheckable(True)
+        self._pencil_btn.setChecked(True)  # Default ON
+        self._pencil_btn.setFixedSize(30, 24)
+        self._pencil_btn.setToolTip('Enable free-draw mode')
+        self._pencil_btn.clicked.connect(self._on_pencil_clicked)
+        self._update_pencil_style()
+        preset_bar.addWidget(self._pencil_btn)
+
+        layout.addLayout(preset_bar)
+
         # Canvas
         self._canvas = EnvelopeCanvas()
         self._canvas.envelopeChanged.connect(self._on_canvas_changed)
         self._canvas.drawingStarted.connect(self._on_drawing_started)
+        # Sync drawing state with pencil button
+        self._canvas.set_drawing_enabled(self._pencil_enabled)
         layout.addWidget(self._canvas)
 
     def _update_toggle_style(self):
@@ -341,7 +395,12 @@ class EnvelopePanel(QWidget):
             self.enabledToggled.emit(self._current_control_key, enabled)
 
     def _on_drawing_started(self):
-        """Handle drawing started - auto-enable the envelope."""
+        """Handle drawing started - auto-enable the envelope and deselect presets."""
+        # Deselect any active preset when user draws
+        if self._active_preset:
+            self._preset_buttons[self._active_preset].setChecked(False)
+            self._active_preset = None
+
         if not self._toggle_btn.isChecked():
             self._toggle_btn.setChecked(True)
             self._on_toggle_clicked()
@@ -359,3 +418,113 @@ class EnvelopePanel(QWidget):
     def clear_envelope(self):
         """Clear the current envelope."""
         self._canvas.clear()
+
+    def _on_preset_clicked(self, preset: EnvelopePreset, checked: bool):
+        """Handle preset button click."""
+        if checked:
+            # Deselect other presets
+            for p, btn in self._preset_buttons.items():
+                if p != preset:
+                    btn.setChecked(False)
+            self._active_preset = preset
+            self._apply_preset()
+        else:
+            self._active_preset = None
+
+    def _on_per_cell_clicked(self):
+        """Handle Per Cell button click."""
+        self._per_cell = self._per_cell_btn.isChecked()
+        self._update_per_cell_style()
+        # Redraw if preset is active
+        if self._active_preset:
+            self._apply_preset()
+
+    def _on_pencil_clicked(self):
+        """Handle Pencil button click."""
+        self._pencil_enabled = self._pencil_btn.isChecked()
+        self._update_pencil_style()
+        self._canvas.set_drawing_enabled(self._pencil_enabled)
+
+    def _apply_preset(self):
+        """Apply the active preset to the envelope."""
+        if not self._current_envelope or not self._active_preset:
+            return
+
+        points = generate_preset_points(self._active_preset, self._per_cell)
+        self._current_envelope.clear()
+        for time, value in points:
+            self._current_envelope.add_point(time, value)
+
+        # Auto-enable if not enabled
+        if not self._toggle_btn.isChecked():
+            self._toggle_btn.setChecked(True)
+            self._on_toggle_clicked()
+
+        # Refresh the canvas display
+        self._canvas.set_envelope(self._current_envelope)
+        self._canvas.update()
+
+        if self._current_control_key:
+            self.envelopeChanged.emit(self._current_control_key, self._current_envelope)
+
+    def _update_per_cell_style(self):
+        """Update Per Cell button style based on state."""
+        if self._per_cell_btn.isChecked():
+            self._per_cell_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {ENVELOPE_TOGGLE_ON};
+                    border: 1px solid {ENVELOPE_TOGGLE_ON};
+                    border-radius: 4px;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 10px;
+                }}
+                QPushButton:hover {{
+                    background-color: #5AA0E9;
+                }}
+            """)
+        else:
+            self._per_cell_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {ENVELOPE_TOGGLE_OFF};
+                    border: 1px solid #505050;
+                    border-radius: 4px;
+                    color: #A0A0A0;
+                    font-weight: bold;
+                    font-size: 10px;
+                }}
+                QPushButton:hover {{
+                    background-color: #505050;
+                }}
+            """)
+
+    def _update_pencil_style(self):
+        """Update Pencil button style based on state."""
+        if self._pencil_btn.isChecked():
+            self._pencil_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {ENVELOPE_TOGGLE_ON};
+                    border: 1px solid {ENVELOPE_TOGGLE_ON};
+                    border-radius: 4px;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }}
+                QPushButton:hover {{
+                    background-color: #5AA0E9;
+                }}
+            """)
+        else:
+            self._pencil_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {ENVELOPE_TOGGLE_OFF};
+                    border: 1px solid #505050;
+                    border-radius: 4px;
+                    color: #A0A0A0;
+                    font-weight: bold;
+                    font-size: 14px;
+                }}
+                QPushButton:hover {{
+                    background-color: #505050;
+                }}
+            """)

@@ -18,8 +18,6 @@ class Midi:
         self.midi_channel = midi_channel
         self.tempera_port = os.environ.get(TEMPERA_PORT_NAME)
 
-    # TODO DO WE NEED THIS?
-    #  DO WE NEED SLEEP AND TIMING SEMANTICS?
     def send(self, message: Message):
         with mido.open_output(self.tempera_port) as output:
             output.send(message)
