@@ -1,4 +1,5 @@
 """Predefined envelope patterns."""
+import math
 from enum import Enum
 from typing import List, Tuple
 
@@ -8,9 +9,10 @@ class EnvelopePreset(Enum):
     RAMP_UP = "ramp_up"
     RAMP_DOWN = "ramp_down"
     TRIANGLE = "triangle"
-    S_CURVE = "s_curve"
+    TRIANGLE_DOWN = "triangle_down"
     SQUARE = "square"
-    SAWTOOTH = "sawtooth"
+    SQUARE_UP = "square_up"
+    ROUNDED = "rounded"
 
 
 def generate_preset_points(preset: EnvelopePreset, per_cell: bool = False) -> List[Tuple[float, float]]:
@@ -46,12 +48,25 @@ def _get_base_points(preset: EnvelopePreset) -> List[Tuple[float, float]]:
     elif preset == EnvelopePreset.RAMP_DOWN:
         return [(0.0, 1.0), (1.0, 0.0)]
     elif preset == EnvelopePreset.TRIANGLE:
+        # Point at top (peak in middle)
         return [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)]
-    elif preset == EnvelopePreset.S_CURVE:
-        # Approximate sigmoid with multiple points
-        return [(0.0, 0.0), (0.25, 0.1), (0.5, 0.5), (0.75, 0.9), (1.0, 1.0)]
+    elif preset == EnvelopePreset.TRIANGLE_DOWN:
+        # Vertical flip - point at bottom (valley in middle)
+        return [(0.0, 1.0), (0.5, 0.0), (1.0, 1.0)]
     elif preset == EnvelopePreset.SQUARE:
+        # Starts high, drops to low at midpoint
         return [(0.0, 1.0), (0.49, 1.0), (0.5, 0.0), (1.0, 0.0)]
-    elif preset == EnvelopePreset.SAWTOOTH:
-        return [(0.0, 0.0), (0.9, 1.0), (0.91, 0.0), (1.0, 0.0)]
+    elif preset == EnvelopePreset.SQUARE_UP:
+        # Horizontal flip - starts low, jumps to high at midpoint
+        return [(0.0, 0.0), (0.49, 0.0), (0.5, 1.0), (1.0, 1.0)]
+    elif preset == EnvelopePreset.ROUNDED:
+        # Top half of ellipse - smooth curve from 0 to 1 and back
+        points = []
+        num_points = 20
+        for i in range(num_points + 1):
+            x = i / num_points
+            # y = sqrt(1 - (2x-1)^2) gives top half of unit circle centered at (0.5, 0)
+            y = math.sqrt(max(0, 1 - (2 * x - 1) ** 2))
+            points.append((x, y))
+        return points
     return []

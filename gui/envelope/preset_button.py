@@ -24,7 +24,7 @@ class PresetButton(QPushButton):
 
         # Connect toggled signal to update style
         self.toggled.connect(self._on_toggled)
-        self._update_style()
+        self.update_style()
 
     @property
     def preset(self) -> EnvelopePreset:
@@ -33,11 +33,20 @@ class PresetButton(QPushButton):
 
     def _on_toggled(self, checked: bool):
         """Handle toggle state change."""
-        self._update_style()
+        self.update_style()
 
-    def _update_style(self):
-        """Update button background style based on checked state."""
-        if self.isChecked():
+    def update_style(self):
+        """Update button background style based on enabled and checked state."""
+        if not self.isEnabled():
+            # Disabled style
+            self.setStyleSheet("""
+                QPushButton {
+                    background-color: #353535;
+                    border: 1px solid #404040;
+                    border-radius: 4px;
+                }
+            """)
+        elif self.isChecked():
             self.setStyleSheet("""
                 QPushButton {
                     background-color: #4A90D9;
@@ -68,7 +77,12 @@ class PresetButton(QPushButton):
 
         # Draw envelope shape
         rect = self.rect().adjusted(6, 6, -6, -6)
-        color = QColor('#FFFFFF') if self.isChecked() else QColor('#A0A0A0')
+        if not self.isEnabled():
+            color = QColor('#505050')  # Dimmed when disabled
+        elif self.isChecked():
+            color = QColor('#FFFFFF')
+        else:
+            color = QColor('#A0A0A0')
         pen = QPen(color)
         pen.setWidth(2)
         painter.setPen(pen)

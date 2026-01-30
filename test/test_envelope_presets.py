@@ -30,13 +30,13 @@ class TestEnvelopePresets(unittest.TestCase):
         self.assertEqual(points[1], (0.5, 1.0))
         self.assertEqual(points[2], (1.0, 0.0))
 
-    def test_s_curve_generates_correct_points(self):
-        """S-curve should have smooth sigmoid shape."""
-        points = generate_preset_points(EnvelopePreset.S_CURVE, per_cell=False)
-        self.assertEqual(len(points), 5)
-        self.assertEqual(points[0], (0.0, 0.0))
-        self.assertEqual(points[2], (0.5, 0.5))
-        self.assertEqual(points[4], (1.0, 1.0))
+    def test_triangle_down_generates_correct_points(self):
+        """Triangle down should go down then up (valley in middle)."""
+        points = generate_preset_points(EnvelopePreset.TRIANGLE_DOWN, per_cell=False)
+        self.assertEqual(len(points), 3)
+        self.assertEqual(points[0], (0.0, 1.0))
+        self.assertEqual(points[1], (0.5, 0.0))
+        self.assertEqual(points[2], (1.0, 1.0))
 
     def test_square_generates_correct_points(self):
         """Square should hold at 1 then drop to 0."""
@@ -49,13 +49,31 @@ class TestEnvelopePresets(unittest.TestCase):
         self.assertEqual(points[2][1], 0.0)
         self.assertEqual(points[3][1], 0.0)
 
-    def test_sawtooth_generates_correct_points(self):
-        """Sawtooth should ramp up then drop."""
-        points = generate_preset_points(EnvelopePreset.SAWTOOTH, per_cell=False)
+    def test_square_up_generates_correct_points(self):
+        """Square up should hold at 0 then jump to 1."""
+        points = generate_preset_points(EnvelopePreset.SQUARE_UP, per_cell=False)
         self.assertEqual(len(points), 4)
-        self.assertEqual(points[0], (0.0, 0.0))
-        self.assertEqual(points[1][1], 1.0)  # Peak
-        self.assertEqual(points[2][1], 0.0)  # Drop
+        # First half at 0.0
+        self.assertEqual(points[0][1], 0.0)
+        self.assertEqual(points[1][1], 0.0)
+        # Second half at 1.0
+        self.assertEqual(points[2][1], 1.0)
+        self.assertEqual(points[3][1], 1.0)
+
+    def test_rounded_generates_correct_points(self):
+        """Rounded should be top half of ellipse."""
+        points = generate_preset_points(EnvelopePreset.ROUNDED, per_cell=False)
+        self.assertEqual(len(points), 21)  # 20 segments + 1
+        # Starts at 0
+        self.assertAlmostEqual(points[0][0], 0.0)
+        self.assertAlmostEqual(points[0][1], 0.0)
+        # Peaks at midpoint
+        mid_idx = len(points) // 2
+        self.assertAlmostEqual(points[mid_idx][0], 0.5)
+        self.assertAlmostEqual(points[mid_idx][1], 1.0)
+        # Ends at 0
+        self.assertAlmostEqual(points[-1][0], 1.0)
+        self.assertAlmostEqual(points[-1][1], 0.0)
 
     def test_per_cell_repeats_8_times(self):
         """Per cell mode should repeat pattern 8 times."""

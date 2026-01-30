@@ -1,6 +1,6 @@
 """Envelope panel widget for drawing automation curves."""
 
-from typing import Optional
+from typing import Optional, Union
 
 from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QPainter, QPen, QPainterPath, QMouseEvent, QColor
@@ -228,10 +228,11 @@ class EnvelopePanel(QWidget):
         self._current_control_key: Optional[str] = None
         self._current_envelope: Optional[Envelope] = None
 
-        # Preset state
-        self._active_preset: Optional[EnvelopePreset] = None
+        # Tool state: can be EnvelopePreset, 'pencil', or None
+        self._active_tool: Optional[Union[EnvelopePreset, str]] = None
+        # Remember last tool when ENV is toggled off, default to pencil for first use
+        self._last_active_tool: Optional[Union[EnvelopePreset, str]] = 'pencil'
         self._per_cell: bool = False
-        self._pencil_enabled: bool = True
 
         self._setup_ui()
 
@@ -241,7 +242,7 @@ class EnvelopePanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        # Top bar: Label (left) + Toggle button (right)
+        # Top bar: Label only
         top_bar = QHBoxLayout()
         top_bar.setContentsMargins(0, 0, 0, 0)
 
@@ -250,14 +251,6 @@ class EnvelopePanel(QWidget):
         top_bar.addWidget(self._label)
 
         top_bar.addStretch()
-
-        self._toggle_btn = QPushButton('ENV')
-        self._toggle_btn.setCheckable(True)
-        self._toggle_btn.setFixedSize(50, 24)
-        self._toggle_btn.setToolTip('Toggle envelope (R)')
-        self._toggle_btn.clicked.connect(self._on_toggle_clicked)
-        self._update_toggle_style()
-        top_bar.addWidget(self._toggle_btn)
 
         layout.addLayout(top_bar)
 
@@ -274,7 +267,18 @@ class EnvelopePanel(QWidget):
             self._preset_buttons[preset] = btn
             preset_bar.addWidget(btn)
 
-        preset_bar.addStretch()
+        # Pencil button (free-draw toggle) - next to presets
+        self._pencil_btn = QPushButton('\u270F')  # Pencil unicode
+        self._pencil_btn.setCheckable(True)
+        self._pencil_btn.setChecked(False)  # Start unchecked, enables when ENV is on
+        self._pencil_btn.setFixedSize(30, 24)
+        self._pencil_btn.setToolTip('Enable free-draw mode')
+        self._pencil_btn.clicked.connect(self._on_pencil_clicked)
+        self._update_pencil_style()
+        preset_bar.addWidget(self._pencil_btn)
+
+        # Extra spacing between pencil and Per Cell
+        preset_bar.addSpacing(12)
 
         # Per Cell button
         self._per_cell_btn = QPushButton('Per Cell')
@@ -285,15 +289,16 @@ class EnvelopePanel(QWidget):
         self._update_per_cell_style()
         preset_bar.addWidget(self._per_cell_btn)
 
-        # Pencil button (free-draw toggle)
-        self._pencil_btn = QPushButton('\u270F')  # Pencil unicode
-        self._pencil_btn.setCheckable(True)
-        self._pencil_btn.setChecked(True)  # Default ON
-        self._pencil_btn.setFixedSize(30, 24)
-        self._pencil_btn.setToolTip('Enable free-draw mode')
-        self._pencil_btn.clicked.connect(self._on_pencil_clicked)
-        self._update_pencil_style()
-        preset_bar.addWidget(self._pencil_btn)
+        # ENV toggle button - next to Per Cell
+        self._toggle_btn = QPushButton('ENV')
+        self._toggle_btn.setCheckable(True)
+        self._toggle_btn.setFixedSize(50, 24)
+        self._toggle_btn.setToolTip('Toggle envelope (R)')
+        self._toggle_btn.clicked.connect(self._on_toggle_clicked)
+        self._update_toggle_style()
+        preset_bar.addWidget(self._toggle_btn)
+
+        preset_bar.addStretch()
 
         layout.addLayout(preset_bar)
 
@@ -301,9 +306,10 @@ class EnvelopePanel(QWidget):
         self._canvas = EnvelopeCanvas()
         self._canvas.envelopeChanged.connect(self._on_canvas_changed)
         self._canvas.drawingStarted.connect(self._on_drawing_started)
-        # Sync drawing state with pencil button
-        self._canvas.set_drawing_enabled(self._pencil_enabled)
         layout.addWidget(self._canvas)
+
+        # Disable all drawing controls initially (ENV is off)
+        self._set_drawing_controls_enabled(False)
 
     def _update_toggle_style(self):
         """Update toggle button style based on state."""
@@ -348,11 +354,17 @@ class EnvelopePanel(QWidget):
         self._current_control_key = control_key
         self._current_envelope = envelope
 
+        # Preserve the current ENV toggle state when switching controls
+        env_was_enabled = self._toggle_btn.isChecked()
+
         if control_key and envelope:
             self._label.setText(display_name or self._format_control_name(control_key))
-            self._toggle_btn.setChecked(envelope.enabled)
             self._toggle_btn.setEnabled(True)
+            # Keep ENV in its current state, sync the envelope to match
+            if env_was_enabled:
+                envelope.enabled = True
             self._canvas.set_envelope(envelope)
+            self._canvas.set_enabled(env_was_enabled)
         else:
             self._label.setText('No Control Selected')
             self._toggle_btn.setChecked(False)
@@ -385,25 +397,46 @@ class EnvelopePanel(QWidget):
         self._on_toggle_clicked()
 
     def _on_toggle_clicked(self):
-        """Handle toggle button click."""
+        """Handle ENV toggle button click."""
         self._update_toggle_style()
         enabled = self._toggle_btn.isChecked()
         self._canvas.set_enabled(enabled)
+
+        if enabled:
+            # Entering envelope mode - enable drawing controls
+            self._set_drawing_controls_enabled(True)
+            # Restore the last active tool (defaults to pencil on first use)
+            self._restore_last_tool()
+        else:
+            # Save current tool before clearing
+            if self._active_tool is not None:
+                self._last_active_tool = self._active_tool
+            # Exiting envelope mode - disable and clear all selections
+            self._clear_all_tool_selections()
+            self._set_drawing_controls_enabled(False)
 
         if self._current_control_key and self._current_envelope:
             self._current_envelope.enabled = enabled
             self.enabledToggled.emit(self._current_control_key, enabled)
 
     def _on_drawing_started(self):
-        """Handle drawing started - auto-enable the envelope and deselect presets."""
-        # Deselect any active preset when user draws
-        if self._active_preset:
-            self._preset_buttons[self._active_preset].setChecked(False)
-            self._active_preset = None
-
+        """Handle drawing started - auto-enable ENV and select pencil."""
+        # Auto-enable ENV if not enabled
         if not self._toggle_btn.isChecked():
             self._toggle_btn.setChecked(True)
             self._on_toggle_clicked()
+
+        # Auto-select pencil tool if not already selected
+        if self._active_tool != 'pencil':
+            self._clear_all_tool_selections()
+            self._pencil_btn.setChecked(True)
+            self._active_tool = 'pencil'
+            self._update_pencil_style()
+            self._canvas.set_drawing_enabled(True)
+
+            # Disable Per Cell (free-draw doesn't support per-cell)
+            self._per_cell_btn.setEnabled(False)
+            self._update_per_cell_style()
 
     def _on_canvas_changed(self, envelope: Envelope):
         """Handle envelope change from canvas."""
@@ -421,44 +454,80 @@ class EnvelopePanel(QWidget):
 
     def _on_preset_clicked(self, preset: EnvelopePreset, checked: bool):
         """Handle preset button click."""
+        if not self._toggle_btn.isChecked():
+            # ENV is off, ignore (shouldn't happen if buttons are disabled)
+            return
+
         if checked:
-            # Deselect other presets
-            for p, btn in self._preset_buttons.items():
-                if p != preset:
-                    btn.setChecked(False)
-            self._active_preset = preset
+            # Deselect any other tool (presets or pencil)
+            self._clear_all_tool_selections()
+
+            # Select this preset
+            self._preset_buttons[preset].setChecked(True)
+            self._active_tool = preset
+
+            # Enable Per Cell (presets support per-cell mode)
+            self._per_cell_btn.setEnabled(True)
+            self._update_per_cell_style()
+
+            # Apply the preset pattern
             self._apply_preset()
         else:
-            self._active_preset = None
+            # Clicking same button again - deselect
+            self._active_tool = None
+
+        # Canvas drawing only when pencil is active
+        self._canvas.set_drawing_enabled(self._active_tool == 'pencil')
 
     def _on_per_cell_clicked(self):
         """Handle Per Cell button click."""
         self._per_cell = self._per_cell_btn.isChecked()
         self._update_per_cell_style()
         # Redraw if preset is active
-        if self._active_preset:
+        if isinstance(self._active_tool, EnvelopePreset):
             self._apply_preset()
 
     def _on_pencil_clicked(self):
         """Handle Pencil button click."""
-        self._pencil_enabled = self._pencil_btn.isChecked()
+        if not self._toggle_btn.isChecked():
+            # ENV is off, ignore
+            return
+
+        checked = self._pencil_btn.isChecked()
+
+        if checked:
+            # Deselect any other tool
+            self._clear_all_tool_selections()
+
+            # Select pencil
+            self._pencil_btn.setChecked(True)
+            self._active_tool = 'pencil'
+
+            # Disable Per Cell (free-draw doesn't support per-cell)
+            self._per_cell_btn.setEnabled(False)
+            self._update_per_cell_style()
+        else:
+            # Clicking pencil again - deselect
+            self._active_tool = None
+
+            # Re-enable Per Cell
+            self._per_cell_btn.setEnabled(True)
+            self._update_per_cell_style()
+
         self._update_pencil_style()
-        self._canvas.set_drawing_enabled(self._pencil_enabled)
+
+        # Enable canvas drawing only when pencil is selected
+        self._canvas.set_drawing_enabled(self._active_tool == 'pencil')
 
     def _apply_preset(self):
         """Apply the active preset to the envelope."""
-        if not self._current_envelope or not self._active_preset:
+        if not self._current_envelope or not isinstance(self._active_tool, EnvelopePreset):
             return
 
-        points = generate_preset_points(self._active_preset, self._per_cell)
+        points = generate_preset_points(self._active_tool, self._per_cell)
         self._current_envelope.clear()
         for time, value in points:
             self._current_envelope.add_point(time, value)
-
-        # Auto-enable if not enabled
-        if not self._toggle_btn.isChecked():
-            self._toggle_btn.setChecked(True)
-            self._on_toggle_clicked()
 
         # Refresh the canvas display
         self._canvas.set_envelope(self._current_envelope)
@@ -469,7 +538,18 @@ class EnvelopePanel(QWidget):
 
     def _update_per_cell_style(self):
         """Update Per Cell button style based on state."""
-        if self._per_cell_btn.isChecked():
+        if not self._per_cell_btn.isEnabled():
+            # Disabled style
+            self._per_cell_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #353535;
+                    border: 1px solid #404040;
+                    border-radius: 4px;
+                    color: #606060;
+                    font-size: 10px;
+                }
+            """)
+        elif self._per_cell_btn.isChecked():
             self._per_cell_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {ENVELOPE_TOGGLE_ON};
@@ -500,7 +580,18 @@ class EnvelopePanel(QWidget):
 
     def _update_pencil_style(self):
         """Update Pencil button style based on state."""
-        if self._pencil_btn.isChecked():
+        if not self._pencil_btn.isEnabled():
+            # Disabled style
+            self._pencil_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #353535;
+                    border: 1px solid #404040;
+                    border-radius: 4px;
+                    color: #606060;
+                    font-size: 14px;
+                }
+            """)
+        elif self._pencil_btn.isChecked():
             self._pencil_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {ENVELOPE_TOGGLE_ON};
@@ -528,3 +619,57 @@ class EnvelopePanel(QWidget):
                     background-color: #505050;
                 }}
             """)
+
+    def _set_drawing_controls_enabled(self, enabled: bool):
+        """Enable or disable all drawing-related controls based on ENV state."""
+        # Preset buttons
+        for btn in self._preset_buttons.values():
+            btn.setEnabled(enabled)
+            btn.update_style()  # Update visual style
+
+        # Pencil button
+        self._pencil_btn.setEnabled(enabled)
+        self._update_pencil_style()
+
+        # Per Cell button - disabled when pencil is active (free-draw doesn't support per-cell)
+        pencil_active = self._active_tool == 'pencil'
+        self._per_cell_btn.setEnabled(enabled and not pencil_active)
+        self._update_per_cell_style()
+
+        # Canvas drawing - only enabled if ENV is on AND pencil is selected
+        self._canvas.set_drawing_enabled(enabled and pencil_active)
+
+    def _clear_all_tool_selections(self):
+        """Clear all button highlights and reset active tool."""
+        # Uncheck all preset buttons
+        for btn in self._preset_buttons.values():
+            btn.setChecked(False)
+
+        # Uncheck pencil button and update its style
+        self._pencil_btn.setChecked(False)
+        self._update_pencil_style()
+
+        # Clear active tool
+        self._active_tool = None
+
+        # Disable canvas drawing
+        self._canvas.set_drawing_enabled(False)
+
+    def _restore_last_tool(self):
+        """Restore the last active tool when ENV is toggled on."""
+        if self._last_active_tool == 'pencil':
+            # Restore pencil
+            self._pencil_btn.setChecked(True)
+            self._active_tool = 'pencil'
+            self._update_pencil_style()
+            self._canvas.set_drawing_enabled(True)
+            # Disable Per Cell for pencil
+            self._per_cell_btn.setEnabled(False)
+            self._update_per_cell_style()
+        elif isinstance(self._last_active_tool, EnvelopePreset):
+            # Restore preset
+            self._preset_buttons[self._last_active_tool].setChecked(True)
+            self._active_tool = self._last_active_tool
+            # Enable Per Cell for presets
+            self._per_cell_btn.setEnabled(True)
+            self._update_per_cell_style()
