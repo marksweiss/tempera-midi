@@ -8,7 +8,10 @@ from PySide6.QtWidgets import (
 )
 
 from gui.widgets.slider_group import SliderGroup
-from gui.styles import get_emitter_button_style, EMITTER_COLORS, get_section_focus_style
+from gui.styles import (
+    get_emitter_button_style, EMITTER_COLORS, get_section_focus_style,
+    get_emitter_slider_style
+)
 
 
 # Parameter definitions for each slider group
@@ -98,7 +101,8 @@ class EmitterPanel(QGroupBox):
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(8, 4, 8, 4)
 
         # Emitter selection buttons
         button_layout = QHBoxLayout()
@@ -128,7 +132,8 @@ class EmitterPanel(QGroupBox):
 
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(12)
+        scroll_layout.setSpacing(4)
+        scroll_layout.setContentsMargins(4, 4, 4, 4)
 
         # Create slider groups
         self._basic_group = SliderGroup('Basic', BASIC_PARAMS, label_width=90)
@@ -138,14 +143,18 @@ class EmitterPanel(QGroupBox):
 
         # Arrange in 2x2 grid:
         # Row 1: Basic | Tone Filter
-        # Row 2: Grain | Position / Spray
+        # Row 2: Position / Spray | Grain
+        # (Grain is under Tone Filter so the tall 7-slider group can extend upward)
         grid_layout = QGridLayout()
-        grid_layout.setSpacing(12)
+        grid_layout.setSpacing(8)
+        # Set equal column stretch so both columns expand evenly
+        grid_layout.setColumnStretch(0, 1)
+        grid_layout.setColumnStretch(1, 1)
         # Align to top so groups don't stretch vertically
         grid_layout.addWidget(self._basic_group, 0, 0, Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self._filter_group, 0, 1, Qt.AlignmentFlag.AlignTop)
-        grid_layout.addWidget(self._grain_group, 1, 0, Qt.AlignmentFlag.AlignTop)
-        grid_layout.addWidget(self._position_group, 1, 1, Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self._position_group, 1, 0, Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self._grain_group, 1, 1, Qt.AlignmentFlag.AlignTop)
 
         scroll_layout.addLayout(grid_layout)
         scroll_layout.addStretch()
@@ -162,17 +171,17 @@ class EmitterPanel(QGroupBox):
             group.sliderSet.connect(self._on_slider_set)
 
         # Connect click signals for mouse focus (order matches slider_groups property)
-        # Basic=0, Filter=1, Grain=2, Position=3
+        # Visual order: Basic=0, Filter=1, Position=2, Grain=3
         self._basic_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(0, ctrl_idx)
         )
         self._filter_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(1, ctrl_idx)
         )
-        self._grain_group.controlClicked.connect(
+        self._position_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(2, ctrl_idx)
         )
-        self._position_group.controlClicked.connect(
+        self._grain_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
         )
 
@@ -183,10 +192,10 @@ class EmitterPanel(QGroupBox):
         self._filter_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(1)
         )
-        self._grain_group.subsectionClicked.connect(
+        self._position_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(2)
         )
-        self._position_group.subsectionClicked.connect(
+        self._grain_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(3)
         )
 
@@ -195,6 +204,9 @@ class EmitterPanel(QGroupBox):
                       self._position_group, self._filter_group]:
             group.set_group_focused(False)
         self.setStyleSheet(get_section_focus_style(False))
+
+        # Set initial slider colors for emitter 1
+        self._update_slider_colors(1)
 
     def _on_emitter_clicked(self, emitter_num: int):
         """Handle emitter button click."""
@@ -212,9 +224,10 @@ class EmitterPanel(QGroupBox):
             get_emitter_button_style(emitter_num, selected=True)
         )
 
-        # Load new emitter values
+        # Load new emitter values and update slider colors
         self._current_emitter = emitter_num
         self._load_emitter_values(emitter_num)
+        self._update_slider_colors(emitter_num)
 
         self.emitterSelected.emit(emitter_num)
 
@@ -232,6 +245,13 @@ class EmitterPanel(QGroupBox):
         self._grain_group.set_all_values(values)
         self._position_group.set_all_values(values)
         self._filter_group.set_all_values(values)
+
+    def _update_slider_colors(self, emitter_num: int):
+        """Update all slider colors to match the selected emitter."""
+        style = get_emitter_slider_style(emitter_num)
+        for group in [self._basic_group, self._grain_group,
+                      self._position_group, self._filter_group]:
+            group.set_slider_style(style)
 
     def _on_slider_changed(self, param: str, value: int):
         """Handle slider value change during drag."""
@@ -286,13 +306,13 @@ class EmitterPanel(QGroupBox):
 
     @property
     def slider_groups(self) -> list[SliderGroup]:
-        """Get list of slider groups in navigation order."""
-        return [self._basic_group, self._filter_group, self._grain_group, self._position_group]
+        """Get list of slider groups in navigation order (visual: left-to-right, top-to-bottom)."""
+        return [self._basic_group, self._filter_group, self._position_group, self._grain_group]
 
     @property
     def subsection_names(self) -> list[str]:
         """Get names of subsections."""
-        return ['Basic', 'Tone Filter', 'Grain', 'Position / Spray']
+        return ['Basic', 'Tone Filter', 'Position / Spray', 'Grain']
 
     def set_subsection_focus(self, index: int):
         """Visually highlight a specific subsection (slider group).

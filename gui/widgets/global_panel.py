@@ -88,9 +88,10 @@ class GlobalPanel(QGroupBox):
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QHBoxLayout(self)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
+        layout.setContentsMargins(8, 4, 8, 4)
 
-        # ADSR controls (left)
+        # ADSR controls (left) - wrapped in container with top spacing to align with Effects sliders
         self._adsr_group = SliderGroup('ADSR Envelope', ADSR_PARAMS, label_width=70)
         self._adsr_group.set_group_focused(False)  # Set initial style to avoid layout shift
         self._adsr_group.sliderChanged.connect(
@@ -99,23 +100,33 @@ class GlobalPanel(QGroupBox):
         self._adsr_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('adsr', p, v)
         )
-        layout.addWidget(self._adsr_group)
+        # Wrap ADSR in container with top spacing to push sliders down to align with Effects
+        adsr_container = QWidget()
+        adsr_layout = QVBoxLayout(adsr_container)
+        adsr_layout.setContentsMargins(0, 0, 0, 0)
+        adsr_layout.setSpacing(0)
+        adsr_layout.addSpacing(32)  # Space to align with Effects sliders below tabs
+        adsr_layout.addWidget(self._adsr_group)
+        adsr_layout.addStretch()
+        layout.addWidget(adsr_container)
 
         # Effects group with tabs (center)
         self._effects_group = QGroupBox('Effects')
         self._effects_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
         effects_layout = QVBoxLayout(self._effects_group)
-        effects_layout.setContentsMargins(8, 8, 8, 8)
+        effects_layout.setContentsMargins(4, 0, 4, 4)
+        effects_layout.setSpacing(0)
 
         self._effects_tabs = QTabWidget()
 
-        # Helper to wrap slider group in container with stretch at bottom
+        # Helper to wrap slider group in container (minimal padding)
         def _wrap_in_container(slider_group: SliderGroup) -> QWidget:
             container = QWidget()
             container_layout = QVBoxLayout(container)
             container_layout.setContentsMargins(0, 0, 0, 0)
+            container_layout.setSpacing(0)
             container_layout.addWidget(slider_group)
-            container_layout.addStretch()
+            container_layout.addStretch()  # Push SliderGroup to top
             return container
 
         # Reverb tab
@@ -155,7 +166,8 @@ class GlobalPanel(QGroupBox):
         self._modulator_group = QGroupBox('Modulator')
         self._modulator_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
         modulator_layout = QVBoxLayout(self._modulator_group)
-        modulator_layout.setSpacing(4)
+        modulator_layout.setSpacing(0)
+        modulator_layout.setContentsMargins(4, 4, 4, 4)
 
         self._modulator_size_value = QLabel('0')
         self._modulator_size_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -167,14 +179,17 @@ class GlobalPanel(QGroupBox):
         self._modulator_slider.setValue(0)
         self._modulator_slider.setTracking(True)
         self._modulator_slider.setFixedWidth(32)
-        self._modulator_slider.setMinimumHeight(150)
         self._modulator_slider.setStyleSheet(get_slider_focus_style(False))  # Set initial style
-        modulator_layout.addWidget(self._modulator_slider, alignment=Qt.AlignmentFlag.AlignCenter)
+        # Slider expands to fill available space
+        modulator_layout.addWidget(self._modulator_slider, stretch=1, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self._modulator_slider.valueChanged.connect(self._on_modulator_size_changed)
         self._modulator_slider.sliderReleased.connect(self._on_modulator_size_released)
 
-        # Modulator selector dropdown (1-10)
+        # 5px spacer between slider and dropdown
+        modulator_layout.addSpacing(5)
+
+        # Modulator selector dropdown (1-10) at bottom
         self._modulator_selector = QComboBox()
         for i in range(1, 11):
             self._modulator_selector.addItem(f'Mod {i}', i)
@@ -188,7 +203,6 @@ class GlobalPanel(QGroupBox):
         self._modulator_selector.installEventFilter(self)
         self._modulator_group.installEventFilter(self)
 
-        modulator_layout.addStretch()
         layout.addWidget(self._modulator_group)
 
         # Connect click signals for mouse focus

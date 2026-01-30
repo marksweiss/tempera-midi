@@ -49,8 +49,8 @@ class LabeledSlider(QWidget):
         self._label_text = label
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 2, 0, 2)
-        layout.setSpacing(8)
+        layout.setContentsMargins(0, 1, 0, 1)
+        layout.setSpacing(6)
 
         # Label
         self._label = QLabel(label)
@@ -127,7 +127,19 @@ class LabeledSlider(QWidget):
         Args:
             focused: Whether this slider should appear focused
         """
-        self._slider.setStyleSheet(get_slider_focus_style(focused))
+        # Combine base style with focus style
+        base = getattr(self, '_base_style', '')
+        focus = get_slider_focus_style(focused)
+        self._slider.setStyleSheet(base + focus)
+
+    def set_slider_style(self, stylesheet: str):
+        """Set the base stylesheet for this slider (e.g., emitter colors).
+
+        Args:
+            stylesheet: QSS stylesheet string to apply
+        """
+        self._base_style = stylesheet
+        self._slider.setStyleSheet(stylesheet)
 
     def adjust_value(self, delta: int):
         """Adjust value by delta, clamping to range.

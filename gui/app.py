@@ -86,52 +86,13 @@ class MainWindow(QMainWindow):
         # Calculate grid width (matches CellGrid._setup_ui calculation)
         grid_width = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
 
-        # Envelope panel at top
+        # Top row: Envelope panel + Help button
+        top_row = QHBoxLayout()
+        top_row.setSpacing(8)
         self._envelope_panel = EnvelopePanel()
-        main_layout.addWidget(self._envelope_panel)
+        top_row.addWidget(self._envelope_panel, stretch=1)
 
-        # Top section: Grid + Transport (left) | Emitter panel (right)
-        top_layout = QHBoxLayout()
-        top_layout.setSpacing(16)
-
-        # Left column: Cell grid + Transport (stacked vertically)
-        left_widget = QWidget()
-        left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        left_layout.setSpacing(16)
-
-        self._cell_grid = CellGrid()
-        left_layout.addWidget(self._cell_grid, alignment=Qt.AlignmentFlag.AlignTop)
-
-        # Transport panel - constrained to cell grid width
-        self._transport = TransportPanel()
-        self._transport.setFixedWidth(grid_width)
-        left_layout.addWidget(self._transport, alignment=Qt.AlignmentFlag.AlignTop)
-
-        left_layout.addStretch()
-        left_widget.setFixedWidth(grid_width + 8)  # Small margin
-        top_layout.addWidget(left_widget)
-
-        # Right: Emitter panel (expands)
-        self._emitter_panel = EmitterPanel()
-        top_layout.addWidget(self._emitter_panel, stretch=1)
-
-        main_layout.addLayout(top_layout, stretch=2)
-
-        # Bottom section: Track panel (left) | Global/Effects panel (right)
-        bottom_layout = QHBoxLayout()
-        bottom_layout.setSpacing(16)
-
-        self._track_panel = TrackPanel()
-        self._track_panel.setFixedWidth(grid_width + 8)  # Match left column width
-        bottom_layout.addWidget(self._track_panel, alignment=Qt.AlignmentFlag.AlignTop)
-
-        self._global_panel = GlobalPanel()
-        bottom_layout.addWidget(self._global_panel, stretch=1)
-
-        main_layout.addLayout(bottom_layout, stretch=1)
-
-        # Help button (top-right, positioned after emitter panel)
+        # Help button (top-right corner)
         help_btn = QPushButton('?')
         help_btn.setFixedSize(32, 32)
         help_btn.setToolTip('Keyboard Shortcuts Help (F1)')
@@ -149,8 +110,52 @@ class MainWindow(QMainWindow):
             }
         ''')
         help_btn.clicked.connect(self._show_shortcuts_dialog)
-        # Add to top layout, after emitter panel
-        top_layout.addWidget(help_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        top_row.addWidget(help_btn, alignment=Qt.AlignmentFlag.AlignTop)
+        main_layout.addLayout(top_row)
+
+        # Top section: Grid + Transport (left) | Emitter panel (right)
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(16)
+
+        # Left column: Cell grid + Transport (stacked vertically)
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(11)
+
+        self._cell_grid = CellGrid()
+        left_layout.addWidget(self._cell_grid, alignment=Qt.AlignmentFlag.AlignTop)
+
+        left_layout.addStretch()
+
+        # Transport panel - constrained to cell grid width, aligned to bottom
+        self._transport = TransportPanel()
+        self._transport.setFixedWidth(grid_width)
+        left_layout.addWidget(self._transport, alignment=Qt.AlignmentFlag.AlignBottom)
+        left_widget.setFixedWidth(grid_width + 8)  # Small margin
+        # Calculate minimum height: grid + spacing + transport (estimated ~100px)
+        grid_height = (CellGrid.CELL_SIZE * 8) + (CellGrid.CELL_SPACING * 7) + (CellGrid.PADDING * 2)
+        left_widget.setMinimumHeight(grid_height + 16 + 100)
+        top_layout.addWidget(left_widget)
+
+        # Right: Emitter panel (expands)
+        self._emitter_panel = EmitterPanel()
+        top_layout.addWidget(self._emitter_panel, stretch=1)
+
+        main_layout.addLayout(top_layout, stretch=2)
+
+        # Bottom section: Track panel (left) | Global/Effects panel (right)
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setSpacing(16)
+
+        self._track_panel = TrackPanel()
+        self._track_panel.setFixedWidth(grid_width + 8)  # Match left column width
+        bottom_layout.addWidget(self._track_panel, alignment=Qt.AlignmentFlag.AlignBottom)
+
+        self._global_panel = GlobalPanel()
+        bottom_layout.addWidget(self._global_panel, stretch=1)
+
+        main_layout.addLayout(bottom_layout, stretch=1)
 
         # Status bar
         self._status_bar = QStatusBar()

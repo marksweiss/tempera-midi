@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QPushButton, QSpinBox, QLabel
 )
 
+from gui.styles import get_transport_button_style
+
 
 class TransportPanel(QGroupBox):
     """
@@ -40,33 +42,38 @@ class TransportPanel(QGroupBox):
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
+        layout.setContentsMargins(8, 2, 8, 9)
 
         # Transport buttons and sequencer selection
         button_layout = QHBoxLayout()
-        button_layout.setSpacing(8)
+        button_layout.setSpacing(6)
 
         self._play_btn = QPushButton('\u25B6')  # Play triangle
-        self._play_btn.setFixedSize(40, 32)
+        self._play_btn.setFixedSize(36, 26)
         self._play_btn.setToolTip('Play Note (Space)')
+        self._play_btn.setStyleSheet(get_transport_button_style('play'))
         self._play_btn.clicked.connect(self.playClicked.emit)
         button_layout.addWidget(self._play_btn)
 
         self._stop_btn = QPushButton('\u25A0')  # Stop square
-        self._stop_btn.setFixedSize(40, 32)
+        self._stop_btn.setFixedSize(36, 26)
         self._stop_btn.setToolTip('Stop (Escape)')
+        self._stop_btn.setStyleSheet(get_transport_button_style('stop'))
         self._stop_btn.clicked.connect(self.stopClicked.emit)
         button_layout.addWidget(self._stop_btn)
 
         # Sequencer type buttons (mutually exclusive, both can be off)
         self._seq_8track_btn = QPushButton('8 Track Seq')
         self._seq_8track_btn.setCheckable(True)
+        self._seq_8track_btn.setFixedHeight(26)
         self._seq_8track_btn.setToolTip('Column Sequencer (8 independent tracks)')
         self._seq_8track_btn.clicked.connect(self._on_8track_clicked)
         button_layout.addWidget(self._seq_8track_btn)
 
         self._seq_1track_btn = QPushButton('1 Track Seq')
         self._seq_1track_btn.setCheckable(True)
+        self._seq_1track_btn.setFixedHeight(26)
         self._seq_1track_btn.setToolTip('Grid Sequencer (64-step single sequence)')
         self._seq_1track_btn.clicked.connect(self._on_1track_clicked)
         button_layout.addWidget(self._seq_1track_btn)
@@ -76,7 +83,7 @@ class TransportPanel(QGroupBox):
 
         # BPM control
         bpm_layout = QHBoxLayout()
-        bpm_layout.setSpacing(8)
+        bpm_layout.setSpacing(6)
 
         bpm_label = QLabel('BPM:')
         bpm_layout.addWidget(bpm_label)
@@ -86,13 +93,12 @@ class TransportPanel(QGroupBox):
         self._bpm_spinbox.setMaximum(300)
         self._bpm_spinbox.setValue(120)
         self._bpm_spinbox.setFixedWidth(70)
+        self._bpm_spinbox.setFixedHeight(24)
         self._bpm_spinbox.valueChanged.connect(self.bpmChanged.emit)
         bpm_layout.addWidget(self._bpm_spinbox)
 
         bpm_layout.addStretch()
         layout.addLayout(bpm_layout)
-
-        layout.addStretch()
 
     def get_bpm(self) -> int:
         """Get current BPM value."""

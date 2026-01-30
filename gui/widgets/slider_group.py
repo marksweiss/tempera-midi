@@ -52,10 +52,23 @@ class SliderGroup(QGroupBox):
         """
         super().__init__(title, parent)
 
-        # Hide border when title is empty (used inside tabs/other containers)
+        # Hide border and margin when title is empty (used inside tabs/other containers)
         if not title:
             self.setFlat(True)
-            self.setStyleSheet("QGroupBox { border: none; }")
+            # Must override ALL QGroupBox properties that create vertical space
+            self.setStyleSheet("""
+                QGroupBox {
+                    border: none;
+                    margin: 0px;
+                    padding: 0px;
+                    margin-top: 0px;
+                    padding-top: 0px;
+                }
+                QGroupBox::title {
+                    margin: 0px;
+                    padding: 0px;
+                }
+            """)
 
         # Prevent vertical expansion - keep tight spacing
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
@@ -66,7 +79,8 @@ class SliderGroup(QGroupBox):
         self._group_focused = False  # Whether this group is the active section
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(4)
+        layout.setSpacing(2)
+        layout.setContentsMargins(4, 4, 4, 4)
 
         for param in parameters:
             name = param['name']
@@ -118,6 +132,15 @@ class SliderGroup(QGroupBox):
     def get_all_values(self) -> dict[str, int]:
         """Get all slider values."""
         return {name: slider.value() for name, slider in self._sliders.items()}
+
+    def set_slider_style(self, stylesheet: str):
+        """Apply a stylesheet to all sliders in this group.
+
+        Args:
+            stylesheet: QSS stylesheet string to apply to each slider
+        """
+        for slider in self._sliders.values():
+            slider.set_slider_style(stylesheet)
 
     def _on_slider_clicked(self, param_name: str):
         """Handle slider click - emit controlClicked with index and name."""
