@@ -569,6 +569,7 @@ def get_transport_button_style(button_type: str) -> str:
                 border-radius: 4px;
                 color: #CA7A7A;
                 font-size: 16px;
+                padding-top: 3px;
             }
             QPushButton:hover {
                 background-color: #5A3A3A;
