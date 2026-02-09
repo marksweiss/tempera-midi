@@ -2,6 +2,7 @@ from tempera.constants import (
     ADSR_ATTACK, ADSR_DECAY, ADSR_SUSTAIN, ADSR_RELEASE,
     MODWHEEL, REVERB_SIZE, REVERB_COLOR, REVERB_MIX,
     DELAY_FEEDBACK, DELAY_TIME, DELAY_COLOR, DELAY_MIX,
+    FILTER_CUTOFF, FILTER_RESONANCE,
     CHORUS_DEPTH, CHORUS_SPEED, CHORUS_FLANGE, CHORUS_MIX,
     MODULATOR_1_SIZE, MODULATOR_2_SIZE, MODULATOR_3_SIZE, MODULATOR_4_SIZE,
     MODULATOR_5_SIZE, MODULATOR_6_SIZE, MODULATOR_7_SIZE, MODULATOR_8_SIZE,
@@ -32,6 +33,11 @@ DELAY_CC_MAP = {
     'time': DELAY_TIME,
     'color': DELAY_COLOR,
     'mix': DELAY_MIX,
+}
+
+FILTER_CC_MAP = {
+    'cutoff': FILTER_CUTOFF,
+    'resonance': FILTER_RESONANCE,
 }
 
 CHORUS_CC_MAP = {
@@ -128,6 +134,16 @@ class TemperaGlobal:
         """Change Delay parameters."""
         params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
         return self.midi.all_ccs(params, DELAY_CC_MAP)
+
+    def filter(
+        self,
+        *,
+        cutoff: int = None,
+        resonance: int = None
+    ) -> list[Message]:
+        """Change Filter parameters."""
+        params = {k: v for k, v in locals().items() if v is not None and k != 'self'}
+        return self.midi.all_ccs(params, FILTER_CC_MAP)
 
     def chorus(
         self,

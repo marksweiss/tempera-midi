@@ -97,6 +97,10 @@ class TemperaAdapter:
             key = f'global.delay.{param}'
             self._debouncer.register(key, self._make_global_callback('delay', param))
 
+        for param in ['cutoff', 'resonance']:
+            key = f'global.filter.{param}'
+            self._debouncer.register(key, self._make_global_callback('filter', param))
+
         for param in ['depth', 'speed', 'flange', 'mix']:
             key = f'global.chorus.{param}'
             self._debouncer.register(key, self._make_global_callback('chorus', param))
@@ -609,6 +613,8 @@ class TemperaAdapter:
             await self._send_global_param('reverb', param, value)
         for param, value in state['global']['delay'].items():
             await self._send_global_param('delay', param, value)
+        for param, value in state['global']['filter'].items():
+            await self._send_global_param('filter', param, value)
         for param, value in state['global']['chorus'].items():
             await self._send_global_param('chorus', param, value)
 

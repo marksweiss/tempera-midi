@@ -32,6 +32,11 @@ DELAY_PARAMS = [
     {'name': 'mix', 'label': 'Mix', 'default': 0},
 ]
 
+FILTER_PARAMS = [
+    {'name': 'cutoff', 'label': 'Cutoff', 'default': 64},
+    {'name': 'resonance', 'label': 'Resonance', 'default': 64},
+]
+
 CHORUS_PARAMS = [
     {'name': 'depth', 'label': 'Depth', 'default': 64},
     {'name': 'speed', 'label': 'Speed', 'default': 64},
@@ -79,7 +84,7 @@ class GlobalPanel(QGroupBox):
         self._panel_focused = False
         # Visual state - tracks which subsection/control is visually highlighted
         # This is set by MainWindow in response to NavigationManager signals
-        self._visual_subsection = -1  # 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
+        self._visual_subsection = -1  # 0=ADSR, 1=Reverb, 2=Delay, 3=Filter, 4=Chorus, 5=Modulator
         self._visual_control = -1  # Currently highlighted control (-1 = none)
         self._modulator_control_index = 0  # 0=dropdown, 1=slider (for modulator subsection)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -149,6 +154,16 @@ class GlobalPanel(QGroupBox):
         )
         self._effects_tabs.addTab(_wrap_in_container(self._delay_group), 'Delay')
 
+        # Filter tab
+        self._filter_group = SliderGroup('', FILTER_PARAMS, label_width=70)
+        self._filter_group.sliderChanged.connect(
+            lambda p, v: self.parameterChanged.emit('filter', p, v)
+        )
+        self._filter_group.sliderSet.connect(
+            lambda p, v: self.parameterSet.emit('filter', p, v)
+        )
+        self._effects_tabs.addTab(_wrap_in_container(self._filter_group), 'Filter')
+
         # Chorus tab
         self._chorus_group = SliderGroup('', CHORUS_PARAMS, label_width=70)
         self._chorus_group.sliderChanged.connect(
@@ -206,7 +221,7 @@ class GlobalPanel(QGroupBox):
         layout.addWidget(self._modulator_group)
 
         # Connect click signals for mouse focus
-        # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
+        # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Filter, 4=Chorus, 5=Modulator
         self._adsr_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(0, ctrl_idx)
         )
@@ -216,8 +231,11 @@ class GlobalPanel(QGroupBox):
         self._delay_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(2, ctrl_idx)
         )
-        self._chorus_group.controlClicked.connect(
+        self._filter_group.controlClicked.connect(
             lambda ctrl_idx, name: self.controlFocusRequested.emit(3, ctrl_idx)
+        )
+        self._chorus_group.controlClicked.connect(
+            lambda ctrl_idx, name: self.controlFocusRequested.emit(4, ctrl_idx)
         )
 
         # Connect subsection click signals (clicking on group header/empty space)
@@ -230,8 +248,11 @@ class GlobalPanel(QGroupBox):
         self._delay_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(2)
         )
-        self._chorus_group.subsectionClicked.connect(
+        self._filter_group.subsectionClicked.connect(
             lambda: self.subsectionFocusRequested.emit(3)
+        )
+        self._chorus_group.subsectionClicked.connect(
+            lambda: self.subsectionFocusRequested.emit(4)
         )
 
         # Set initial unfocused style on panel to avoid layout shift on first focus change
@@ -289,6 +310,7 @@ class GlobalPanel(QGroupBox):
             'adsr': self._adsr_group,
             'reverb': self._reverb_group,
             'delay': self._delay_group,
+            'filter': self._filter_group,
             'chorus': self._chorus_group,
         }.get(category)
 
@@ -311,7 +333,7 @@ class GlobalPanel(QGroupBox):
             if 'size' in mod:
                 self.set_modulator_size(mod['size'])
 
-        for category in ['adsr', 'reverb', 'delay', 'chorus']:
+        for category in ['adsr', 'reverb', 'delay', 'filter', 'chorus']:
             if category in values:
                 group = self._get_group(category)
                 if group:
@@ -327,18 +349,19 @@ class GlobalPanel(QGroupBox):
             'adsr': self._adsr_group.get_all_values(),
             'reverb': self._reverb_group.get_all_values(),
             'delay': self._delay_group.get_all_values(),
+            'filter': self._filter_group.get_all_values(),
             'chorus': self._chorus_group.get_all_values(),
         }
 
     # --- Keyboard navigation ---
 
-    # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator
-    SUBSECTION_NAMES = ['ADSR', 'Reverb', 'Delay', 'Chorus', 'Modulator']
+    # Subsections: 0=ADSR, 1=Reverb, 2=Delay, 3=Filter, 4=Chorus, 5=Modulator
+    SUBSECTION_NAMES = ['ADSR', 'Reverb', 'Delay', 'Filter', 'Chorus', 'Modulator']
 
     @property
     def slider_groups(self) -> list[SliderGroup]:
         """Get list of slider groups (excludes modulator)."""
-        return [self._adsr_group, self._reverb_group, self._delay_group, self._chorus_group]
+        return [self._adsr_group, self._reverb_group, self._delay_group, self._filter_group, self._chorus_group]
 
     def set_subsection_focus(self, index: int):
         """Visually highlight a specific subsection.
@@ -346,7 +369,7 @@ class GlobalPanel(QGroupBox):
         Called by MainWindow in response to NavigationManager.subsectionChanged signal.
 
         Args:
-            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Chorus, 4=Modulator, or -1 to clear all
+            index: 0=ADSR, 1=Reverb, 2=Delay, 3=Filter, 4=Chorus, 5=Modulator, or -1 to clear all
         """
         self._visual_subsection = index
         self._visual_control = -1  # Clear control focus when subsection changes
@@ -365,14 +388,14 @@ class GlobalPanel(QGroupBox):
         # Clear effects group highlight (will be set below if needed)
         self._effects_group.setStyleSheet(get_section_focus_style(False))
 
-        if index == 4:
+        if index == 5:
             # Highlight modulator group (like ADSR), not individual controls
             self._modulator_group.setStyleSheet(get_section_focus_style(True))
         elif index == 0:
             # ADSR group has a title, so set_group_focused works
             groups[index].set_group_focused(True)
-        elif 1 <= index <= 3:
-            # Effects tabs (Reverb, Delay, Chorus) - highlight the Effects container
+        elif 1 <= index <= 4:
+            # Effects tabs (Reverb, Delay, Filter, Chorus) - highlight the Effects container
             # since the individual SliderGroups have no titles
             self._effects_group.setStyleSheet(get_section_focus_style(True))
             # Switch to the appropriate tab
@@ -405,11 +428,11 @@ class GlobalPanel(QGroupBox):
         subsection = self._visual_subsection if self._visual_subsection >= 0 else 0
         path = f"Global > {self.SUBSECTION_NAMES[subsection]}"
 
-        if subsection == 4:
+        if subsection == 5:
             # Modulator
             mod_num = self.get_modulator_selected()
             path += f" (Mod {mod_num}): {self._modulator_slider.value()}"
-        elif subsection < 4:
+        elif subsection < 5:
             group = self.slider_groups[subsection]
             if group.focused_name:
                 label = group.get_control_label(group.focused_index)
@@ -429,7 +452,7 @@ class GlobalPanel(QGroupBox):
 
         # Only handle value adjustment if a control is visually focused
         if self._visual_control >= 0:
-            if self._visual_subsection == 4:
+            if self._visual_subsection == 5:
                 # Modulator subsection: handle dropdown or slider
                 if key in (Qt.Key.Key_Left, Qt.Key.Key_A):
                     if self._modulator_control_index == 0:
@@ -485,7 +508,7 @@ class GlobalPanel(QGroupBox):
                 For modulator subsection: 0=dropdown, 1=slider.
         """
         self._visual_control = control_index
-        if self._visual_subsection == 4:
+        if self._visual_subsection == 5:
             # Modulator subsection: track which control is focused (0=dropdown, 1=slider)
             self._modulator_control_index = control_index
             # Update visual highlighting for modulator controls
@@ -508,7 +531,7 @@ class GlobalPanel(QGroupBox):
         Called by MainWindow in response to NavigationManager exiting CONTROL mode.
         """
         self._visual_control = -1
-        if self._visual_subsection == 4:
+        if self._visual_subsection == 5:
             # Modulator subsection: clear control highlights, restore group highlight
             self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
             self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
@@ -570,12 +593,12 @@ class GlobalPanel(QGroupBox):
         if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
                 if obj == self._modulator_slider:
-                    # Modulator slider is subsection 4, control 1
-                    self.controlFocusRequested.emit(4, 1)
+                    # Modulator slider is subsection 5, control 1
+                    self.controlFocusRequested.emit(5, 1)
                 elif obj == self._modulator_selector:
-                    # Modulator dropdown is subsection 4, control 0
-                    self.controlFocusRequested.emit(4, 0)
+                    # Modulator dropdown is subsection 5, control 0
+                    self.controlFocusRequested.emit(5, 0)
                 elif obj == self._modulator_group:
-                    # Clicking on modulator group header/empty space focuses subsection 4
-                    self.subsectionFocusRequested.emit(4)
+                    # Clicking on modulator group header/empty space focuses subsection 5
+                    self.subsectionFocusRequested.emit(5)
         return super().eventFilter(obj, event)

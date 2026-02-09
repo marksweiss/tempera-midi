@@ -128,17 +128,17 @@ class TestSubsectionNavigation(GUITestCase):
         self.harness.assert_state_consistent()
 
     def test_global_subsection_includes_modulator(self):
-        """Global subsection navigation includes modulator (subsection 4)."""
+        """Global subsection navigation includes modulator (subsection 5)."""
         # Navigate to Global
         self.harness.press_shortcut('G')
         self.harness.press_shortcut('F')
 
-        # Navigate to modulator (subsection 4)
-        for _ in range(4):
+        # Navigate to modulator (subsection 5)
+        for _ in range(5):
             self.harness.press_shortcut('S')
 
         nav = self.harness.get_nav_state()
-        self.assertEqual(nav.subsection, 4)
+        self.assertEqual(nav.subsection, 5)
         self.harness.assert_state_consistent()
 
 
@@ -480,14 +480,14 @@ class TestValueAdjustment(GUITestCase):
 
     def test_modulator_slider_value_adjust(self):
         """A/D adjusts modulator slider value."""
-        # Navigate to Global > Modulator (subsection 4)
+        # Navigate to Global > Modulator (subsection 5)
         self.harness.press_shortcut('G')
         self.harness.press_shortcut('F')  # Subsection mode
-        # Navigate to Modulator (subsection 4)
-        for _ in range(4):
+        # Navigate to Modulator (subsection 5)
+        for _ in range(5):
             self.harness.press_shortcut('S')
         nav = self.harness.get_nav_state()
-        self.assertEqual(nav.subsection, 4)
+        self.assertEqual(nav.subsection, 5)
 
         # Enter control mode, navigate to slider (control 1)
         self.harness.press_shortcut('F')  # Control mode
@@ -506,11 +506,11 @@ class TestValueAdjustment(GUITestCase):
 
     def test_modulator_dropdown_value_adjust(self):
         """A/D adjusts modulator dropdown selection."""
-        # Navigate to Global > Modulator (subsection 4)
+        # Navigate to Global > Modulator (subsection 5)
         self.harness.press_shortcut('G')
         self.harness.press_shortcut('F')  # Subsection mode
-        # Navigate to Modulator (subsection 4)
-        for _ in range(4):
+        # Navigate to Modulator (subsection 5)
+        for _ in range(5):
             self.harness.press_shortcut('S')
 
         # Enter control mode - starts at control 0 (dropdown)

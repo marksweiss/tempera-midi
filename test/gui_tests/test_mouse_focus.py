@@ -235,7 +235,7 @@ class TestClickConsistency(GUITestCase):
 
     def test_click_all_global_groups(self):
         """Clicking through all global groups maintains consistency."""
-        for subsection in range(4):  # 4 standard groups in Global (not modwheel)
+        for subsection in range(5):  # 5 standard groups in Global (not modulator)
             self.harness.click_control(Section.GLOBAL, subsection=subsection, control=0)
             self.harness.assert_state_consistent()
 

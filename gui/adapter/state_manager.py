@@ -59,6 +59,10 @@ def _default_global_state() -> dict:
             'color': 64,
             'mix': 0,
         },
+        'filter': {
+            'cutoff': 64,
+            'resonance': 64,
+        },
         'chorus': {
             'depth': 64,
             'speed': 64,

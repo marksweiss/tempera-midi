@@ -230,8 +230,8 @@ class MainWindow(QMainWindow):
         # This tells NavigationManager how many subsections and controls each section has
         # Emitter: 4 subsections (Basic=3, Filter=2, Grain=7, Position=4)
         self._nav.register_section_structure(Section.EMITTER, [3, 2, 7, 4])
-        # Global: 5 subsections (ADSR=4, Reverb=3, Delay=4, Chorus=4, Modulator=2)
-        self._nav.register_section_structure(Section.GLOBAL, [4, 3, 4, 4, 2])
+        # Global: 6 subsections (ADSR=4, Reverb=3, Delay=4, Filter=2, Chorus=4, Modulator=2)
+        self._nav.register_section_structure(Section.GLOBAL, [4, 3, 4, 2, 4, 2])
         # Tracks: 8 subsections (one per track), each with 1 control (volume)
         self._nav.register_section_structure(Section.TRACKS, [1, 1, 1, 1, 1, 1, 1, 1])
         # Grid: 8 columns, 8 cells each (handled differently, but register for consistency)
@@ -615,6 +615,9 @@ class MainWindow(QMainWindow):
         # Switch grid mode based on sequencer selection
         if seq_type is None:
             self._switch_grid_mode('hardware')
+            # Stop the sequencer and hide the playhead when no sequencer is selected
+            self._schedule_async(self._adapter.stop_sequencer())
+            self._envelope_panel.set_playhead_position(None)
         elif seq_type == 'column':
             self._switch_grid_mode('column')
         else:
@@ -822,14 +825,14 @@ class MainWindow(QMainWindow):
         if section == Section.GLOBAL:
             subsection = self._nav.subsection
             control = self._nav.control
-            if subsection == 4:  # Modulator
+            if subsection == 5:  # Modulator
                 if control == 0:
                     # Dropdown - adjust modulator selection
                     self._global_panel.adjust_modulator_selection(delta)
                 else:
                     # Slider - adjust modulator size
                     self._global_panel.adjust_modulator_size(delta)
-            elif subsection < 4:
+            elif subsection < 5:
                 groups = self._global_panel.slider_groups
                 if 0 <= subsection < len(groups):
                     groups[subsection].adjust_focused_value(delta)
@@ -847,11 +850,11 @@ class MainWindow(QMainWindow):
         section = self._nav.section
         if section == Section.GLOBAL:
             subsection = self._nav.subsection
-            if subsection == 4:  # Modulator
+            if subsection == 5:  # Modulator
                 self._global_panel.set_modulator_size(0)
                 self._global_panel.modulatorSizeChanged.emit(0)
                 self._global_panel.modulatorSizeSet.emit(0)
-            elif subsection < 4:
+            elif subsection < 5:
                 groups = self._global_panel.slider_groups
                 if 0 <= subsection < len(groups):
                     groups[subsection].reset_focused_to_default()
@@ -912,12 +915,13 @@ class MainWindow(QMainWindow):
             # Subsection 0: ADSR (attack, decay, sustain, release)
             # Subsection 1: Reverb (size, color, mix)
             # Subsection 2: Delay (feedback, time, color, mix)
-            # Subsection 3: Chorus (depth, speed, flange, mix)
-            # Subsection 4: Modulator (dropdown, size slider)
+            # Subsection 3: Filter (cutoff, resonance)
+            # Subsection 4: Chorus (depth, speed, flange, mix)
+            # Subsection 5: Modulator (dropdown, size slider)
             #   - Both controls (dropdown and slider) show envelope for selected modulator
 
             # Special handling for modulator subsection
-            if subsection == 4:
+            if subsection == 5:
                 # Both controls (dropdown index 0, slider index 1) show the same envelope
                 # for the currently selected modulator
                 selected_mod = self._adapter.state.get_modulator_selected()
@@ -930,6 +934,7 @@ class MainWindow(QMainWindow):
                  ('reverb', 'mix', 'Reverb Mix')],
                 [('delay', 'feedback', 'Delay Feedback'), ('delay', 'time', 'Delay Time'),
                  ('delay', 'color', 'Delay Color'), ('delay', 'mix', 'Delay Mix')],
+                [('filter', 'cutoff', 'Filter Cutoff'), ('filter', 'resonance', 'Filter Resonance')],
                 [('chorus', 'depth', 'Chorus Depth'), ('chorus', 'speed', 'Chorus Speed'),
                  ('chorus', 'flange', 'Chorus Flange'), ('chorus', 'mix', 'Chorus Mix')],
             ]

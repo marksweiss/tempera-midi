@@ -143,10 +143,10 @@ class GUITestHarness:
             if 1 <= track_num <= 8:
                 # Emit the signal that track panel would emit on click
                 panel.controlFocusRequested.emit(subsection, 0)
-        elif section == Section.GLOBAL and subsection == 4:
+        elif section == Section.GLOBAL and subsection == 5:
             # Global modulator - emit controlFocusRequested with the control index
             # control 0 = dropdown, control 1 = slider
-            panel.controlFocusRequested.emit(4, control)
+            panel.controlFocusRequested.emit(5, control)
         else:
             # Standard panel with slider groups - emit controlFocusRequested
             panel.controlFocusRequested.emit(subsection, control)
@@ -295,12 +295,12 @@ class GUITestHarness:
                 stylesheet=panel.styleSheet()
             )
 
-        if section == Section.GLOBAL and subsection == 4:
+        if section == Section.GLOBAL and subsection == 5:
             # Modwheel is a single slider, not a group
             modwheel = panel._modwheel
             focused = getattr(modwheel, '_focused', False)
             return SliderGroupState(
-                group_focused=panel._panel_focused and panel._focused_subsection == 4,
+                group_focused=panel._panel_focused and panel._focused_subsection == 5,
                 focused_index=0 if focused else -1,
                 slider_count=1,
                 stylesheet=modwheel.styleSheet()
@@ -569,9 +569,9 @@ class GUITestHarness:
                 return f'track.{track_num}.volume'
 
         elif nav.section == Section.GLOBAL:
-            # Special handling for modulator subsection (index 4)
+            # Special handling for modulator subsection (index 5)
             # Both controls (dropdown and slider) show envelope for selected modulator
-            if nav.subsection == 4:
+            if nav.subsection == 5:
                 selected_mod = self._adapter.state.get_modulator_selected()
                 return f'global.modulator.{selected_mod}.size'
 
@@ -583,6 +583,8 @@ class GUITestHarness:
                 [('reverb', 'size'), ('reverb', 'color'), ('reverb', 'mix')],
                 # Delay
                 [('delay', 'feedback'), ('delay', 'time'), ('delay', 'color'), ('delay', 'mix')],
+                # Filter
+                [('filter', 'cutoff'), ('filter', 'resonance')],
                 # Chorus
                 [('chorus', 'depth'), ('chorus', 'speed'), ('chorus', 'flange'), ('chorus', 'mix')],
             ]
