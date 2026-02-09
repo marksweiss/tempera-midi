@@ -182,6 +182,9 @@ Classes
 `delay(self, *, feedback: int = None, time: int = None, color: int = None, mix: int = None) ‑> list[mido.messages.messages.Message]`
 :   Change Delay parameters.
 
+`filter(self, *, cutoff: int = None, resonance: int = None) ‑> list[mido.messages.messages.Message]`
+:   Change Filter parameters.
+
 `modulator_size(self, modulator_num: int, value: int) ‑> mido.messages.messages.Message`
 :   Change Modulator Size for a specific modulator.
     
