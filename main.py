@@ -77,22 +77,26 @@ async def play_test(override_port: str = None):
         output.send(emitter.effects_send(50))
         print("called Emitter.effects_send with arguments (50)")
 
-        output.send(emitter.place_in_cell(column=1, cell=1))
+        for message in emitter.place_in_cell(column=1, cell=1):
+            output.send(message)
         print("called Emitter.place_in_cell with arguments (column=1, cell=1)")
 
         await asyncio.sleep(2)
 
-        output.send(emitter.remove_from_cell(column=2, cell=1))
+        for message in emitter.remove_from_cell(column=2, cell=1):
+            output.send(message)
         print("called Emitter.remove_from_cell with arguments (column=1, cell=1)")
 
-        output.send(emitter.place_in_cell(column=2, cell=1))
+        for message in emitter.place_in_cell(column=2, cell=1):
+            output.send(message)
         print("called Emitter.place_in_cell with arguments (column=1, cell=1)")
         output.send(emitter.midi.note_on(60, 127, 0))
         await asyncio.sleep(2)
         output.send(emitter.midi.note_off(60, 0))
         print("played note by calling emitter.midi.note_on() and note_off()")
 
-        output.send(emitter.remove_from_cell(column=1, cell=1))
+        for message in emitter.remove_from_cell(column=1, cell=1):
+            output.send(message)
         print("called Emitter.remove_from_cell with arguments (column=1, cell=1)")
 
         # --- Track class tests ---

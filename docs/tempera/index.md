@@ -122,8 +122,8 @@ Classes
 `remove_from_cell(self, emitter_num: int, column: int, cell: int)`
 :   Remove Emitter placement from a given Cell in a given Column.
 
-`send_raw(self, message: mido.messages.messages.Message)`
-:   Send a raw MIDI message through the queue.
+`send_raw(self, message: mido.messages.messages.Message | list[mido.messages.messages.Message])`
+:   Send a raw MIDI message or list of messages through the queue.
 
 `set_active(self, emitter_num: int)`
 :   Set Emitter as Active.

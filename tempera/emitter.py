@@ -184,20 +184,32 @@ class Emitter:
         """Set Emitter as Active."""
         return self.midi.cc(ACTIVE_EMITTER, self.emitter_num - 1)
 
-    def place_in_cell(self, column: int, cell: int) -> Message:
-        """Place Emitter in a given Cell in a given Column."""
-        if column < 1 or column > 8:
-            raise ValueError(f"column must be in range 1..8, got {column}")
-        if cell < 1 or cell > 8:
-            raise ValueError(f"cell must be in range 1..8, got {cell}")
-        value = ((column - 1) * 8) + (cell - 1)
-        return self.midi.cc(PLACE_EMITTER_IN_CELL, value)
+    def place_in_cell(self, column: int, cell: int) -> list[Message]:
+        """Place Emitter in a given Cell in a given Column.
 
-    def remove_from_cell(self, column: int, cell: int) -> Message:
-        """Remove Emitter placement in a given Cell in a given Column."""
+        Returns a list of two messages: first sets this emitter as active (CC 10),
+        then places it in the cell (CC 11). This ensures the correct emitter is
+        placed regardless of which emitter was previously active.
+        """
         if column < 1 or column > 8:
             raise ValueError(f"column must be in range 1..8, got {column}")
         if cell < 1 or cell > 8:
             raise ValueError(f"cell must be in range 1..8, got {cell}")
         value = ((column - 1) * 8) + (cell - 1)
-        return self.midi.cc(REMOVE_EMITTER_FROM_CELL, value)
+        return [self.midi.cc(ACTIVE_EMITTER, self.emitter_num - 1),
+                self.midi.cc(PLACE_EMITTER_IN_CELL, value)]
+
+    def remove_from_cell(self, column: int, cell: int) -> list[Message]:
+        """Remove Emitter placement in a given Cell in a given Column.
+
+        Returns a list of two messages: first sets this emitter as active (CC 10),
+        then removes it from the cell (CC 12). This ensures the correct emitter is
+        removed regardless of which emitter was previously active.
+        """
+        if column < 1 or column > 8:
+            raise ValueError(f"column must be in range 1..8, got {column}")
+        if cell < 1 or cell > 8:
+            raise ValueError(f"cell must be in range 1..8, got {cell}")
+        value = ((column - 1) * 8) + (cell - 1)
+        return [self.midi.cc(ACTIVE_EMITTER, self.emitter_num - 1),
+                self.midi.cc(REMOVE_EMITTER_FROM_CELL, value)]

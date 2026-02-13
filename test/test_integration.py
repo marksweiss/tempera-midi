@@ -250,14 +250,22 @@ class TestEmitterIntegration(MidiIntegrationTestBase):
     def test_place_in_cell(self):
         raw_bytes = self.emitter.place_in_cell(column=1, cell=1)
         messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
+        self.assertEqual(len(messages), 2)
         self.assertEqual(messages[0].type, 'control_change')
+        self.assertEqual(messages[0].control, 10)  # ACTIVE_EMITTER
+        self.assertEqual(messages[0].value, 0)      # emitter 1 -> value 0
+        self.assertEqual(messages[1].type, 'control_change')
+        self.assertEqual(messages[1].control, 11)  # PLACE_EMITTER_IN_CELL
 
     def test_remove_from_cell(self):
         raw_bytes = self.emitter.remove_from_cell(column=1, cell=1)
         messages = self.parse_and_send(raw_bytes)
-        self.assertEqual(len(messages), 1)
+        self.assertEqual(len(messages), 2)
         self.assertEqual(messages[0].type, 'control_change')
+        self.assertEqual(messages[0].control, 10)  # ACTIVE_EMITTER
+        self.assertEqual(messages[0].value, 0)      # emitter 1 -> value 0
+        self.assertEqual(messages[1].type, 'control_change')
+        self.assertEqual(messages[1].control, 12)  # REMOVE_EMITTER_FROM_CELL
 
     def test_emitter_2(self):
         emitter = Emitter(emitter=2)
@@ -733,13 +741,12 @@ class TestEmitterHardware(MidiHardwareTestBase):
 
     def test_place_in_cell(self):
         emitter = Emitter(emitter=1)
-        self.send_with_delay(emitter.set_active())
         messages = self.send_with_delay(emitter.place_in_cell(column=1, cell=1))
-        # self.assertEqual(len(messages), 1)
+        self.assertEqual(len(messages), 2)
 
     def test_remove_from_cell(self):
         messages = self.send_with_delay(self.emitter.remove_from_cell(column=1, cell=1))
-        self.assertEqual(len(messages), 1)
+        self.assertEqual(len(messages), 2)
 
     def test_emitter_2(self):
         emitter = Emitter(emitter=2)
