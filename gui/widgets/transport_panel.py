@@ -33,6 +33,7 @@ class TransportPanel(QGroupBox):
     stopClicked = Signal()
     bpmChanged = Signal(int)
     sequencerChanged = Signal(object)  # str or None
+    clearAllCellsClicked = Signal()
 
     def __init__(self, parent: QWidget = None):
         super().__init__('Transport', parent)
@@ -81,7 +82,7 @@ class TransportPanel(QGroupBox):
         button_layout.addStretch()
         layout.addLayout(button_layout)
 
-        # BPM control
+        # BPM control + Clear All Cells button
         bpm_layout = QHBoxLayout()
         bpm_layout.setSpacing(6)
 
@@ -96,6 +97,27 @@ class TransportPanel(QGroupBox):
         self._bpm_spinbox.setFixedHeight(24)
         self._bpm_spinbox.valueChanged.connect(self.bpmChanged.emit)
         bpm_layout.addWidget(self._bpm_spinbox)
+
+        self._clear_cells_btn = QPushButton('Clear All Cells')
+        self._clear_cells_btn.setFixedHeight(26)
+        self._clear_cells_btn.setToolTip('Clear all cell placements / sequencer patterns')
+        self._clear_cells_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4A90D9;
+                border-color: #5AA0E9;
+            }
+            QPushButton:pressed {
+                background-color: #353535;
+                border-color: #404040;
+            }
+            QPushButton:disabled {
+                background-color: #2A2A2A;
+                color: #505050;
+                border-color: #404040;
+            }
+        """)
+        self._clear_cells_btn.clicked.connect(self.clearAllCellsClicked.emit)
+        bpm_layout.addWidget(self._clear_cells_btn)
 
         bpm_layout.addStretch()
         layout.addLayout(bpm_layout)
@@ -154,3 +176,7 @@ class TransportPanel(QGroupBox):
 
         self._seq_8track_btn.blockSignals(False)
         self._seq_1track_btn.blockSignals(False)
+
+    def set_clear_cells_enabled(self, enabled: bool):
+        """Enable or disable the Clear All Cells button."""
+        self._clear_cells_btn.setEnabled(enabled)

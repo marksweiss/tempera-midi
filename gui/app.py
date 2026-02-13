@@ -285,6 +285,7 @@ class MainWindow(QMainWindow):
         self._transport.stopClicked.connect(self._on_stop)
         self._transport.sequencerChanged.connect(self._on_sequencer_changed)
         self._transport.bpmChanged.connect(self._on_bpm_changed)
+        self._transport.clearAllCellsClicked.connect(self._on_clear_all_cells)
 
         # State manager listener for undo/redo updates
         self._adapter.state.add_listener(self._on_state_changed)
@@ -585,6 +586,7 @@ class MainWindow(QMainWindow):
         seq_type = self._transport.get_sequencer()
         if seq_type is not None:
             # Start the selected sequencer
+            self._transport.set_clear_cells_enabled(False)
             self._schedule_async(self._adapter.start_sequencer())
         else:
             # No sequencer selected, play a single note
@@ -602,6 +604,7 @@ class MainWindow(QMainWindow):
         """Stop sequencer and send MIDI stop."""
         await self._adapter.stop_sequencer()
         await self._adapter.transport_stop()
+        self._transport.set_clear_cells_enabled(True)
 
     def _on_sequencer_changed(self, seq_type):
         """Handle sequencer type selection change.
@@ -621,6 +624,7 @@ class MainWindow(QMainWindow):
             # Stop the sequencer and hide the playhead when no sequencer is selected
             self._schedule_async(self._adapter.stop_sequencer())
             self._envelope_panel.set_playhead_position(None)
+            self._transport.set_clear_cells_enabled(True)
         elif seq_type == 'column':
             self._switch_grid_mode('column')
         else:
@@ -672,6 +676,31 @@ class MainWindow(QMainWindow):
     def _on_bpm_changed(self, bpm: int):
         """Handle BPM change from transport."""
         self._adapter.set_sequencer_bpm(bpm)
+
+    def _on_clear_all_cells(self):
+        """Handle Clear All Cells button click."""
+        if self._grid_mode == 'hardware':
+            self._schedule_async(self._clear_all_hardware_cells())
+        elif self._grid_mode == 'column':
+            self._clear_all_column_cells()
+        else:
+            self._clear_all_grid_cells()
+        self._cell_grid.clear_all()
+
+    async def _clear_all_hardware_cells(self):
+        """Clear all hardware cell placements via MIDI."""
+        cells = self._adapter.state.get_all_cells()
+        for (column, cell) in list(cells.keys()):
+            await self._adapter.remove_from_cell(column, cell)
+
+    def _clear_all_column_cells(self):
+        """Clear all column sequencer patterns."""
+        for col in range(1, 9):
+            self._adapter.state.clear_column_pattern(col, record_undo=(col == 1))
+
+    def _clear_all_grid_cells(self):
+        """Clear grid sequencer pattern."""
+        self._adapter.state.clear_grid_pattern()
 
     def _on_state_changed(self, path: str, value):
         """Handle state change notifications (for undo/redo)."""
