@@ -36,14 +36,22 @@ Classes
 `octave(self, value: int) ‑> mido.messages.messages.Message`
 :   Change Emitter Octave.
 
-`place_in_cell(self, column: int, cell: int) ‑> mido.messages.messages.Message`
+`place_in_cell(self, column: int, cell: int) ‑> list[mido.messages.messages.Message]`
 :   Place Emitter in a given Cell in a given Column.
+    
+    Returns a list of two messages: first sets this emitter as active (CC 10),
+    then places it in the cell (CC 11). This ensures the correct emitter is
+    placed regardless of which emitter was previously active.
 
 `relative_position(self, *, x: int = None, y: int = None) ‑> list[mido.messages.messages.Message]`
 :   Change Emitter Position along X and Y axes. Applies to a placement for the Emitter in a given Cell.
 
-`remove_from_cell(self, column: int, cell: int) ‑> mido.messages.messages.Message`
+`remove_from_cell(self, column: int, cell: int) ‑> list[mido.messages.messages.Message]`
 :   Remove Emitter placement in a given Cell in a given Column.
+    
+    Returns a list of two messages: first sets this emitter as active (CC 10),
+    then removes it from the cell (CC 12). This ensures the correct emitter is
+    removed regardless of which emitter was previously active.
 
 `set_active(self) ‑> mido.messages.messages.Message`
 :   Set Emitter as Active.
