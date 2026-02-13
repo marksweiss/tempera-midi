@@ -37,7 +37,7 @@ class TemperaAdapter:
         self._tempera_global: Optional[TemperaGlobal] = None
         self._tracks: dict[int, Track] = {}
         self._emitters_local: dict[int, Emitter] = {}
-        self._output: Optional[mido.ports.BaseOutput] = None
+        self._output = None  # Deprecated: all MIDI output goes through EmitterPool
         self._connected = False
         self._port_name: Optional[str] = None
 
@@ -294,8 +294,7 @@ class TemperaAdapter:
             self._pool = EmitterPool(port_name=self._port_name)
             await self._pool.start()
 
-            # Create global and track controllers with separate MIDI port
-            self._output = mido.open_output(self._port_name)
+            # Create global and track controllers (message generators only, no port)
             self._tempera_global = TemperaGlobal(midi_channel=1)
             self._tracks = {i: Track(track=i, midi_channel=1) for i in range(1, 9)}
             self._emitters_local = {i: Emitter(emitter=i, midi_channel=2) for i in range(1, 5)}
@@ -315,10 +314,6 @@ class TemperaAdapter:
             await self._pool.stop()
             self._pool = None
 
-        if self._output:
-            self._output.close()
-            self._output = None
-
         self._tempera_global = None
         self._tracks = {}
         self._emitters_local = {}
@@ -329,8 +324,8 @@ class TemperaAdapter:
     # --- Emitter controls ---
 
     async def _send_emitter_param(self, emitter_num: int, param: str, value: int):
-        """Internal: send emitter parameter to hardware via direct send."""
-        if not self._connected or not self._output:
+        """Internal: send emitter parameter to hardware via pool queue."""
+        if not self._connected or not self._pool:
             return
 
         try:
@@ -356,12 +351,11 @@ class TemperaAdapter:
                 tf_param = param[12:]  # Remove 'tone_filter_' prefix
                 msgs = emitter.tone_filter(**{tf_param: value})
 
-            # Send messages directly
+            # Send messages through the pool's queue for ordered delivery
             if isinstance(msgs, list):
-                for msg in msgs:
-                    self._output.send(msg)
+                await self._pool.send_raw(msgs)
             else:
-                self._output.send(msgs)
+                await self._pool.send_raw(msgs)
 
             self._notify_status(f'Emitter {emitter_num} {param} → {value}')
         except Exception as e:
@@ -391,9 +385,9 @@ class TemperaAdapter:
     async def set_active_emitter(self, emitter_num: int):
         """Set the active emitter."""
         self.state.set_active_emitter(emitter_num)
-        if self._connected and self._output:
+        if self._connected and self._pool:
             msg = self._emitters_local[emitter_num].set_active()
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Active emitter: {emitter_num}')
 
     # --- Cell controls ---
@@ -401,9 +395,9 @@ class TemperaAdapter:
     async def place_in_cell(self, emitter_num: int, column: int, cell: int):
         """Place an emitter in a cell."""
         self.state.place_in_cell(emitter_num, column, cell)
-        if self._connected and self._output:
+        if self._connected and self._pool:
             msg = self._emitters_local[emitter_num].place_in_cell(column, cell)
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Emitter {emitter_num} → cell ({column}, {cell})')
 
     async def remove_from_cell(self, column: int, cell: int):
@@ -411,9 +405,9 @@ class TemperaAdapter:
         emitter_num = self.state.get_cell(column, cell)
         if emitter_num is not None:
             self.state.remove_from_cell(column, cell)
-            if self._connected and self._output:
+            if self._connected and self._pool:
                 msg = self._emitters_local[emitter_num].remove_from_cell(column, cell)
-                self._output.send(msg)
+                await self._pool.send_raw(msg)
                 self._notify_status(f'Cleared cell ({column}, {cell})')
 
     async def toggle_cell(self, column: int, cell: int):
@@ -431,12 +425,12 @@ class TemperaAdapter:
     # --- Track controls ---
 
     async def _send_track_volume(self, track_num: int, value: int):
-        """Internal: send track volume to hardware."""
-        if not self._connected or not self._output:
+        """Internal: send track volume to hardware via pool queue."""
+        if not self._connected or not self._pool:
             return
         try:
             msg = self._tracks[track_num].volume(value)
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Track {track_num} volume → {value}')
         except Exception as e:
             self._notify_status(f'Error: {e}')
@@ -452,21 +446,21 @@ class TemperaAdapter:
 
     async def track_record_on(self, track_num: int):
         """Arm a track for recording."""
-        if self._connected and self._output:
+        if self._connected and self._pool:
             msg = self._tracks[track_num].record_on()
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Track {track_num} armed for recording')
 
     # --- Global controls ---
 
     async def _send_modulator_size(self, value: int):
-        """Internal: send modulator size to hardware."""
-        if not self._connected or not self._output:
+        """Internal: send modulator size to hardware via pool queue."""
+        if not self._connected or not self._pool:
             return
         try:
             selected = self.state.get_modulator_selected()
             msg = self._tempera_global.modulator_size(selected, value)
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Modulator {selected} Size → {value}')
         except Exception as e:
             self._notify_status(f'Error: {e}')
@@ -480,24 +474,23 @@ class TemperaAdapter:
             modulator_num: Modulator number (1-10)
             value: Size value (0-127)
         """
-        if not self._connected or not self._output:
+        if not self._connected or not self._pool:
             return
         try:
             msg = self._tempera_global.modulator_size(modulator_num, value)
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Modulator {modulator_num} Size → {value}')
         except Exception as e:
             self._notify_status(f'Error: {e}')
 
     async def _send_global_param(self, category: str, param: str, value: int):
-        """Internal: send global parameter to hardware."""
-        if not self._connected or not self._output:
+        """Internal: send global parameter to hardware via pool queue."""
+        if not self._connected or not self._pool:
             return
         try:
             method = getattr(self._tempera_global, category)
             msgs = method(**{param: value})
-            for msg in msgs:
-                self._output.send(msg)
+            await self._pool.send_raw(msgs)
             self._notify_status(f'{category.title()} {param} → {value}')
         except Exception as e:
             self._notify_status(f'Error: {e}')
@@ -554,21 +547,21 @@ class TemperaAdapter:
 
     async def transport_start(self):
         """Send MIDI start message."""
-        if self._connected and self._output:
-            self._output.send(TemperaGlobal.start())
+        if self._connected and self._pool:
+            await self._pool.send_raw(TemperaGlobal.start())
             self._notify_status('Transport: Start')
 
     async def transport_stop(self):
         """Send MIDI stop message."""
-        if self._connected and self._output:
-            self._output.send(TemperaGlobal.stop())
+        if self._connected and self._pool:
+            await self._pool.send_raw(TemperaGlobal.stop())
             self._notify_status('Transport: Stop')
 
     async def change_canvas(self, program: int):
         """Change Tempera canvas via program change."""
-        if self._connected and self._output:
+        if self._connected and self._pool:
             msg = self._tempera_global.change_canvas(program)
-            self._output.send(msg)
+            await self._pool.send_raw(msg)
             self._notify_status(f'Canvas → {program}')
 
     # --- Undo/Redo ---
@@ -605,8 +598,10 @@ class TemperaAdapter:
         for track_num, params in state['tracks'].items():
             await self._send_track_volume(track_num, params['volume'])
 
-        # Sync global parameters (modulator size)
-        await self._send_modulator_size(state['global']['modulator']['size'])
+        # Sync all modulator sizes
+        for mod_num, size in state['global']['modulator'].get('sizes', {}).items():
+            if size > 0:
+                await self._send_modulator_size_to(mod_num, size)
         for param, value in state['global']['adsr'].items():
             await self._send_global_param('adsr', param, value)
         for param, value in state['global']['reverb'].items():
@@ -621,9 +616,9 @@ class TemperaAdapter:
         # Sync cells - this is trickier as we need to clear old and set new
         # For now, just set all current placements
         for (col, cell), emitter_num in state['cells'].items():
-            if self._output and emitter_num in self._emitters_local:
+            if self._pool and emitter_num in self._emitters_local:
                 msg = self._emitters_local[emitter_num].place_in_cell(col, cell)
-                self._output.send(msg)
+                await self._pool.send_raw(msg)
 
     # --- Preset management ---
 

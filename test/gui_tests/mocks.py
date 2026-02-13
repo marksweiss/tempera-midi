@@ -103,6 +103,67 @@ class MockTemperaAdapter:
         self._record_call('set_modulator_size', value, immediate=immediate)
         self.state.set_modulator_size(value)
 
+    # Sequencer methods
+    def set_sequencer_mode(self, mode: str):
+        """Set sequencer mode."""
+        self._record_call('set_sequencer_mode', mode)
+        self.state.set_sequencer_mode(mode)
+
+    def set_sequencer_bpm(self, bpm: int):
+        """Set sequencer BPM."""
+        self._record_call('set_sequencer_bpm', bpm)
+        self.state.set_sequencer_bpm(bpm)
+
+    async def start_sequencer(self, loops: int = 0):
+        """Mock start sequencer."""
+        self._record_call('start_sequencer', loops=loops)
+
+    async def stop_sequencer(self):
+        """Mock stop sequencer."""
+        self._record_call('stop_sequencer')
+
+    async def play_note(self, emitter_nums=None, note=60, velocity=127, duration=0.5):
+        """Mock play note."""
+        self._record_call('play_note', emitter_nums=emitter_nums, note=note,
+                          velocity=velocity, duration=duration)
+
+    async def transport_start(self):
+        """Mock transport start."""
+        self._record_call('transport_start')
+
+    async def transport_stop(self):
+        """Mock transport stop."""
+        self._record_call('transport_stop')
+
+    def set_column_pattern_cell(self, column, cell, active, emitter):
+        """Set column pattern cell."""
+        self._record_call('set_column_pattern_cell', column, cell, active, emitter)
+        if active:
+            self.state.set_column_pattern_cell(column, cell, emitter)
+        else:
+            self.state.set_column_pattern_cell(column, cell, None)
+
+    def set_grid_pattern_cell(self, step_index, active, emitter):
+        """Set grid pattern cell."""
+        self._record_call('set_grid_pattern_cell', step_index, active, emitter)
+        if active:
+            self.state.set_grid_pattern_cell(step_index, emitter)
+        else:
+            self.state.set_grid_pattern_cell(step_index, None)
+
+    async def update_running_column_pattern(self, column):
+        """Mock update running column pattern."""
+        self._record_call('update_running_column_pattern', column)
+
+    async def update_running_grid_pattern(self):
+        """Mock update running grid pattern."""
+        self._record_call('update_running_grid_pattern')
+
+    async def remove_from_cell(self, column, cell):
+        """Mock remove from cell."""
+        self._record_call('remove_from_cell', column, cell)
+        self.state.remove_from_cell(column, cell)
+
     # Undo/redo
     async def undo(self) -> bool:
         """Undo last state change."""

@@ -562,6 +562,9 @@ class MainWindow(QMainWindow):
     def _on_modulator_selected(self, modulator_num: int):
         """Handle modulator selection change."""
         self._adapter.set_modulator_selected(modulator_num)
+        # Update slider to show the newly selected modulator's stored size
+        stored_size = self._adapter.state.get_modulator_size(modulator_num)
+        self._global_panel.set_modulator_size(stored_size)
         # Update envelope panel to show the newly selected modulator's envelope
         self._update_envelope_panel_for_focus()
 
@@ -884,20 +887,21 @@ class MainWindow(QMainWindow):
         if section == Section.EMITTER:
             emitter_num = self._adapter.state.get_active_emitter()
             # Map subsection + control to parameter
+            # Order matches emitter_panel.slider_groups: Basic, Filter, Position/Spray, Grain
             # Subsection 0: Basic (volume, octave, effects_send)
             # Subsection 1: Tone Filter (tone_filter_width, tone_filter_center)
-            # Subsection 2: Grain (grain_length_cell, grain_length_note, grain_density,
+            # Subsection 2: Position/Spray (relative_x, relative_y, spray_x, spray_y)
+            # Subsection 3: Grain (grain_length_cell, grain_length_note, grain_density,
             #                      grain_shape, grain_shape_attack, grain_pan, grain_tune_spread)
-            # Subsection 3: Position/Spray (relative_x, relative_y, spray_x, spray_y)
             params_by_subsection = [
                 [('volume', 'Volume'), ('octave', 'Octave'), ('effects_send', 'Effects Send')],
                 [('tone_filter_width', 'Filter Width'), ('tone_filter_center', 'Filter Center')],
+                [('relative_x', 'Position X'), ('relative_y', 'Position Y'),
+                 ('spray_x', 'Spray X'), ('spray_y', 'Spray Y')],
                 [('grain_length_cell', 'Grain Length Cell'), ('grain_length_note', 'Grain Length Note'),
                  ('grain_density', 'Grain Density'), ('grain_shape', 'Grain Shape'),
                  ('grain_shape_attack', 'Grain Shape Attack'), ('grain_pan', 'Grain Pan'),
                  ('grain_tune_spread', 'Grain Tune Spread')],
-                [('relative_x', 'Position X'), ('relative_y', 'Position Y'),
-                 ('spray_x', 'Spray X'), ('spray_y', 'Spray Y')],
             ]
             if 0 <= subsection < len(params_by_subsection):
                 params = params_by_subsection[subsection]

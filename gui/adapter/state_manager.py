@@ -40,7 +40,8 @@ def _default_global_state() -> dict:
     return {
         'modulator': {
             'selected': 1,  # Which modulator (1-10) is selected
-            'size': 0,      # Current size value (0-127)
+            'size': 0,      # Current size value (for selected modulator)
+            'sizes': {i: 0 for i in range(1, 11)},  # Per-modulator sizes
         },
         'adsr': {
             'attack': 0,
@@ -269,12 +270,18 @@ class StateManager:
         self._state['global']['modulator']['selected'] = modulator_num
         self._notify('global.modulator.selected', modulator_num)
 
-    def get_modulator_size(self) -> int:
-        """Get current modulator size value (0-127)."""
-        return self._state['global']['modulator']['size']
+    def get_modulator_size(self, modulator_num: int = None) -> int:
+        """Get modulator size value (0-127).
+
+        Args:
+            modulator_num: Modulator number (1-10). If None, uses selected modulator.
+        """
+        if modulator_num is None:
+            modulator_num = self.get_modulator_selected()
+        return self._state['global']['modulator']['sizes'].get(modulator_num, 0)
 
     def set_modulator_size(self, value: int, record_undo: bool = True):
-        """Set the modulator size value.
+        """Set the size value for the currently selected modulator.
 
         Args:
             value: Size value (0-127)
@@ -282,7 +289,9 @@ class StateManager:
         """
         if record_undo:
             self._push_undo()
+        selected = self.get_modulator_selected()
         self._state['global']['modulator']['size'] = value
+        self._state['global']['modulator']['sizes'][selected] = value
         self._notify('global.modulator.size', value)
 
     # --- Cell state ---
@@ -491,6 +500,11 @@ class StateManager:
             state_copy['sequencer']['grid_pattern'] = {
                 str(step): em for step, em in state_copy['sequencer']['grid_pattern'].items()
             }
+        # Convert modulator sizes int keys to strings
+        if 'sizes' in state_copy.get('global', {}).get('modulator', {}):
+            state_copy['global']['modulator']['sizes'] = {
+                str(k): v for k, v in state_copy['global']['modulator']['sizes'].items()
+            }
         # Convert Envelope objects to dicts for JSON
         if 'envelopes' in state_copy:
             state_copy['envelopes'] = {
@@ -528,6 +542,18 @@ class StateManager:
             }
         else:
             loaded['sequencer'] = _default_sequencer_state()
+
+        # Convert modulator sizes string keys back to ints
+        if 'sizes' in loaded.get('global', {}).get('modulator', {}):
+            loaded['global']['modulator']['sizes'] = {
+                int(k): v for k, v in loaded['global']['modulator']['sizes'].items()
+            }
+        elif 'global' in loaded and 'modulator' in loaded['global']:
+            # Old preset without per-modulator sizes - initialize from single size
+            size = loaded['global']['modulator'].get('size', 0)
+            loaded['global']['modulator']['sizes'] = {i: 0 for i in range(1, 11)}
+            selected = loaded['global']['modulator'].get('selected', 1)
+            loaded['global']['modulator']['sizes'][selected] = size
 
         # Convert envelope dicts back to Envelope objects
         if 'envelopes' in loaded:

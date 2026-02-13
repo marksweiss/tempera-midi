@@ -162,9 +162,9 @@ class EmitterPool:
 
     async def play(self, emitter_num: int, note: int = 60, velocity: int = 127, duration: float = 1.0):
         """Play a note on the Emitter's MIDI channel. Results in all placed cells playing the note."""
-        self._emitters[emitter_num].midi.note_on(note, velocity, 0)
+        await self._queue.put(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
         await asyncio.sleep(duration)
-        self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
+        await self._queue.put(self._emitters[emitter_num].midi.note_off(note, 0))
 
     async def play_all(
         self,
@@ -188,18 +188,17 @@ class EmitterPool:
 
         # Default is all on same channel so check that first
         if not self._emitters_on_own_channels:
-            self._output.send(self._midi.note_on(note, velocity, 0))
+            await self._queue.put(self._midi.note_on(note, velocity, 0))
             await asyncio.sleep(duration)
-            self._output.send(self._midi.note_off(note, 0))
+            await self._queue.put(self._midi.note_off(note, 0))
         else:
             # Send all note_on messages
             for emitter_num in emitter_nums:
-                self._output.send(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
-                # Wait once
+                await self._queue.put(self._emitters[emitter_num].midi.note_on(note, velocity, 0))
             await asyncio.sleep(duration)
             # Send all note_off messages
             for emitter_num in emitter_nums:
-                self._output.send(self._emitters[emitter_num].midi.note_off(note, 0))
+                await self._queue.put(self._emitters[emitter_num].midi.note_off(note, 0))
 
     async def remove_from_cell(self, emitter_num: int, column: int, cell: int):
         """Remove Emitter placement from a given Cell in a given Column."""
@@ -232,6 +231,6 @@ class EmitterPool:
         await method(emitter_num, *args, **kwargs)
 
     # --- Low-level escape hatch ---
-    async def send_raw(self, message: Message):
-        """Send a raw MIDI message through the queue."""
+    async def send_raw(self, message: Union[Message, list[Message]]):
+        """Send a raw MIDI message or list of messages through the queue."""
         await self._queue.put(message)

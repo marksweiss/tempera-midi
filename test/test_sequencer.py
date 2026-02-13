@@ -437,5 +437,90 @@ class TestColumnSequencerIntegration(unittest.IsolatedAsyncioTestCase):
             raise
 
 
+class TestSequencerUnifiedMidiPipeline(unittest.IsolatedAsyncioTestCase):
+    """Tests verifying all MIDI output goes through the EmitterPool queue.
+
+    These tests ensure that play(), play_all(), and send_raw() all route
+    through the queue rather than bypassing it with direct self._output.send().
+    """
+
+    async def test_play_all_uses_queue(self):
+        """play_all routes note_on/note_off through the queue."""
+        pool = create_mock_pool()
+        # Give it a real queue so we can inspect
+        pool._queue = asyncio.Queue()
+        pool._emitters_on_own_channels = False
+        pool._midi = MagicMock()
+        pool._midi.note_on.return_value = 'note_on_msg'
+        pool._midi.note_off.return_value = 'note_off_msg'
+
+        # Call the real play_all (not the mock)
+        await EmitterPool.play_all(pool, [1], note=60, velocity=127, duration=0.001)
+
+        # Queue should have received note_on and note_off
+        messages = []
+        while not pool._queue.empty():
+            messages.append(pool._queue.get_nowait())
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0], 'note_on_msg')
+        self.assertEqual(messages[1], 'note_off_msg')
+
+    async def test_play_uses_queue(self):
+        """play routes note_on/note_off through the queue."""
+        pool = create_mock_pool()
+        pool._queue = asyncio.Queue()
+        mock_emitter = MagicMock()
+        mock_emitter.midi.note_on.return_value = 'note_on_msg'
+        mock_emitter.midi.note_off.return_value = 'note_off_msg'
+        pool._emitters = {1: mock_emitter}
+
+        await EmitterPool.play(pool, 1, note=60, velocity=127, duration=0.001)
+
+        messages = []
+        while not pool._queue.empty():
+            messages.append(pool._queue.get_nowait())
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[0], 'note_on_msg')
+        self.assertEqual(messages[1], 'note_off_msg')
+
+    async def test_send_raw_queues_single_message(self):
+        """send_raw queues a single MIDI message."""
+        pool = create_mock_pool()
+        pool._queue = asyncio.Queue()
+
+        await EmitterPool.send_raw(pool, 'test_msg')
+
+        self.assertEqual(pool._queue.get_nowait(), 'test_msg')
+
+    async def test_send_raw_queues_message_list(self):
+        """send_raw queues a list of MIDI messages."""
+        pool = create_mock_pool()
+        pool._queue = asyncio.Queue()
+
+        await EmitterPool.send_raw(pool, ['msg1', 'msg2'])
+
+        item = pool._queue.get_nowait()
+        self.assertEqual(item, ['msg1', 'msg2'])
+
+    async def test_column_sequencer_full_step_uses_queue(self):
+        """ColumnSequencer step execution routes all messages through pool queue."""
+        pool = create_mock_pool()
+
+        sequencer = ColumnSequencer(pool, step_duration=0.001)
+        await sequencer.set_column_pattern(1, {1: 1})
+        await sequencer.set_column_pattern(3, {1: 2})
+
+        # Run for 1 loop
+        await sequencer.run(loops=1)
+
+        # Verify place_in_cell was called (queued messages)
+        place_calls = pool.place_in_cell.call_args_list
+        self.assertGreater(len(place_calls), 0)
+
+        # Verify play_all was called (note messages)
+        play_calls = pool.play_all.call_args_list
+        self.assertGreater(len(play_calls), 0)
+
+
 if __name__ == '__main__':
     unittest.main()

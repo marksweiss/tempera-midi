@@ -546,17 +546,18 @@ class GUITestHarness:
         if nav.section == Section.EMITTER:
             emitter_num = self._adapter.state.get_active_emitter()
             # Map subsection + control to parameter
+            # Order matches emitter_panel.slider_groups: Basic, Filter, Position/Spray, Grain
             # Subsection 0: Basic (volume, octave, effects_send)
             # Subsection 1: Tone Filter (tone_filter_width, tone_filter_center)
-            # Subsection 2: Grain (grain_length_cell, grain_length_note, grain_density,
+            # Subsection 2: Position/Spray (relative_x, relative_y, spray_x, spray_y)
+            # Subsection 3: Grain (grain_length_cell, grain_length_note, grain_density,
             #                      grain_shape, grain_shape_attack, grain_pan, grain_tune_spread)
-            # Subsection 3: Position/Spray (relative_x, relative_y, spray_x, spray_y)
             params_by_subsection = [
                 ['volume', 'octave', 'effects_send'],
                 ['tone_filter_width', 'tone_filter_center'],
+                ['relative_x', 'relative_y', 'spray_x', 'spray_y'],
                 ['grain_length_cell', 'grain_length_note', 'grain_density',
                  'grain_shape', 'grain_shape_attack', 'grain_pan', 'grain_tune_spread'],
-                ['relative_x', 'relative_y', 'spray_x', 'spray_y'],
             ]
             if 0 <= nav.subsection < len(params_by_subsection):
                 params = params_by_subsection[nav.subsection]
