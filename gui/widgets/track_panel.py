@@ -14,11 +14,12 @@ RECORD_BUTTON_STYLE = """
     QPushButton {
         background-color: #8B0000;
         border: 1px solid #5C0000;
-        border-radius: 6px;
-        min-width: 12px;
-        max-width: 12px;
-        min-height: 12px;
-        max-height: 12px;
+        border-radius: 8px;
+        padding: 0px;
+        min-width: 16px;
+        max-width: 16px;
+        min-height: 16px;
+        max-height: 16px;
     }
     QPushButton:hover {
         background-color: #A00000;
@@ -142,7 +143,7 @@ class TrackPanel(QGroupBox):
 
         # Record button - red circle like tape deck
         record_btn = QPushButton()
-        record_btn.setFixedSize(12, 12)
+        record_btn.setFixedSize(16, 16)
         record_btn.setCheckable(True)
         record_btn.setStyleSheet(RECORD_BUTTON_STYLE)
         record_btn.setToolTip(f'Arm Track {track_num} for Recording')
