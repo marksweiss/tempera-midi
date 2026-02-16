@@ -481,17 +481,15 @@ class StateManager:
             self._state['envelopes'][control_key].clear()
             self._notify(f'envelopes.{control_key}', self._state['envelopes'][control_key])
 
-    # --- Preset management ---
+    # --- Serialization ---
 
-    def save_preset(self, filepath: Path):
-        """Save current state to a JSON file."""
-        # Convert tuple keys to strings for JSON
+    def serialize_state(self) -> dict:
+        """Return a JSON-serializable copy of current state."""
         state_copy = copy.deepcopy(self._state)
         state_copy['cells'] = {
             f'{col},{cell}': emitter
             for (col, cell), emitter in self._state['cells'].items()
         }
-        # Convert sequencer column_patterns int keys to strings
         if 'sequencer' in state_copy:
             state_copy['sequencer']['column_patterns'] = {
                 str(col): {str(cell): em for cell, em in pattern.items()}
@@ -500,38 +498,29 @@ class StateManager:
             state_copy['sequencer']['grid_pattern'] = {
                 str(step): em for step, em in state_copy['sequencer']['grid_pattern'].items()
             }
-        # Convert modulator sizes int keys to strings
         if 'sizes' in state_copy.get('global', {}).get('modulator', {}):
             state_copy['global']['modulator']['sizes'] = {
                 str(k): v for k, v in state_copy['global']['modulator']['sizes'].items()
             }
-        # Convert Envelope objects to dicts for JSON
         if 'envelopes' in state_copy:
             state_copy['envelopes'] = {
                 key: env.to_dict() if isinstance(env, Envelope) else env
                 for key, env in state_copy['envelopes'].items()
             }
-        with open(filepath, 'w') as f:
-            json.dump(state_copy, f, indent=2)
+        return state_copy
 
-    def load_preset(self, filepath: Path):
-        """Load state from a JSON file."""
-        self._push_undo()
-        with open(filepath, 'r') as f:
-            loaded = json.load(f)
-
-        # Convert string keys back to tuples and ints
+    @staticmethod
+    def deserialize_state(loaded: dict) -> dict:
+        """Convert a JSON-loaded dict back to internal state format."""
         cells = {}
         for key, emitter in loaded.get('cells', {}).items():
             col, cell = map(int, key.split(','))
             cells[(col, cell)] = emitter
         loaded['cells'] = cells
 
-        # Convert string keys to ints for emitters and tracks
         loaded['emitters'] = {int(k): v for k, v in loaded['emitters'].items()}
         loaded['tracks'] = {int(k): v for k, v in loaded['tracks'].items()}
 
-        # Convert sequencer patterns string keys back to ints
         if 'sequencer' in loaded:
             loaded['sequencer']['column_patterns'] = {
                 int(col): {int(cell): em for cell, em in pattern.items()}
@@ -543,19 +532,16 @@ class StateManager:
         else:
             loaded['sequencer'] = _default_sequencer_state()
 
-        # Convert modulator sizes string keys back to ints
         if 'sizes' in loaded.get('global', {}).get('modulator', {}):
             loaded['global']['modulator']['sizes'] = {
                 int(k): v for k, v in loaded['global']['modulator']['sizes'].items()
             }
         elif 'global' in loaded and 'modulator' in loaded['global']:
-            # Old preset without per-modulator sizes - initialize from single size
             size = loaded['global']['modulator'].get('size', 0)
             loaded['global']['modulator']['sizes'] = {i: 0 for i in range(1, 11)}
             selected = loaded['global']['modulator'].get('selected', 1)
             loaded['global']['modulator']['sizes'][selected] = size
 
-        # Convert envelope dicts back to Envelope objects
         if 'envelopes' in loaded:
             loaded['envelopes'] = {
                 key: Envelope.from_dict(env_data) if isinstance(env_data, dict) else env_data
@@ -564,7 +550,22 @@ class StateManager:
         else:
             loaded['envelopes'] = _default_envelopes_state()
 
-        self._state = loaded
+        return loaded
+
+    # --- Preset management ---
+
+    def save_preset(self, filepath: Path):
+        """Save current state to a JSON file."""
+        state_copy = self.serialize_state()
+        with open(filepath, 'w') as f:
+            json.dump(state_copy, f, indent=2)
+
+    def load_preset(self, filepath: Path):
+        """Load state from a JSON file."""
+        self._push_undo()
+        with open(filepath, 'r') as f:
+            loaded = json.load(f)
+        self._state = self.deserialize_state(loaded)
         self._notify('*', self._state)
 
     def reset_to_defaults(self, record_undo: bool = True):

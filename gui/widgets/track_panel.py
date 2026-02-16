@@ -75,6 +75,7 @@ class TrackPanel(QGroupBox):
         # This is set by MainWindow in response to NavigationManager signals
         self._visual_track = -1  # -1 means no track focused (1-8 when focused)
         self._panel_focused = False
+        self._locked = False
 
         self._setup_ui()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -85,10 +86,20 @@ class TrackPanel(QGroupBox):
         main_layout.setSpacing(2)  # Minimal spacing between label and sliders
         main_layout.setContentsMargins(8, 0, 8, 8)  # No top margin - group box title provides spacing
 
-        # Volume label just above sliders
+        # Header row: Volume label + Lock button
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
         volume_label = QLabel('Volume')
         volume_label.setStyleSheet('font-size: 11px; color: #A0A0A0;')
-        main_layout.addWidget(volume_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        header_layout.addWidget(volume_label)
+        header_layout.addStretch()
+        self._lock_button = QPushButton('Lock')
+        self._lock_button.setCheckable(True)
+        self._lock_button.setFixedSize(40, 20)
+        self._lock_button.setStyleSheet('font-size: 10px; padding: 0px;')
+        self._lock_button.clicked.connect(self._on_lock_toggled)
+        header_layout.addWidget(self._lock_button)
+        main_layout.addLayout(header_layout)
 
         # Horizontal layout for track controls
         tracks_layout = QHBoxLayout()
@@ -174,14 +185,59 @@ class TrackPanel(QGroupBox):
         """Handle record button timeout - auto-release after 15 seconds."""
         self._record_buttons[track_num].setChecked(False)
 
+    def _on_lock_toggled(self):
+        """Handle lock button toggle."""
+        self._locked = self._lock_button.isChecked()
+        self._update_slider_styles()
+
+    def _update_slider_styles(self):
+        """Update slider styles based on lock state and visual track."""
+        if self._locked:
+            for t in range(1, 9):
+                self._sliders[t].setStyleSheet(get_slider_focus_style(True))
+        else:
+            for t in range(1, 9):
+                focused = (t == self._visual_track)
+                self._sliders[t].setStyleSheet(get_slider_focus_style(focused))
+
+    def _sync_all_sliders(self, value: int):
+        """Set all 8 sliders to the same value without emitting signals."""
+        for t in range(1, 9):
+            self._sliders[t].blockSignals(True)
+        for t in range(1, 9):
+            self._sliders[t].setValue(value)
+            self._value_labels[t].setText(str(value))
+        for t in range(1, 9):
+            self._sliders[t].blockSignals(False)
+
+    def is_locked(self) -> bool:
+        """Return whether track volumes are locked together."""
+        return self._locked
+
+    def set_locked(self, locked: bool):
+        """Programmatically set the lock state."""
+        self._locked = locked
+        self._lock_button.setChecked(locked)
+        self._update_slider_styles()
+
     def _on_value_changed(self, track_num: int, value: int):
         """Handle slider value change."""
-        self._value_labels[track_num].setText(str(value))
-        self.volumeChanged.emit(track_num, value)
+        if self._locked:
+            self._sync_all_sliders(value)
+            for t in range(1, 9):
+                self.volumeChanged.emit(t, value)
+        else:
+            self._value_labels[track_num].setText(str(value))
+            self.volumeChanged.emit(track_num, value)
 
     def _on_slider_released(self, track_num: int):
         """Handle slider release."""
-        self.volumeSet.emit(track_num, self._sliders[track_num].value())
+        value = self._sliders[track_num].value()
+        if self._locked:
+            for t in range(1, 9):
+                self.volumeSet.emit(t, value)
+        else:
+            self.volumeSet.emit(track_num, value)
 
     def get_volume(self, track_num: int) -> int:
         """Get a track's volume."""
@@ -223,15 +279,17 @@ class TrackPanel(QGroupBox):
         Args:
             track_num: Track number (1-8), or -1 to unfocus
         """
-        # Clear previous focus
-        if self._visual_track > 0 and self._visual_track in self._sliders:
-            self._sliders[self._visual_track].setStyleSheet(get_slider_focus_style(False))
-
         # Set new focus
         self._visual_track = track_num if 1 <= track_num <= 8 else -1
 
-        if self._visual_track > 0:
-            self._sliders[self._visual_track].setStyleSheet(get_slider_focus_style(True))
+        if self._locked:
+            # All sliders stay blue when locked
+            return
+
+        # Update styles: focused track gets blue, others get gray
+        for t in range(1, 9):
+            focused = (t == self._visual_track)
+            self._sliders[t].setStyleSheet(get_slider_focus_style(focused))
 
     def get_visual_track(self) -> int:
         """Get currently highlighted track number (1-8), or -1 if none."""
@@ -252,17 +310,29 @@ class TrackPanel(QGroupBox):
             new_value = slider.value() + delta
             new_value = max(0, min(127, new_value))
             if new_value != slider.value():
-                slider.setValue(new_value)
-                self._value_labels[self._visual_track].setText(str(new_value))
-                self.volumeChanged.emit(self._visual_track, new_value)
-                self.volumeSet.emit(self._visual_track, new_value)
+                if self._locked:
+                    self._sync_all_sliders(new_value)
+                    for t in range(1, 9):
+                        self.volumeChanged.emit(t, new_value)
+                        self.volumeSet.emit(t, new_value)
+                else:
+                    slider.setValue(new_value)
+                    self._value_labels[self._visual_track].setText(str(new_value))
+                    self.volumeChanged.emit(self._visual_track, new_value)
+                    self.volumeSet.emit(self._visual_track, new_value)
 
     def reset_focused_to_default(self):
         """Reset focused track to default volume (100)."""
         if self._visual_track > 0:
-            self.set_volume(self._visual_track, 100)
-            self.volumeChanged.emit(self._visual_track, 100)
-            self.volumeSet.emit(self._visual_track, 100)
+            if self._locked:
+                self._sync_all_sliders(100)
+                for t in range(1, 9):
+                    self.volumeChanged.emit(t, 100)
+                    self.volumeSet.emit(t, 100)
+            else:
+                self.set_volume(self._visual_track, 100)
+                self.volumeChanged.emit(self._visual_track, 100)
+                self.volumeSet.emit(self._visual_track, 100)
 
     def get_navigation_path(self) -> str:
         """Get current navigation path string."""

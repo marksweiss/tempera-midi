@@ -36,9 +36,13 @@ class Envelope:
     Attributes:
         points: List of envelope points, sorted by time
         enabled: Whether the envelope is active
+        preset: Tool that created this envelope ('pencil', EnvelopePreset.name, or None)
+        per_cell: Whether the pattern repeats 8 times across the timeline
     """
     points: list[EnvelopePoint] = field(default_factory=list)
     enabled: bool = False
+    preset: Optional[str] = None
+    per_cell: bool = False
 
     def add_point(self, time: float, value: float):
         """Add a point to the envelope.
@@ -103,20 +107,32 @@ class Envelope:
 
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
-        return {
+        d = {
             'points': [p.to_dict() for p in self.points],
-            'enabled': self.enabled
+            'enabled': self.enabled,
         }
+        if self.preset is not None:
+            d['preset'] = self.preset
+        if self.per_cell:
+            d['per_cell'] = self.per_cell
+        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Envelope':
         """Create from dictionary."""
         points = [EnvelopePoint.from_dict(p) for p in data.get('points', [])]
-        return cls(points=points, enabled=data.get('enabled', False))
+        return cls(
+            points=points,
+            enabled=data.get('enabled', False),
+            preset=data.get('preset', None),
+            per_cell=data.get('per_cell', False),
+        )
 
     def copy(self) -> 'Envelope':
         """Create a deep copy of this envelope."""
         return Envelope(
             points=[EnvelopePoint(p.time, p.value) for p in self.points],
-            enabled=self.enabled
+            enabled=self.enabled,
+            preset=self.preset,
+            per_cell=self.per_cell,
         )

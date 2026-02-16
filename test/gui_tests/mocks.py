@@ -192,6 +192,25 @@ class MockTemperaAdapter:
         # Reset state to initial values
         self.state._state = StateManager()._state.copy()
 
+    # Canvas methods
+    def save_canvas(self, name, grid_mode):
+        """Mock save canvas."""
+        self._record_call('save_canvas', name, grid_mode)
+        from gui.canvas_manager import save_canvas
+        state_dict = self.state.serialize_state()
+        metadata = {'grid_mode': grid_mode}
+        return save_canvas(name, state_dict, metadata)
+
+    async def load_canvas(self, name):
+        """Mock load canvas."""
+        self._record_call('load_canvas', name)
+        from gui.canvas_manager import load_canvas
+        state_dict, metadata = load_canvas(name)
+        self.state._push_undo()
+        self.state._state = StateManager.deserialize_state(state_dict)
+        self.state._notify('*', self.state._state)
+        return metadata
+
     # Test helper methods
     def clear_calls(self):
         """Clear recorded method calls."""

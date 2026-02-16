@@ -633,6 +633,32 @@ class TemperaAdapter:
         await self._sync_all_state()
         self._notify_status(f'Preset loaded: {filepath.name}')
 
+    # --- Canvas management ---
+
+    def save_canvas(self, name: str, grid_mode: str) -> Path:
+        """Save current state as a named canvas."""
+        from gui.canvas_manager import save_canvas
+        state_dict = self.state.serialize_state()
+        metadata = {'grid_mode': grid_mode}
+        filepath = save_canvas(name, state_dict, metadata)
+        self._notify_status(f'Canvas saved: {name}')
+        return filepath
+
+    async def load_canvas(self, name: str) -> dict:
+        """Load a named canvas and sync to hardware.
+
+        Returns:
+            metadata dict containing grid_mode etc.
+        """
+        from gui.canvas_manager import load_canvas
+        state_dict, metadata = load_canvas(name)
+        self.state._push_undo()
+        self.state._state = StateManager.deserialize_state(state_dict)
+        self.state._notify('*', self.state._state)
+        await self._sync_all_state()
+        self._notify_status(f'Canvas loaded: {name}')
+        return metadata
+
     async def reset_to_defaults(self):
         """Reset all parameters to defaults and sync to hardware."""
         self.state.reset_to_defaults()

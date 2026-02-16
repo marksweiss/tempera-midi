@@ -85,8 +85,8 @@ SHARED_KEYS = {
     'stop': 'Escape',
     'undo': 'Ctrl+Z',
     'redo': 'Ctrl+Shift+Z',
-    'save_preset': 'Ctrl+S',
-    'load_preset': 'Ctrl+O',
+    'save_canvas': 'Ctrl+S',
+    'load_canvas': 'Ctrl+O',
     'toggle_hints': '?',
     'toggle_hints_alt': 'F1',
 }
@@ -109,8 +109,8 @@ class ShortcutManager:
     - G: Focus global panel
     - Ctrl+Z: Undo
     - Ctrl+Shift+Z: Redo
-    - Ctrl+S: Save preset
-    - Ctrl+O: Load preset
+    - Ctrl+S: Save canvas
+    - Ctrl+O: Load canvas
     """
 
     def __init__(self, parent: QWidget):
@@ -163,8 +163,8 @@ class ShortcutManager:
         stop: Callable[[], None],
         undo: Callable[[], None],
         redo: Callable[[], None],
-        save_preset: Callable[[], None],
-        load_preset: Callable[[], None],
+        save_canvas: Callable[[], None],
+        load_canvas: Callable[[], None],
     ):
         """
         Set up all default shortcuts.
@@ -178,8 +178,8 @@ class ShortcutManager:
             stop: Callback for stop action
             undo: Callback for undo
             redo: Callback for redo
-            save_preset: Callback for save preset
-            load_preset: Callback for load preset
+            save_canvas: Callback for save canvas
+            load_canvas: Callback for load canvas
         """
         # Note: Emitter selection (1-4 keys) is handled by NavigationManager
         # via SHARED_KEYS to avoid duplicate QShortcut registration which
@@ -194,8 +194,8 @@ class ShortcutManager:
         self.register('redo', 'Ctrl+Shift+Z', redo)
 
         # File
-        self.register('save_preset', 'Ctrl+S', save_preset)
-        self.register('load_preset', 'Ctrl+O', load_preset)
+        self.register('save_canvas', 'Ctrl+S', save_canvas)
+        self.register('load_canvas', 'Ctrl+O', load_canvas)
 
     def get_shortcut_text(self, name: str) -> str:
         """Get the key sequence text for a shortcut."""

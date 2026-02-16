@@ -438,6 +438,11 @@ class EnvelopePanel(QWidget):
             self._per_cell_btn.setEnabled(False)
             self._update_per_cell_style()
 
+        # Store metadata on envelope for persistence
+        if self._current_envelope:
+            self._current_envelope.preset = 'pencil'
+            self._current_envelope.per_cell = False
+
     def _on_canvas_changed(self, envelope: Envelope):
         """Handle envelope change from canvas."""
         if self._current_control_key:
@@ -528,6 +533,10 @@ class EnvelopePanel(QWidget):
         self._current_envelope.clear()
         for time, value in points:
             self._current_envelope.add_point(time, value)
+
+        # Store metadata on envelope for persistence
+        self._current_envelope.preset = self._active_tool.name
+        self._current_envelope.per_cell = self._per_cell
 
         # Refresh the canvas display
         self._canvas.set_envelope(self._current_envelope)
@@ -673,3 +682,44 @@ class EnvelopePanel(QWidget):
             # Enable Per Cell for presets
             self._per_cell_btn.setEnabled(True)
             self._update_per_cell_style()
+
+    def restore_tool_state(self, envelope: Envelope):
+        """Restore toolbar state from envelope metadata. Called after canvas load."""
+        # Restore ENV toggle
+        if envelope.enabled != self._toggle_btn.isChecked():
+            self._toggle_btn.setChecked(envelope.enabled)
+            self._on_toggle_clicked()
+
+        if not envelope.enabled:
+            # Remember tool for when ENV is turned on later
+            if envelope.preset == 'pencil':
+                self._last_active_tool = 'pencil'
+            elif envelope.preset:
+                try:
+                    self._last_active_tool = EnvelopePreset[envelope.preset]
+                except KeyError:
+                    pass
+            return
+
+        # ENV is on — restore active tool
+        self._clear_all_tool_selections()
+
+        if envelope.preset == 'pencil':
+            self._pencil_btn.setChecked(True)
+            self._active_tool = 'pencil'
+            self._update_pencil_style()
+            self._canvas.set_drawing_enabled(True)
+            self._per_cell_btn.setEnabled(False)
+        elif envelope.preset:
+            try:
+                preset = EnvelopePreset[envelope.preset]
+                self._preset_buttons[preset].setChecked(True)
+                self._active_tool = preset
+                self._per_cell_btn.setEnabled(True)
+            except KeyError:
+                pass
+
+        # Restore per-cell
+        self._per_cell = envelope.per_cell
+        self._per_cell_btn.setChecked(envelope.per_cell)
+        self._update_per_cell_style()

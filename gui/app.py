@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QStatusBar, QFileDialog, QMessageBox, QPushButton
+    QStatusBar, QMessageBox, QPushButton, QInputDialog
 )
 
 import qasync
@@ -72,6 +72,12 @@ class MainWindow(QMainWindow):
     def _setup_ui(self):
         """Set up the user interface."""
         self.setWindowTitle('Tempera MIDI Controller')
+
+        # Menu bar
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu('&File')
+        file_menu.addAction('&Save Canvas...', self._on_save_canvas, 'Ctrl+S')
+        file_menu.addAction('&Load Canvas...', self._on_load_canvas, 'Ctrl+O')
 
         # Calculate initial window size based on screen
         self._set_initial_size()
@@ -218,8 +224,8 @@ class MainWindow(QMainWindow):
             stop=self._on_stop,
             undo=self._on_undo,
             redo=self._on_redo,
-            save_preset=self._on_save_preset,
-            load_preset=self._on_load_preset,
+            save_canvas=self._on_save_canvas,
+            load_canvas=self._on_load_canvas,
         )
 
     def _setup_navigation(self):
@@ -254,8 +260,8 @@ class MainWindow(QMainWindow):
         self._nav.set_callback('stop', self._on_stop)
         self._nav.set_callback('undo', self._on_undo)
         self._nav.set_callback('redo', self._on_redo)
-        self._nav.set_callback('save_preset', self._on_save_preset)
-        self._nav.set_callback('load_preset', self._on_load_preset)
+        self._nav.set_callback('save_canvas', self._on_save_canvas)
+        self._nav.set_callback('load_canvas', self._on_load_canvas)
 
     def _connect_signals(self):
         """Connect widget signals to handlers."""
@@ -378,24 +384,63 @@ class MainWindow(QMainWindow):
         """Handle disconnect menu action."""
         self._schedule_async(self._adapter.disconnect())
 
-    def _on_save_preset(self):
-        """Handle save preset action."""
-        filepath, _ = QFileDialog.getSaveFileName(
-            self, 'Save Preset', '', 'JSON Files (*.json)'
-        )
-        if filepath:
-            if not filepath.endswith('.json'):
-                filepath += '.json'
-            self._adapter.save_preset(Path(filepath))
+    def _on_save_canvas(self):
+        """Handle save canvas action."""
+        from gui.canvas_manager import list_canvases
+        existing = list_canvases()
+        name, ok = QInputDialog.getText(self, 'Save Canvas', 'Canvas name:')
+        if not ok or not name.strip():
+            return
+        name = name.strip()
+        if name in existing:
+            reply = QMessageBox.question(
+                self, 'Overwrite Canvas',
+                f'Canvas "{name}" already exists. Overwrite?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        try:
+            self._adapter.save_canvas(name, self._grid_mode)
+        except Exception as e:
+            QMessageBox.warning(self, 'Save Canvas', f'Error saving canvas: {e}')
 
-    def _on_load_preset(self):
-        """Handle load preset action."""
-        filepath, _ = QFileDialog.getOpenFileName(
-            self, 'Load Preset', '', 'JSON Files (*.json)'
+    def _on_load_canvas(self):
+        """Handle load canvas action."""
+        from gui.canvas_manager import list_canvases
+        canvases = list_canvases()
+        if not canvases:
+            QMessageBox.information(self, 'Load Canvas', 'No saved canvases found.')
+            return
+        name, ok = QInputDialog.getItem(
+            self, 'Load Canvas', 'Select canvas:', canvases, editable=False
         )
-        if filepath:
-            self._schedule_async(self._adapter.load_preset(Path(filepath)))
+        if ok and name:
+            self._schedule_async(self._do_load_canvas(name))
+
+    async def _do_load_canvas(self, name: str):
+        """Load a canvas and sync UI."""
+        try:
+            metadata = await self._adapter.load_canvas(name)
+            grid_mode = metadata.get('grid_mode', 'hardware')
+            if grid_mode == 'hardware':
+                self._transport.set_sequencer(None)
+            else:
+                self._transport.set_sequencer(grid_mode)
+            self._switch_grid_mode(grid_mode)
+            state = self._adapter.state.state
+            self._transport.set_bpm(state['sequencer']['bpm'])
             self._sync_ui_from_state()
+            # Restore envelope panel for currently focused control
+            self._update_envelope_panel_for_focus()
+            control_key, _ = self._get_focused_control_key()
+            if control_key:
+                envelope = self._adapter.state.get_envelope(control_key)
+                self._envelope_panel.restore_tool_state(envelope)
+        except FileNotFoundError:
+            QMessageBox.warning(self, 'Load Canvas', f'Canvas "{name}" not found.')
+        except Exception as e:
+            QMessageBox.warning(self, 'Load Canvas', f'Error loading canvas: {e}')
 
     def _on_undo(self):
         """Handle undo action."""
