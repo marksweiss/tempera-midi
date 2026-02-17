@@ -98,7 +98,82 @@ To run:
 TEMPERA_PORT='Tempera' uv run python -m main
 ```
 
-## Usage
+## GUI Control Surface
+
+![tempera-midi GUI](resources/tempera-midi.jpg)
+
+The project includes a full GUI control surface for the Tempera, built with PyQt6 and async MIDI integration. It provides real-time control over every MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required when adjusting settings directly on the hardware.
+
+To launch:
+
+```bash
+TEMPERA_PORT='Tempera' uv run python -m gui
+```
+
+### Layout Overview
+
+The interface is divided into four main sections, all visible at once:
+
+- **Cell Grid + Transport** (upper left): An interactive 8x8 grid representing the Tempera's 64 cells, with transport controls for playback, sequencer selection, and BPM
+- **Emitter Panel** (upper right): All parameters for the currently selected emitter, organized into subsections (Basic, Tone Filter, Position/Spray, Grain)
+- **Track Panel** (lower left): A mixer-style view of all 8 tracks with vertical volume faders and per-track record buttons
+- **Global Panel** (lower right): ADSR envelope, effects (Reverb, Delay, Filter, Chorus), and Modulator controls in a tabbed layout
+- **Envelope Panel** (top, full width): An automation envelope editor for applying envelopes to any parameter
+
+### Emitter Controls
+
+Four color-coded emitter buttons (1-4) let you switch between emitters instantly. Each emitter exposes all 16 of its parameters as sliders grouped into four subsections: Basic (Volume, Octave, Effects Send), Tone Filter (Width, Center), Position/Spray (Position X/Y, Spray X/Y), and Grain (Length Cell, Length Note, Density, Shape, Shape Attack, Pan, Tune Spread).
+
+### Track Mixer
+
+The 8 track volume sliders are arranged horizontally in a mixer-style layout, each with a value readout and track number label. A **Lock** button links all 8 faders together, so moving any one slider sets all tracks to the same value — functioning as a master volume fader. Each track also has a circular **Record** button that triggers resampled recording on that track via MIDI.
+
+### Global Effects
+
+All global parameters are accessible without navigating submenus: ADSR envelope (Attack, Decay, Sustain, Release), Reverb (Size, Color, Mix), Delay (Feedback, Time, Color, Mix), Filter (Cutoff, Resonance), Chorus (Depth, Speed, Flange, Mix), and Modulator controls (select any of 10 modulators and adjust its size). Effects are organized in tabs for quick switching.
+
+### Cell Grid
+
+The 8x8 grid displays the current state of all 64 cells, color-coded by emitter. Left-click to place the active emitter in a cell, right-click to clear it. The grid adapts to the current mode — in hardware mode it sends placements directly to the Tempera, and in sequencer modes it edits the active sequencer pattern. Keyboard navigation provides a pulsing cursor that can be moved with arrow keys or WASD, with Space to toggle cells.
+
+### Sequencer Modes
+
+Two sequencer modes provide compositional functionality not available on the hardware device:
+
+- **8-Track Sequencer** (Column Sequencer): Treats the grid as 8 independent tracks, each with an 8-step pattern. Each column runs its own pattern simultaneously, with per-column mute control
+- **1-Track Sequencer** (Grid Sequencer): Treats all 64 cells as a single continuous 64-step sequence, cycling through the entire grid in column-major order
+
+Both sequencers support adjustable BPM (20-300), looping, real-time pattern editing during playback, and integration with the envelope automation system. Toggle between modes using the transport panel buttons, or disable both to return to direct hardware control.
+
+### Envelope Automation
+
+Any MIDI-controllable parameter on the UI can have an automation envelope applied to it. The envelope panel at the top of the window provides:
+
+- **Freehand drawing**: Click and drag on the canvas to draw a custom envelope shape
+- **7 preset shapes**: Ramp Up, Ramp Down, Triangle, Triangle Down, Square, Square Up, and Rounded
+- **Per-Cell mode**: The envelope pattern repeats once per step (8 repetitions per cycle), applying modulation independently to each step in the sequence
+- **Over-All mode**: The envelope spans the entire 8-step cycle, applying a single continuous modulation arc across all steps
+
+Envelopes modulate the base parameter value — for example, if a volume slider is set to 100 and the envelope value at the current position is 0.5, the output is 50. A playhead shows the current position during sequencer playback. Envelopes can be enabled, disabled, and cleared independently per parameter.
+
+### Save and Load
+
+All UI state can be saved and loaded as a named canvas (Ctrl+S / Ctrl+O). A saved canvas captures every MIDI-controllable parameter value (all emitter, track, and global settings), all cell placements, all sequencer patterns, all envelope configurations, and the current grid mode. Canvases are stored as JSON files in a platform-appropriate location (`~/.config/tempera-edit/canvases/` on macOS/Linux).
+
+### Keyboard Shortcuts and Mouse Support
+
+The GUI supports full keyboard navigation with two one-handed layouts:
+
+- **Left-hand (WASD)**: W/S to navigate, A/D to adjust values, Shift+A/D for large steps, F to toggle focus depth, Q/E/T/G to jump to Grid/Emitter/Tracks/Global
+- **Right-hand (Arrows)**: Up/Down to navigate, Left/Right to adjust values, Shift+Left/Right for large steps, Return to toggle focus
+
+Shared shortcuts include 1-4 for emitter selection, Escape to stop the sequencer, Ctrl+Z / Ctrl+Shift+Z for undo/redo, R to toggle envelope automation on the focused control, and F1 or ? to show keyboard hint overlays. All controls also respond to mouse interaction — clicking any slider or control focuses it for keyboard adjustment, and sliders can be dragged directly.
+
+### Undo / Redo
+
+Parameter changes are tracked with a 50-level undo history. Ctrl+Z undoes the last change and syncs the full state back to the hardware; Ctrl+Shift+Z redoes. Slider drags are coalesced into a single undo entry on release.
+
+## Code Usage
 
 ### Global Controls
 
