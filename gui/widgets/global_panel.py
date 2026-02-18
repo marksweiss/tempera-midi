@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from gui.widgets.slider_group import SliderGroup
-from gui.styles import get_section_focus_style, get_slider_focus_style, get_combobox_focus_style
+from gui.styles import get_section_focus_style, get_subsection_focus_style, get_slider_focus_style, get_combobox_focus_style
 
 
 # Parameter definitions
@@ -94,9 +94,9 @@ class GlobalPanel(QGroupBox):
         """Set up the user interface."""
         layout = QHBoxLayout(self)
         layout.setSpacing(12)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setContentsMargins(8, 4, 8, 8)
 
-        # ADSR controls (left) - wrapped in container with top spacing to align with Effects sliders
+        # ADSR controls (left)
         self._adsr_group = SliderGroup('ADSR Envelope', ADSR_PARAMS, label_width=70)
         self._adsr_group.set_group_focused(False)  # Set initial style to avoid layout shift
         self._adsr_group.sliderChanged.connect(
@@ -105,19 +105,11 @@ class GlobalPanel(QGroupBox):
         self._adsr_group.sliderSet.connect(
             lambda p, v: self.parameterSet.emit('adsr', p, v)
         )
-        # Wrap ADSR in container with top spacing to push sliders down to align with Effects
-        adsr_container = QWidget()
-        adsr_layout = QVBoxLayout(adsr_container)
-        adsr_layout.setContentsMargins(0, 0, 0, 0)
-        adsr_layout.setSpacing(0)
-        adsr_layout.addSpacing(32)  # Space to align with Effects sliders below tabs
-        adsr_layout.addWidget(self._adsr_group)
-        adsr_layout.addStretch()
-        layout.addWidget(adsr_container)
+        layout.addWidget(self._adsr_group)
 
         # Effects group with tabs (center)
         self._effects_group = QGroupBox('Effects')
-        self._effects_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
+        self._effects_group.setStyleSheet(get_subsection_focus_style(False))  # Set initial style
         effects_layout = QVBoxLayout(self._effects_group)
         effects_layout.setContentsMargins(4, 0, 4, 4)
         effects_layout.setSpacing(0)
@@ -179,7 +171,7 @@ class GlobalPanel(QGroupBox):
 
         # Right side: Modulator group (like other subsections)
         self._modulator_group = QGroupBox('Modulator')
-        self._modulator_group.setStyleSheet(get_section_focus_style(False))  # Set initial style
+        self._modulator_group.setStyleSheet(get_subsection_focus_style(False))  # Set initial style
         modulator_layout = QVBoxLayout(self._modulator_group)
         modulator_layout.setSpacing(0)
         modulator_layout.setContentsMargins(4, 4, 4, 4)
@@ -381,23 +373,23 @@ class GlobalPanel(QGroupBox):
             group.clear_control_focus()
 
         # Clear modulator focus (group, slider, and dropdown)
-        self._modulator_group.setStyleSheet(get_section_focus_style(False))
+        self._modulator_group.setStyleSheet(get_subsection_focus_style(False))
         self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
         self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
 
         # Clear effects group highlight (will be set below if needed)
-        self._effects_group.setStyleSheet(get_section_focus_style(False))
+        self._effects_group.setStyleSheet(get_subsection_focus_style(False))
 
         if index == 5:
             # Highlight modulator group (like ADSR), not individual controls
-            self._modulator_group.setStyleSheet(get_section_focus_style(True))
+            self._modulator_group.setStyleSheet(get_subsection_focus_style(True))
         elif index == 0:
             # ADSR group has a title, so set_group_focused works
             groups[index].set_group_focused(True)
         elif 1 <= index <= 4:
             # Effects tabs (Reverb, Delay, Filter, Chorus) - highlight the Effects container
             # since the individual SliderGroups have no titles
-            self._effects_group.setStyleSheet(get_section_focus_style(True))
+            self._effects_group.setStyleSheet(get_subsection_focus_style(True))
             # Switch to the appropriate tab
             self._effects_tabs.setCurrentIndex(index - 1)
 
@@ -535,7 +527,7 @@ class GlobalPanel(QGroupBox):
             # Modulator subsection: clear control highlights, restore group highlight
             self._modulator_selector.setStyleSheet(get_combobox_focus_style(False))
             self._modulator_slider.setStyleSheet(get_slider_focus_style(False))
-            self._modulator_group.setStyleSheet(get_section_focus_style(True))
+            self._modulator_group.setStyleSheet(get_subsection_focus_style(True))
         else:
             groups = self.slider_groups
             if 0 <= self._visual_subsection < len(groups):
@@ -551,8 +543,8 @@ class GlobalPanel(QGroupBox):
         for group in self.slider_groups:
             group.set_group_focused(False)
         # Set explicit unfocused style on Effects container and Modulator group
-        self._effects_group.setStyleSheet(get_section_focus_style(False))
-        self._modulator_group.setStyleSheet(get_section_focus_style(False))
+        self._effects_group.setStyleSheet(get_subsection_focus_style(False))
+        self._modulator_group.setStyleSheet(get_subsection_focus_style(False))
         if not focused:
             for group in self.slider_groups:
                 group.clear_control_focus()

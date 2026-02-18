@@ -44,7 +44,7 @@ class TransportPanel(QGroupBox):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
         layout.setSpacing(4)
-        layout.setContentsMargins(8, 2, 8, 9)
+        layout.setContentsMargins(8, 4, 8, 8)
 
         # Transport buttons and sequencer selection
         button_layout = QHBoxLayout()

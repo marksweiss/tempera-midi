@@ -7,7 +7,7 @@ focus/unfocus transitions.
 
 import unittest
 from test.gui_tests.base import GUITestCase
-from gui.styles import get_section_focus_style, get_slider_focus_style, get_combobox_focus_style
+from gui.styles import get_section_focus_style, get_subsection_focus_style, get_slider_focus_style, get_combobox_focus_style
 
 
 class TestPanelInitialStyles(GUITestCase):
@@ -46,7 +46,7 @@ class TestGlobalPanelNestedStyles(GUITestCase):
         panel = self.harness._window._global_panel
         group = panel._adsr_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "ADSR group should have unfocused style at init")
 
@@ -55,7 +55,7 @@ class TestGlobalPanelNestedStyles(GUITestCase):
         panel = self.harness._window._global_panel
         group = panel._effects_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Effects group should have unfocused style at init")
 
@@ -64,7 +64,7 @@ class TestGlobalPanelNestedStyles(GUITestCase):
         panel = self.harness._window._global_panel
         group = panel._modulator_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Modulator group should have unfocused style at init")
 
@@ -95,7 +95,7 @@ class TestEmitterPanelNestedStyles(GUITestCase):
         panel = self.harness._window._emitter_panel
         group = panel._basic_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Basic group should have unfocused style at init")
 
@@ -104,7 +104,7 @@ class TestEmitterPanelNestedStyles(GUITestCase):
         panel = self.harness._window._emitter_panel
         group = panel._grain_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Grain group should have unfocused style at init")
 
@@ -113,7 +113,7 @@ class TestEmitterPanelNestedStyles(GUITestCase):
         panel = self.harness._window._emitter_panel
         group = panel._position_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Position group should have unfocused style at init")
 
@@ -122,7 +122,7 @@ class TestEmitterPanelNestedStyles(GUITestCase):
         panel = self.harness._window._emitter_panel
         group = panel._filter_group
         stylesheet = group.styleSheet()
-        expected = get_section_focus_style(False)
+        expected = get_subsection_focus_style(False)
         self.assertEqual(stylesheet.strip(), expected.strip(),
                          "Filter group should have unfocused style at init")
 

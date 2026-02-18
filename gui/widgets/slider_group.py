@@ -7,7 +7,7 @@ from PySide6.QtGui import QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSizePolicy
 
 from gui.widgets.labeled_slider import LabeledSlider
-from gui.styles import get_section_focus_style
+from gui.styles import get_subsection_focus_style
 
 
 class SliderGroup(QGroupBox):
@@ -190,7 +190,7 @@ class SliderGroup(QGroupBox):
         self._group_focused = focused
         # Only apply style if we have a title (not flat)
         if self.title():
-            self.setStyleSheet(get_section_focus_style(focused))
+            self.setStyleSheet(get_subsection_focus_style(focused))
 
     def set_control_focus(self, index: int):
         """Set focus to a specific control by index.

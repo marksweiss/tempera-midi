@@ -84,7 +84,7 @@ class TrackPanel(QGroupBox):
         """Set up the user interface."""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(2)  # Minimal spacing between label and sliders
-        main_layout.setContentsMargins(8, 0, 8, 8)  # No top margin - group box title provides spacing
+        main_layout.setContentsMargins(8, 4, 8, 8)
 
         # Header row: Volume label + Lock button
         header_layout = QHBoxLayout()

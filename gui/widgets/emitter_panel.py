@@ -102,7 +102,7 @@ class EmitterPanel(QGroupBox):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
         layout.setSpacing(4)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setContentsMargins(8, 4, 8, 8)
 
         # Emitter selection buttons
         button_layout = QHBoxLayout()

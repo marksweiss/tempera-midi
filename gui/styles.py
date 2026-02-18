@@ -232,28 +232,28 @@ QSpinBox::up-button:hover, QSpinBox::down-button:hover {
 
 QTabWidget::pane {
     border: 1px solid #333333;
-    border-radius: 4px;
+    border-top: none;
     background-color: #1E1E1E;
     padding: 2px;
 }
 
 QTabBar::tab {
-    background-color: #2A2A2A;
-    border: 1px solid #333333;
-    border-bottom: none;
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
     padding: 6px 16px;
     margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    color: #808080;
 }
 
 QTabBar::tab:selected {
-    background-color: #1E1E1E;
-    border-bottom: 1px solid #1E1E1E;
+    color: #E0E0E0;
+    border-bottom: 2px solid #4A90D9;
 }
 
 QTabBar::tab:hover:!selected {
-    background-color: #353535;
+    color: #A0A0A0;
+    background-color: transparent;
 }
 
 QStatusBar {
@@ -374,9 +374,31 @@ def get_emitter_button_style(emitter_num: int, selected: bool = False) -> str:
 
 
 def get_section_focus_style(focused: bool = False) -> str:
-    """Get style for a section container (GroupBox) with focus indicator."""
+    """Get style for a top-level section container (Emitter, Global, Tracks)."""
     border_color = SECTION_ACTIVE_BORDER if focused else '#404040'
-    title_color = SECTION_ACTIVE_BORDER if focused else '#A0A0A0'
+    title_color = SECTION_ACTIVE_BORDER if focused else '#B0B0B0'
+    return f"""
+        QGroupBox {{
+            border: 2px solid {border_color};
+            border-radius: 4px;
+            margin-top: 12px;
+            padding-top: 4px;
+            font-weight: bold;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 8px;
+            color: {title_color};
+            font-size: 14px;
+        }}
+    """
+
+
+def get_subsection_focus_style(focused: bool = False) -> str:
+    """Get style for a subsection container (ADSR, Effects, Modulator, etc.)."""
+    border_color = SECTION_ACTIVE_BORDER if focused else '#404040'
+    title_color = SECTION_ACTIVE_BORDER if focused else '#808080'
     return f"""
         QGroupBox {{
             border: 2px solid {border_color};
@@ -390,6 +412,7 @@ def get_section_focus_style(focused: bool = False) -> str:
             subcontrol-position: top left;
             padding: 0 8px;
             color: {title_color};
+            font-size: 11px;
         }}
     """
 
