@@ -102,7 +102,7 @@ TEMPERA_PORT='Tempera' uv run python -m main
 
 ![tempera-midi GUI](resources/tempera-midi.jpg)
 
-The project includes a full GUI control surface for the Tempera, built with PyQt6 and async MIDI integration. It provides real-time control over every MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required when adjusting settings directly on the hardware.
+The project includes a full GUI control surface for the Tempera. It provides real-time control over every MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required when adjusting settings directly on the hardware.
 
 To launch:
 
