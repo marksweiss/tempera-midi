@@ -3,22 +3,29 @@
 ## Overview
 
 A Python library for controlling the Tempera granular sampler. This client supports the entire
-specifciation as documented [here](https://docs.beetlecrab.audio/tempera/), including all global settings, track
-recording (resampling), setting notes on and off, and all `Emitter` parameters.
+specifciation as documented [here](https://docs.beetlecrab.audio/tempera/), including all global settings, track recording (resampling), setting notes
+on and off, and all `Emitter` parameters.
 
-There are some nice additional features supporting programmatic composition on the Tempera and particular to its
-capabilities and features. In paticular, the `EmitterPool` class provides a convenient way to manage multiple emitters
-and their parameters and manipulate all four Emitters concurrently, either in a loop programatically or in response to
-external events with the pool running in a separate process.
+In addition, there is a GUI control surface for the Tempera which provides real-time control over every
+MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required
+when adjusting settings directly on the hardware. The GUI also provides an 8-step, 8-track and 64-step, 1-track sequencer
+for composing patterns and playing them back, providing an additional approach to playing the Tempera not available on
+the device. Another powerful addition augmenting the hardware is that automiation envelopes can be set for every
+MIDI-addressable paramter, and applied in real time to either each loop of either the 8-step or 1-Step Sequencer, or
+to each individual cell playback while the sequencer is running. And because all control and sequencer settings can be
+saved and recalled, you can use the Tempera MIDI Controller as a compositional environment for the Tempera.
 
-In addition, two `Sequencer` classes provide either a multi-track sequencer abstraction over the 8 Tempera tracks
-or a single-track sequencer abstraction that treats the 64-cell grid of the instrument as a single sequence. These
-classes support setting per-cell Emitter placements, setting a tempo in bpm or time units, looping, and modifying
-sequence patterns on the fly.
+For composing in code, two `Sequencer` classes similarly provide both sequencer abstractions These classes support
+setting per-cell Emitter placements, setting a tempo in bpm or time units, looping, and modifying sequence patterns
+on the fly. In addition, the `EmitterPool` class supports managing multiple Emitters and their parameters and
+manipulate all four Emitters concurrently, either in a loop programatically or in response to external events with the
+pool running in a separate process. All MIDI messages are available programmatically, organized around the Tempera
+concepts of Emitters, Tracks, Effects and other Global settings.
 
 ## Software Installation
 
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management. Follow that link for instructions on installing `uv`. After doing so, run this command once to install dependencies and create the correct local environment:
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management. Follow that link for instructions on
+installing `uv`. After doing so, run this command once to install dependencies and create the correct local environment:
 
 ```bash
 uv sync
@@ -102,7 +109,9 @@ TEMPERA_PORT='Tempera' uv run python -m main
 
 ![tempera-midi GUI](resources/tempera-midi.jpg)
 
-The project includes a full GUI control surface for the Tempera. It provides real-time control over every MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required when adjusting settings directly on the hardware.
+The project includes a full GUI control surface for the Tempera. It provides real-time control over every
+MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required
+when adjusting settings directly on the hardware.
 
 To launch:
 
@@ -114,66 +123,155 @@ TEMPERA_PORT='Tempera' uv run python -m gui
 
 The interface is divided into four main sections, all visible at once:
 
-- **Cell Grid + Transport** (upper left): An interactive 8x8 grid representing the Tempera's 64 cells, with transport controls for playback, sequencer selection, and BPM
-- **Emitter Panel** (upper right): All parameters for the currently selected emitter, organized into subsections (Basic, Tone Filter, Position/Spray, Grain)
+- **Cell Grid + Transport** (upper left): An interactive 8x8 grid representing the Tempera's 64 cells, with transport
+  controls for playback, sequencer selection, and BPM
+- **Emitter Panel** (upper right): All parameters for the currently selected emitter, organized into subsections (Basic,
+  Tone Filter, Position/Spray, Grain)
 - **Track Panel** (lower left): A mixer-style view of all 8 tracks with vertical volume faders and per-track record buttons
-- **Global Panel** (lower right): ADSR envelope, effects (Reverb, Delay, Filter, Chorus), and Modulator controls in a tabbed layout
+- **Global Panel** (lower right): ADSR envelope, effects (Reverb, Delay, Filter, Chorus), and Modulator controls in a
+  tabbed layout
 - **Envelope Panel** (top, full width): An automation envelope editor for applying envelopes to any parameter
 
 ### Emitter Controls
 
-Four color-coded emitter buttons (1-4) let you switch between emitters instantly. Each emitter exposes all 16 of its parameters as sliders grouped into four subsections: Basic (Volume, Octave, Effects Send), Tone Filter (Width, Center), Position/Spray (Position X/Y, Spray X/Y), and Grain (Length Cell, Length Note, Density, Shape, Shape Attack, Pan, Tune Spread).
+Four color-coded emitter buttons (1-4) let you switch between emitters instantly. Each emitter exposes all 16 of its
+parameters as sliders grouped into four subsections: Basic (Volume, Octave, Effects Send), Tone Filter (Width, Center),
+Position/Spray (Position X/Y, Spray X/Y), and Grain (Length Cell, Length Note, Density, Shape, Shape Attack, Pan,
+Tune Spread).
 
 ### Track Mixer
 
-The 8 track volume sliders are arranged horizontally in a mixer-style layout, each with a value readout and track number label. A **Lock** button links all 8 faders together, so moving any one slider sets all tracks to the same value — functioning as a master volume fader. Each track also has a circular **Record** button that triggers resampled recording on that track via MIDI.
+The 8 track volume sliders are arranged horizontally in a mixer-style layout, each with a value readout and track number
+label. A `Lock` button links all 8 faders together, so moving any one slider sets all tracks to the same value —
+functioning as a master volume fader. Each track also has a circular `Record` button that triggers resampled recording
+on that track via MIDI.
 
 ### Global Effects
 
-All global parameters are accessible without navigating submenus: ADSR envelope (Attack, Decay, Sustain, Release), Reverb (Size, Color, Mix), Delay (Feedback, Time, Color, Mix), Filter (Cutoff, Resonance), Chorus (Depth, Speed, Flange, Mix), and Modulator controls (select any of 10 modulators and adjust its size). Effects are organized in tabs for quick switching.
+All global parameters are accessible without navigating submenus: ADSR envelope (Attack, Decay, Sustain, Release),
+Reverb (Size, Color, Mix), Delay (Feedback, Time, Color, Mix), Filter (Cutoff, Resonance), Chorus (Depth, Speed, Flange,
+Mix), and Modulator controls (select any of 10 modulators and adjust its size). Effects are organized in tabs for quick
+switching.
 
 ### Cell Grid
 
-The 8x8 grid displays the current state of all 64 cells, color-coded by emitter. Left-click to place the active emitter in a cell, right-click to clear it. The grid adapts to the current mode — in hardware mode it sends placements directly to the Tempera, and in sequencer modes it edits the active sequencer pattern. Keyboard navigation provides a pulsing cursor that can be moved with arrow keys or WASD, with Space to toggle cells.
+The 8x8 grid displays the current state of all 64 cells, color-coded by emitter. Click to place the active emitter
+in a cell, click again to clear it. The grid adapts to the current mode — in hardware mode it sends placements directly
+to the Tempera, and in sequencer modes it edits the active sequencer pattern. When either of the two Sequencer buttons
+is pressed, the GUI is in sequencer mode: the grid displays the active sequencer pattern, and pressing the `Play` transport
+button plays back the sequencer pattern. Pressing `Stop` stops playback. Keyboard navigation provides a pulsing
+cursor that can be moved with arrow keys or `WASD`, with `Space` to toggle cells.
 
 ### Sequencer Modes
 
 Two sequencer modes provide compositional functionality not available on the hardware device:
 
-- **8-Track Sequencer** (Column Sequencer): Treats the grid as 8 independent tracks, each with an 8-step pattern. Each column runs its own pattern simultaneously, with per-column mute control
-- **1-Track Sequencer** (Grid Sequencer): Treats all 64 cells as a single continuous 64-step sequence, cycling through the entire grid in column-major order
+- **8-Track Sequencer** (Column Sequencer): Treats the grid as 8 independent tracks, each with an 8-step pattern.
+  Each column runs its own pattern simultaneously, with per-column mute control
+- **1-Track Sequencer** (Grid Sequencer): Treats all 64 cells as a single continuous 64-step sequence, cycling through
+  the entire grid in column-major order
 
-Both sequencers support adjustable BPM (20-300), looping, real-time pattern editing during playback, and integration with the envelope automation system. Toggle between modes using the transport panel buttons, or disable both to return to direct hardware control.
+Both sequencers support adjustable BPM (20-300), looping, real-time pattern editing during playback, and integration
+with the envelope automation system. Toggle between modes using the transport panel buttons, or disable both to return
+to direct hardware control.
 
 ### Envelope Automation
 
-Any MIDI-controllable parameter on the UI can have an automation envelope applied to it. The envelope panel at the top of the window provides:
+Any MIDI-controllable parameter on the UI can have an automation envelope applied to it. The envelope panel at the top
+of the window provides:
 
 - **Freehand drawing**: Click and drag on the canvas to draw a custom envelope shape
 - **7 preset shapes**: Ramp Up, Ramp Down, Triangle, Triangle Down, Square, Square Up, and Rounded
-- **Per-Cell mode**: The envelope pattern repeats once per step (8 repetitions per cycle), applying modulation independently to each step in the sequence
-- **Over-All mode**: The envelope spans the entire 8-step cycle, applying a single continuous modulation arc across all steps
+- **Per-Cell mode**: The envelope pattern repeats once per step (8 repetitions per cycle), applying modulation
+  independently to each step in the sequence
+- **Over-All mode**: The envelope spans the entire sequencer cycle, applying a single continuous modulation arc across all
+  steps
 
-Envelopes modulate the base parameter value — for example, if a volume slider is set to 100 and the envelope value at the current position is 0.5, the output is 50. A playhead shows the current position during sequencer playback. Envelopes can be enabled, disabled, and cleared independently per parameter.
+Envelopes modulate the base parameter value — for example, if a volume slider is set to 100 and the envelope value at
+the current position is 0.5, the output is 50. A playhead shows the current position during sequencer playback.
+Envelopes can be enabled, disabled, and cleared independently per parameter.
 
 ### Save and Load
 
-All UI state can be saved and loaded as a named canvas (Ctrl+S / Ctrl+O). A saved canvas captures every MIDI-controllable parameter value (all emitter, track, and global settings), all cell placements, all sequencer patterns, all envelope configurations, and the current grid mode. Canvases are stored as JSON files in a platform-appropriate location (`~/.config/tempera-edit/canvases/` on macOS/Linux).
+All UI state can be saved and loaded as a named canvas (Ctrl+S / Ctrl+O). A saved canvas captures every
+MIDI-controllable parameter value (all emitter, track, and global settings), all cell placements, all sequencer patterns,
+all envelope configurations, and the current grid mode. Canvases are stored as JSON files in a platform-appropriate
+location (`~/.config/tempera-edit/canvases/` on macOS/Linux).
 
 ### Keyboard Shortcuts and Mouse Support
 
 The GUI supports full keyboard navigation with two one-handed layouts:
 
-- **Left-hand (WASD)**: W/S to navigate, A/D to adjust values, Shift+A/D for large steps, F to toggle focus depth, Q/E/T/G to jump to Grid/Emitter/Tracks/Global
-- **Right-hand (Arrows)**: Up/Down to navigate, Left/Right to adjust values, Shift+Left/Right for large steps, Return to toggle focus
+- **Left-hand (WASD)**: `W/S` to navigate, `A/D` to adjust values, `Shift+A/D` for large steps, `F` to toggle focus depth,
+  `Q/E/T/G` to jump to Grid/Emitter/Tracks/Global
+- **Right-hand (Arrows)**: `Up/Down` to navigate, `Left/Righ`t to adjust values, `Shift+Left/Right` for large steps, `Return`
+  to toggle focus
 
-Shared shortcuts include 1-4 for emitter selection, Escape to stop the sequencer, Ctrl+Z / Ctrl+Shift+Z for undo/redo, R to toggle envelope automation on the focused control, and F1 or ? to show keyboard hint overlays. All controls also respond to mouse interaction — clicking any slider or control focuses it for keyboard adjustment, and sliders can be dragged directly.
+Shared shortcuts include `1-4` for emitter selection, `Esc` to stop the sequencer, `Ctrl+Z / Ctrl+Shift+Z` for undo/redo,
+`R` to toggle envelope automation on the focused control, and `F1` or `?` to show keyboard hint overlays. All controls also
+respond to mouse interaction — clicking any slider or control focuses it for keyboard adjustment, and sliders can be
+dragged directly.
 
 ### Undo / Redo
 
-Parameter changes are tracked with a 50-level undo history. Ctrl+Z undoes the last change and syncs the full state back to the hardware; Ctrl+Shift+Z redoes. Slider drags are coalesced into a single undo entry on release.
+Parameter changes are tracked with a 50-level undo history. `Ctrl+Z` undoes the last change and syncs the full state back
+to the hardware; `Ctrl+Shift+Z` redoes. Slider drags are coalesced into a single undo entry on release.
 
 ## Code Usage
+
+### Sequencers
+
+The `sequencer` package provides two sequencer classes for pattern-based composition.
+
+#### GridSequencer
+
+Treats the Tempera's 64 cells as a single continuous sequence:
+
+```python
+from tempera import EmitterPool
+from sequencer import GridSequencer
+
+async def main():
+    async with EmitterPool() as pool:
+      sequencer = GridSequencer(pool, bpm=120)
+
+      # Sparse pattern: {step_index: emitter_num}
+      # Only include steps that should be ON
+      pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
+      sequencer.set_pattern(pattern)
+
+      await sequencer.run(loops=4)  # Run 4 times
+```
+
+#### ColumnSequencer
+
+Treats the grid as 8 independent columns (samples), each with 8 cells:
+
+```python
+from tempera import EmitterPool
+from sequencer import ColumnSequencer
+
+
+async def main():
+    async with EmitterPool () as pool:
+        sequencer = ColumnSequencer (pool, step_duration=0.25)
+
+        # Pattern per column: {cell: emitter_num}
+        # Sparse format, only pass in pairs for cells which you want to place an Emitter into
+        sequencer.set_column_pattern(1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
+        sequencer.set_column_pattern(2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
+
+        # Mute patterns - column 2 plays every other loop
+        sequencer.set_column_mute_pattern(2, [1, 0])
+
+        await sequencer.run(loops=8)
+```
+
+Both sequencers support:
+- Timing via `bpm` or `step_duration` parameters
+- Looping (finite or infinite)
+- Pause/resume control
+- Event dispatch for external control (server mode)
 
 ### Global Controls
 
@@ -192,8 +290,6 @@ with mido.open_output('Tempera') as output:
     messages = tempera.adsr(attack=64, decay=100, sustain=80, release=50)
     for message in messages:
         output.send(message)
-
-    # See main.py for an example of sending messages to a MIDI port
 ```
 
 ### Emitter Controls
@@ -290,60 +386,6 @@ async def main():
             await pool.place_in_cell(2, column=1, cell=1)
 ```
 
-### Sequencers
-
-The `sequencer` package provides two sequencer classes for pattern-based composition.
-
-#### GridSequencer
-
-Treats the Tempera's 64 cells as a single continuous sequence:
-
-```python
-from tempera import EmitterPool
-from sequencer import GridSequencer
-
-async def main():
-    async with EmitterPool() as pool:
-      sequencer = GridSequencer(pool, bpm=120)
-
-      # Sparse pattern: {step_index: emitter_num}
-      # Only include steps that should be ON
-      pattern = {0: 1, 4: 2, 8: 1, 12: 2}  # Steps 0,8 use emitter 1; steps 4,12 use emitter 2
-      sequencer.set_pattern(pattern)
-
-      await sequencer.run(loops=4)  # Run 4 times
-```
-
-#### ColumnSequencer
-
-Treats the grid as 8 independent columns (samples), each with 8 cells:
-
-```python
-from tempera import EmitterPool
-from sequencer import ColumnSequencer
-
-
-async def main():
-    async with EmitterPool () as pool:
-        sequencer = ColumnSequencer (pool, step_duration=0.25)
-
-        # Pattern per column: {cell: emitter_num}
-        # Sparse format, only pass in pairs for cells which you want to place an Emitter into
-        sequencer.set_column_pattern(1, {1: 1, 3: 1, 5: 1, 7: 1})  # Column 1, odd cells, emitter 1
-        sequencer.set_column_pattern(2, {2: 2, 4: 2, 6: 2, 8: 2})  # Column 2, even cells, emitter 2
-
-        # Mute patterns - column 2 plays every other loop
-        sequencer.set_column_mute_pattern(2, [1, 0])
-
-        await sequencer.run(loops=8)
-```
-
-Both sequencers support:
-- Timing via `bpm` or `step_duration` parameters
-- Looping (finite or infinite)
-- Pause/resume control
-- Event dispatch for external control (server mode)
-
 ---
 
 ## For Conributors
@@ -369,7 +411,8 @@ Integration tests use mido to parse and send real MIDI messages. There are two t
 
 #### Virtual Port Tests
 
-These tests verify that the bytes produced by the library are valid MIDI messages that mido can parse and send. They use a virtual MIDI port and don't require any hardware.
+These tests verify that the bytes produced by the library are valid MIDI messages that `mido` can parse and send. They
+use a virtual MIDI port and don't require any hardware.
 
 ```bash
 # Run virtual port tests only (default)
@@ -383,7 +426,8 @@ Note: Virtual port tests require virtual MIDI port support (available on macOS a
 
 #### Hardware Tests
 
-Hardware tests send real MIDI messages to a connected Tempera device. These are skipped by default and must be explicitly enabled via environment variable.
+Hardware tests send real MIDI messages to a connected Tempera device. These are skipped by default and must be explicitly
+enabled via environment variable.
 
 ```bash
 # Run all integration tests including hardware tests
