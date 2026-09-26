@@ -5,7 +5,7 @@ It enables sending events (keyboard, mouse), inspecting state at all layers,
 and asserting state consistency.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent
@@ -15,6 +15,9 @@ from gui.shortcuts import Section, NavigationMode
 from gui.styles import SECTION_ACTIVE_BORDER, FOCUS_GLOW
 from test.gui_tests.state import NavState, PanelState, SliderGroupState, EnvelopePanelState
 from test.gui_tests.mocks import MockTemperaAdapter
+
+if TYPE_CHECKING:
+    from gui.app import MainWindow
 
 
 class GUITestHarness:
@@ -28,8 +31,8 @@ class GUITestHarness:
     """
 
     def __init__(self):
-        self._adapter: Optional[MockTemperaAdapter] = None
-        self._window: Optional['MainWindow'] = None
+        self._adapter: MockTemperaAdapter | None = None
+        self._window: MainWindow | None = None
 
     def setup(self) -> None:
         """Initialize the test environment with a MainWindow and mock adapter."""
@@ -502,7 +505,7 @@ class GUITestHarness:
                     errors.append(
                         f"Nav control={nav.control}, group focused_index={group.focused_index}"
                     )
-            except (ValueError, AttributeError):
+            except ValueError, AttributeError:
                 pass  # Some subsections may not have groups
 
         # 6. Verify envelope panel shows focused control (if in control mode)
@@ -537,7 +540,7 @@ class GUITestHarness:
             return self._window._cell_grid
         return None
 
-    def _compute_expected_control_key(self, nav: NavState) -> Optional[str]:
+    def _compute_expected_control_key(self, nav: NavState) -> str | None:
         """Compute the expected control key for a given nav state.
 
         This replicates the logic in MainWindow._get_focused_control_key()

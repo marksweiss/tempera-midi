@@ -1,6 +1,6 @@
 """Group of labeled sliders with a title."""
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent, QMouseEvent
@@ -109,7 +109,7 @@ class SliderGroup(QGroupBox):
 
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-    def get_slider(self, name: str) -> Optional[LabeledSlider]:
+    def get_slider(self, name: str) -> LabeledSlider | None:
         """Get a slider by parameter name."""
         return self._sliders.get(name)
 
@@ -175,7 +175,7 @@ class SliderGroup(QGroupBox):
         return self._focused_index
 
     @property
-    def focused_name(self) -> Optional[str]:
+    def focused_name(self) -> str | None:
         """Get name of currently focused control."""
         if 0 <= self._focused_index < len(self._slider_order):
             return self._slider_order[self._focused_index]

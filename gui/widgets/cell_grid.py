@@ -1,6 +1,5 @@
 """8x8 clickable cell grid for emitter placement."""
 
-from typing import Optional
 
 from PySide6.QtCore import Qt, Signal, QRect, QTimer
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QMouseEvent, QKeyEvent
@@ -39,7 +38,7 @@ class CellGrid(QWidget):
         self._cells: dict[tuple[int, int], int] = {}
 
         # Currently hovered cell
-        self._hover_cell: Optional[tuple[int, int]] = None
+        self._hover_cell: tuple[int, int] | None = None
 
         # Active emitter for visual feedback
         self._active_emitter = 1
@@ -76,7 +75,7 @@ class CellGrid(QWidget):
         y = self.PADDING + (cell - 1) * (self.CELL_SIZE + self.CELL_SPACING)
         return QRect(x, y, self.CELL_SIZE, self.CELL_SIZE)
 
-    def _cell_at_pos(self, x: int, y: int) -> Optional[tuple[int, int]]:
+    def _cell_at_pos(self, x: int, y: int) -> tuple[int, int] | None:
         """Get the cell at a pixel position, or None if outside grid."""
         for col in range(1, 9):
             for cell in range(1, 9):
@@ -162,7 +161,7 @@ class CellGrid(QWidget):
             elif event.button() == Qt.MouseButton.RightButton:
                 self.cellRightClicked.emit(col, row)
 
-    def set_cell(self, column: int, cell: int, emitter: Optional[int]):
+    def set_cell(self, column: int, cell: int, emitter: int | None):
         """Set or clear a cell's emitter assignment.
 
         Args:
@@ -177,7 +176,7 @@ class CellGrid(QWidget):
             self._cells[key] = emitter
         self.update()
 
-    def get_cell(self, column: int, cell: int) -> Optional[int]:
+    def get_cell(self, column: int, cell: int) -> int | None:
         """Get the emitter assigned to a cell, or None if empty."""
         return self._cells.get((column, cell))
 

@@ -1,6 +1,7 @@
 """Mock classes for GUI testing without hardware dependencies."""
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 from unittest.mock import MagicMock
 
 from gui.adapter.state_manager import StateManager
@@ -18,8 +19,8 @@ class MockTemperaAdapter:
         self.state = StateManager()
         self.calls: list[tuple[str, tuple, dict]] = []
         self._connected = False
-        self._status_callback: Optional[Callable[[str], None]] = None
-        self._envelope_position_callback: Optional[Callable[[float], None]] = None
+        self._status_callback: Callable[[str], None] | None = None
+        self._envelope_position_callback: Callable[[float], None] | None = None
 
     def set_status_callback(self, callback: Callable[[str], None]):
         """Set status message callback."""

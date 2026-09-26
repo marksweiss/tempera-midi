@@ -4,7 +4,6 @@ These dataclasses represent snapshots of state at various layers of the UI hiera
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from gui.shortcuts import Section, NavigationMode
 
@@ -54,7 +53,7 @@ class SliderGroupState:
 @dataclass
 class EnvelopePanelState:
     """Snapshot of EnvelopePanel state."""
-    control_key: Optional[str]      # e.g., "emitter.1.volume"
-    display_name: Optional[str]     # e.g., "Emitter 1 - Volume"
+    control_key: str | None      # e.g., "emitter.1.volume"
+    display_name: str | None     # e.g., "Emitter 1 - Volume"
     enabled: bool
     has_envelope: bool

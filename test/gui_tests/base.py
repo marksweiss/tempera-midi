@@ -3,10 +3,13 @@
 import os
 import sys
 import unittest
-from typing import Optional
+from typing import TYPE_CHECKING
 
 # Set offscreen rendering before importing Qt
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+
+if TYPE_CHECKING:
+    from PySide6.QtWidgets import QApplication
 
 
 class GUITestCase(unittest.TestCase):
@@ -24,7 +27,7 @@ class GUITestCase(unittest.TestCase):
                 self.harness.assert_state_consistent()
     """
 
-    _app: Optional['QApplication'] = None
+    _app: QApplication | None = None
 
     @classmethod
     def setUpClass(cls):

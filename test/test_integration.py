@@ -15,7 +15,7 @@ from tempera.track import Track
 RUN_HARDWARE_TESTS = os.environ.get('RUN_HARDWARE_TESTS')
 
 # Expected Tempera MIDI port name (adjust if different on your system)
-TEMPERA_PORT_NAME = os.environ.get('TEMPERA_PORT')
+TEMPERA_PORT_NAME = os.environ.get('TEMPERA_PORT', 'Tempera')
 
 
 class MidiIntegrationTestBase(unittest.TestCase):
@@ -314,6 +314,17 @@ class TestEmitterPoolIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(pool._running)
         self.assertIsNone(pool._output)
 
+    async def test_pool_restart_after_stop(self):
+        """stop() shuts the queue down, so the pool must get a fresh queue to restart."""
+        pool = EmitterPool(port_name='TemperaMidi Pool Test', virtual=True)
+        async with pool:
+            await pool.volume(1, 100)
+        self.assertIsNone(pool._sender_task)
+        async with pool:
+            await pool.volume(1, 90)
+            await pool._queue.join()
+            self.assertFalse(pool._sender_task.done())
+
     async def test_volume(self):
         async with EmitterPool(port_name='TemperaMidi Pool Test', virtual=True) as pool:
             await pool.volume(1, 100)
@@ -526,9 +537,6 @@ class TestChannelMapping(MidiIntegrationTestBase):
 
 def find_tempera_port():
     """Find a MIDI output port matching the Tempera name."""
-    # TEMP DEBUG
-    breakpoint()
-
     output_names = mido.get_output_names()
     for name in output_names:
         if TEMPERA_PORT_NAME.lower() in name.lower():
@@ -545,7 +553,7 @@ class MidiHardwareTestBase(unittest.TestCase):
         RUN_HARDWARE_TESTS=1 uv run python -m unittest discover test -v
 
     If your Tempera shows up with a different port name, set:
-        TEMPERA_PORT_NAME="Your Tempera Port Name"
+        TEMPERA_PORT="Your Tempera Port Name"
     """
 
     output = None
@@ -553,16 +561,12 @@ class MidiHardwareTestBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-
-        # TEMP DEBUG
-        breakpoint()
-
         cls.tempera_port_name = find_tempera_port()
         if not cls.tempera_port_name:
             available = mido.get_output_names()
             raise unittest.SkipTest(
                 f"Tempera not found. Available ports: {available}. "
-                f"Set TEMPERA_PORT_NAME env var if using different name."
+                f"Set TEMPERA_PORT env var if using different name."
             )
         try:
             cls.output = mido.open_output(cls.tempera_port_name)

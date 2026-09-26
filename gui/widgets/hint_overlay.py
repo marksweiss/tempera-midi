@@ -1,6 +1,5 @@
 """Keyboard shortcut hint overlay system for Tempera GUI."""
 
-from typing import Optional
 
 from PySide6.QtCore import Qt, QPoint, QTimer
 from PySide6.QtGui import QPainter, QColor, QFont

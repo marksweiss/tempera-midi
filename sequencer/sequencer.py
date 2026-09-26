@@ -2,7 +2,6 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from tempera import EmitterPool
 
@@ -24,8 +23,8 @@ class BaseSequencer(ABC):
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: Optional[float] = None,
-        bpm: Optional[float] = None,
+        step_duration: float | None = None,
+        bpm: float | None = None,
         steps_per_beat: int = 1
     ):
         self.pool = pool
@@ -173,8 +172,8 @@ class GridSequencer(BaseSequencer):
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: Optional[float] = None,
-        bpm: Optional[float] = None,
+        step_duration: float | None = None,
+        bpm: float | None = None,
         steps_per_beat: int = 1
     ):
         super().__init__(pool, step_duration, bpm, steps_per_beat)
@@ -303,8 +302,8 @@ class ColumnSequencer(BaseSequencer):
     def __init__(
         self,
         pool: EmitterPool,
-        step_duration: Optional[float] = None,
-        bpm: Optional[float] = None,
+        step_duration: float | None = None,
+        bpm: float | None = None,
         steps_per_beat: int = 1
     ):
         super().__init__(pool, step_duration, bpm, steps_per_beat)

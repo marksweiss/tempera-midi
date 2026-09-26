@@ -1,6 +1,5 @@
 """Transport controls panel with play/stop, BPM, and sequencer selection."""
 
-from typing import Optional
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
@@ -150,7 +149,7 @@ class TransportPanel(QGroupBox):
             # Button was unchecked
             self.sequencerChanged.emit(None)
 
-    def get_sequencer(self) -> Optional[str]:
+    def get_sequencer(self) -> str | None:
         """Get the selected sequencer type.
 
         Returns:
@@ -162,7 +161,7 @@ class TransportPanel(QGroupBox):
             return 'grid'
         return None
 
-    def set_sequencer(self, seq_type: Optional[str]):
+    def set_sequencer(self, seq_type: str | None):
         """Set the sequencer selection without emitting signals.
 
         Args:

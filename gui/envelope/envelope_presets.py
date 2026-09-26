@@ -1,7 +1,6 @@
 """Predefined envelope patterns."""
 import math
 from enum import Enum
-from typing import List, Tuple
 
 
 class EnvelopePreset(Enum):
@@ -15,7 +14,7 @@ class EnvelopePreset(Enum):
     ROUNDED = "rounded"
 
 
-def generate_preset_points(preset: EnvelopePreset, per_cell: bool = False) -> List[Tuple[float, float]]:
+def generate_preset_points(preset: EnvelopePreset, per_cell: bool = False) -> list[tuple[float, float]]:
     """Generate envelope points for a preset.
 
     Args:
@@ -41,7 +40,7 @@ def generate_preset_points(preset: EnvelopePreset, per_cell: bool = False) -> Li
     return repeated
 
 
-def _get_base_points(preset: EnvelopePreset) -> List[Tuple[float, float]]:
+def _get_base_points(preset: EnvelopePreset) -> list[tuple[float, float]]:
     """Get base points for a single pattern occurrence."""
     if preset == EnvelopePreset.RAMP_UP:
         return [(0.0, 0.0), (1.0, 1.0)]

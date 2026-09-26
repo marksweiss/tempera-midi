@@ -3,7 +3,8 @@
 import copy
 import json
 from pathlib import Path
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from gui.envelope.envelope import Envelope
 
@@ -226,7 +227,7 @@ class StateManager:
 
     # --- Global state ---
 
-    def get_global_param(self, category: str, param: Optional[str] = None) -> Any:
+    def get_global_param(self, category: str, param: str | None = None) -> Any:
         """Get a global parameter.
 
         For effects, use get_global_param('reverb', 'mix').
@@ -236,7 +237,7 @@ class StateManager:
             return self._state['global'][category]
         return self._state['global'][category][param]
 
-    def set_global_param(self, category: str, param: Optional[str], value: int,
+    def set_global_param(self, category: str, param: str | None, value: int,
                          record_undo: bool = True):
         """Set a global parameter.
 
@@ -296,7 +297,7 @@ class StateManager:
 
     # --- Cell state ---
 
-    def get_cell(self, column: int, cell: int) -> Optional[int]:
+    def get_cell(self, column: int, cell: int) -> int | None:
         """Get the emitter placed in a cell, or None if empty."""
         return self._state['cells'].get((column, cell))
 
@@ -368,7 +369,7 @@ class StateManager:
         """Get pattern for a column: {cell: emitter_num}."""
         return dict(self._state['sequencer']['column_patterns'].get(column, {}))
 
-    def set_column_pattern_cell(self, column: int, cell: int, emitter_num: Optional[int],
+    def set_column_pattern_cell(self, column: int, cell: int, emitter_num: int | None,
                                  record_undo: bool = True):
         """Set or clear a cell in a column pattern."""
         if record_undo:
@@ -390,7 +391,7 @@ class StateManager:
         """Get the full grid pattern: {step_index: emitter_num}."""
         return dict(self._state['sequencer']['grid_pattern'])
 
-    def set_grid_pattern_cell(self, step_index: int, emitter_num: Optional[int],
+    def set_grid_pattern_cell(self, step_index: int, emitter_num: int | None,
                                record_undo: bool = True):
         """Set or clear a cell in the grid pattern."""
         if record_undo:

@@ -1,7 +1,5 @@
 import asyncio
 import os
-from typing import Union
-
 import mido
 from mido import Message
 
@@ -25,7 +23,7 @@ class EmitterPool:
         virtual: If True, create a virtual MIDI port (for testing). Defaults to False.
     """
 
-    def __init__(self, port_name: str = None, virtual: bool = False, emitters_on_own_channels: bool = False):
+    def __init__(self, port_name: str | None = None, virtual: bool = False, emitters_on_own_channels: bool = False):
         self._port_name = port_name or os.environ.get('TEMPERA_PORT', 'Tempera')
         self._virtual = virtual
         self._emitters_on_own_channels = emitters_on_own_channels
@@ -36,7 +34,7 @@ class EmitterPool:
             # All emitters on same channel, so only need to send one note_on and one note_off
             # Capture reference at init time to not have to look it up on each call to play_all()
             self._midi = self._emitters[1].midi
-        self._queue: asyncio.Queue[Union[Message, list[Message]]] = asyncio.Queue()
+        self._queue: asyncio.Queue[Message | list[Message]] = asyncio.Queue()
         self._output = None
         self._sender_task = None
         self._running = False
@@ -60,16 +58,17 @@ class EmitterPool:
         if self._sender_task:
             # Wait for queue to drain with timeout (sender loop still running)
             try:
-                await asyncio.wait_for(self._queue.join(), timeout=1.0)
-            except asyncio.TimeoutError:
+                async with asyncio.timeout(1.0):
+                    await self._queue.join()
+            except TimeoutError:
                 pass
-            # Now stop the sender loop and cancel the task
-            self._running = False
-            self._sender_task.cancel()
-            try:
-                await self._sender_task
-            except asyncio.CancelledError:
-                pass
+            # Shut down the queue: discards anything left undelivered and wakes the
+            # sender loop, which exits on QueueShutDown. Swap in a fresh queue so the
+            # pool can be started again.
+            self._queue.shutdown(immediate=True)
+            await self._sender_task
+            self._sender_task = None
+            self._queue = asyncio.Queue()
         self._running = False
         if self._output:
             self._output.close()
@@ -77,11 +76,11 @@ class EmitterPool:
 
     async def _sender_loop(self):
         """Background task that consumes messages from the queue and sends them."""
-        while self._running:
+        while True:
             try:
-                item = await asyncio.wait_for(self._queue.get(), timeout=0.1)
-            except asyncio.TimeoutError:
-                continue
+                item = await self._queue.get()
+            except asyncio.QueueShutDown:
+                return
 
             if isinstance(item, list):
                 for msg in item:
@@ -231,6 +230,6 @@ class EmitterPool:
         await method(emitter_num, *args, **kwargs)
 
     # --- Low-level escape hatch ---
-    async def send_raw(self, message: Union[Message, list[Message]]):
+    async def send_raw(self, message: Message | list[Message]):
         """Send a raw MIDI message or list of messages through the queue."""
         await self._queue.put(message)

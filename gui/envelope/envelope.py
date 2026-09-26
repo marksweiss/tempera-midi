@@ -1,7 +1,6 @@
 """Envelope data model for automation curves."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -20,7 +19,7 @@ class EnvelopePoint:
         return {'time': self.time, 'value': self.value}
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'EnvelopePoint':
+    def from_dict(cls, data: dict) -> EnvelopePoint:
         """Create from dictionary."""
         return cls(time=data['time'], value=data['value'])
 
@@ -41,7 +40,7 @@ class Envelope:
     """
     points: list[EnvelopePoint] = field(default_factory=list)
     enabled: bool = False
-    preset: Optional[str] = None
+    preset: str | None = None
     per_cell: bool = False
 
     def add_point(self, time: float, value: float):
@@ -77,8 +76,8 @@ class Envelope:
         time = max(0.0, min(1.0, time))
 
         # Find surrounding points
-        before: Optional[EnvelopePoint] = None
-        after: Optional[EnvelopePoint] = None
+        before: EnvelopePoint | None = None
+        after: EnvelopePoint | None = None
 
         for point in self.points:
             if point.time <= time:
@@ -118,7 +117,7 @@ class Envelope:
         return d
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'Envelope':
+    def from_dict(cls, data: dict) -> Envelope:
         """Create from dictionary."""
         points = [EnvelopePoint.from_dict(p) for p in data.get('points', [])]
         return cls(
@@ -128,7 +127,7 @@ class Envelope:
             per_cell=data.get('per_cell', False),
         )
 
-    def copy(self) -> 'Envelope':
+    def copy(self) -> Envelope:
         """Create a deep copy of this envelope."""
         return Envelope(
             points=[EnvelopePoint(p.time, p.value) for p in self.points],

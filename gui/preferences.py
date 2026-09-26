@@ -1,7 +1,6 @@
 """User preferences management for Tempera GUI."""
 
 from enum import Enum
-from typing import Optional
 
 from PySide6.QtCore import QSettings, Signal, QObject
 
@@ -37,7 +36,7 @@ class Preferences(QObject):
     DEFAULT_KEYBOARD_LAYOUT = KeyboardLayout.LEFT_HAND
     DEFAULT_HINTS_VISIBLE = False
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: QObject | None = None):
         """Initialize preferences with QSettings backend."""
         super().__init__(parent)
         self._settings = QSettings('Tempera', 'MIDI')
@@ -97,7 +96,7 @@ class Preferences(QObject):
 
 
 # Singleton instance for global access
-_preferences: Optional[Preferences] = None
+_preferences: Preferences | None = None
 
 
 def get_preferences() -> Preferences:

@@ -1,7 +1,7 @@
 """Keyboard shortcut management for Tempera GUI."""
 
 from enum import Enum, auto
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtGui import QShortcut, QKeySequence
@@ -683,7 +683,7 @@ class NavigationManager(QObject):
             self.controlChanged.emit(self._control)
             self._update_path()
 
-    def get_subsection_count(self, section: Optional[Section] = None) -> int:
+    def get_subsection_count(self, section: Section | None = None) -> int:
         """Get number of subsections in a section.
 
         Args:
@@ -697,8 +697,8 @@ class NavigationManager(QObject):
         counts = self._section_structure.get(section, [])
         return len(counts)
 
-    def get_control_count(self, section: Optional[Section] = None,
-                          subsection: Optional[int] = None) -> int:
+    def get_control_count(self, section: Section | None = None,
+                          subsection: int | None = None) -> int:
         """Get number of controls in a subsection.
 
         Args:

@@ -2,10 +2,16 @@
 name = "tempera-midi"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "mido[ports-rtmidi]",
     "pdoc3>=0.11.6",
     "PySide6>=6.6.0",
     "qasync>=0.27.0",
 ]
+
+[tool.uv]
+# python-rtmidi publishes no cp314 wheels, so it builds from source. On macOS its
+# JACK backend fails to compile (sem_timedwait is unavailable) whenever a JACK
+# install is detected; Tempera only needs CoreMIDI, so build without JACK.
+config-settings-package = { python-rtmidi = { setup-args = "-Djack=false" } }

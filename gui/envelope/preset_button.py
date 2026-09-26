@@ -1,5 +1,5 @@
 """Preset button widget with shape preview."""
-from typing import Optional
+
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPen, QPainterPath, QColor
@@ -13,7 +13,7 @@ class PresetButton(QPushButton):
 
     BUTTON_SIZE = (40, 30)  # Width, Height
 
-    def __init__(self, preset: EnvelopePreset, parent: Optional[QWidget] = None):
+    def __init__(self, preset: EnvelopePreset, parent: QWidget | None = None):
         super().__init__(parent)
         self._preset = preset
         self._points = generate_preset_points(preset, per_cell=False)

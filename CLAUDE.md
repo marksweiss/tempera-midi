@@ -186,4 +186,5 @@ async with EmitterPool() as pool:
 
 - `mido[ports-rtmidi]`: MIDI message handling and port I/O
 - `pdoc3`: Documentation generation
-- Python 3.12+
+- Python 3.14+ (pinned to 3.14.7 in `.python-version`)
+- `python-rtmidi` has no 3.14 wheels and builds from source; `[tool.uv] config-settings-package` in `pyproject.toml` disables its JACK backend, which does not compile on macOS

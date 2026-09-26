@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Signal
 
@@ -24,16 +24,16 @@ class EnvelopeManager(QObject):
     # Update rate (approximately 60 fps)
     UPDATE_INTERVAL_MS = 16
 
-    def __init__(self, bpm: int = 120, parent: Optional[QObject] = None):
+    def __init__(self, bpm: int = 120, parent: QObject | None = None):
         super().__init__(parent)
         self._bpm = bpm
         self._running = False
         self._position = 0.0  # 0.0 to 1.0 (normalized position in 8-beat cycle)
-        self._start_time: Optional[float] = None
-        self._update_task: Optional[asyncio.Task] = None
+        self._start_time: float | None = None
+        self._update_task: asyncio.Task | None = None
 
         # Callbacks for envelope modulation
-        self._on_tick: Optional[Callable[[float], None]] = None
+        self._on_tick: Callable[[float], None] | None = None
 
     @property
     def bpm(self) -> int:
@@ -55,7 +55,7 @@ class EnvelopeManager(QObject):
         """Check if timing loop is running."""
         return self._running
 
-    def set_tick_callback(self, callback: Optional[Callable[[float], None]]):
+    def set_tick_callback(self, callback: Callable[[float], None] | None):
         """Set callback for tick updates.
 
         The callback receives the current position (0.0 to 1.0).

@@ -1,6 +1,5 @@
 """Envelope panel widget for drawing automation curves."""
 
-from typing import Optional, Union
 
 from PySide6.QtCore import Qt, Signal, QPointF
 from PySide6.QtGui import QPainter, QPen, QPainterPath, QMouseEvent, QColor
@@ -32,13 +31,13 @@ class EnvelopeCanvas(QFrame):
     MIN_HEIGHT = 80
     PADDING = 8
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._envelope: Optional[Envelope] = None
+        self._envelope: Envelope | None = None
         self._enabled = False
         self._drawing = False
         self._drawing_enabled = True  # Whether mouse drawing is allowed
-        self._playhead_position: Optional[float] = None
+        self._playhead_position: float | None = None
 
         self._setup_ui()
 
@@ -62,7 +61,7 @@ class EnvelopeCanvas(QFrame):
             }}
         """)
 
-    def set_envelope(self, envelope: Optional[Envelope]):
+    def set_envelope(self, envelope: Envelope | None):
         """Set the envelope to display/edit."""
         self._envelope = envelope
         self._enabled = envelope.enabled if envelope else False
@@ -75,7 +74,7 @@ class EnvelopeCanvas(QFrame):
         self._update_style()
         self.update()
 
-    def set_playhead_position(self, position: Optional[float]):
+    def set_playhead_position(self, position: float | None):
         """Set playhead position (0.0-1.0) or None to hide."""
         self._playhead_position = position
         self.update()
@@ -223,15 +222,15 @@ class EnvelopePanel(QWidget):
     envelopeChanged = Signal(str, object)  # control_key, Envelope
     enabledToggled = Signal(str, bool)  # control_key, enabled
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._current_control_key: Optional[str] = None
-        self._current_envelope: Optional[Envelope] = None
+        self._current_control_key: str | None = None
+        self._current_envelope: Envelope | None = None
 
         # Tool state: can be EnvelopePreset, 'pencil', or None
-        self._active_tool: Optional[Union[EnvelopePreset, str]] = None
+        self._active_tool: EnvelopePreset | str | None = None
         # Remember last tool when ENV is toggled off, default to pencil for first use
-        self._last_active_tool: Optional[Union[EnvelopePreset, str]] = 'pencil'
+        self._last_active_tool: EnvelopePreset | str | None = 'pencil'
         self._per_cell: bool = False
 
         self._setup_ui()
@@ -342,8 +341,8 @@ class EnvelopePanel(QWidget):
                 }}
             """)
 
-    def set_control(self, control_key: Optional[str], envelope: Optional[Envelope],
-                    display_name: Optional[str] = None):
+    def set_control(self, control_key: str | None, envelope: Envelope | None,
+                    display_name: str | None = None):
         """Set the current control to display/edit.
 
         Args:
@@ -387,7 +386,7 @@ class EnvelopePanel(QWidget):
                 return f'Global {parts[1].title()} - {parts[2].replace("_", " ").title()}'
         return control_key
 
-    def set_playhead_position(self, position: Optional[float]):
+    def set_playhead_position(self, position: float | None):
         """Set the playhead position on the canvas."""
         self._canvas.set_playhead_position(position)
 
@@ -449,7 +448,7 @@ class EnvelopePanel(QWidget):
             self.envelopeChanged.emit(self._current_control_key, envelope)
 
     @property
-    def current_control_key(self) -> Optional[str]:
+    def current_control_key(self) -> str | None:
         """Get the current control key."""
         return self._current_control_key
 

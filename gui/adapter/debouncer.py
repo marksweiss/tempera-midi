@@ -1,7 +1,8 @@
 """Debouncing for rapid slider updates."""
 
 import asyncio
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 
 class Debouncer:

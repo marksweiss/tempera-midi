@@ -3,7 +3,7 @@
 import asyncio
 import os
 from pathlib import Path
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import mido
 
@@ -33,21 +33,21 @@ class TemperaAdapter:
         Args:
             debounce_ms: Debounce delay for slider updates in milliseconds.
         """
-        self._pool: Optional[EmitterPool] = None
-        self._tempera_global: Optional[TemperaGlobal] = None
+        self._pool: EmitterPool | None = None
+        self._tempera_global: TemperaGlobal | None = None
         self._tracks: dict[int, Track] = {}
         self._emitters_local: dict[int, Emitter] = {}
         self._output = None  # Deprecated: all MIDI output goes through EmitterPool
         self._connected = False
-        self._port_name: Optional[str] = None
+        self._port_name: str | None = None
 
         self.state = StateManager()
         self._debouncer = Debouncer(debounce_ms)
 
         # Sequencer instances
-        self._column_sequencer: Optional[ColumnSequencer] = None
-        self._grid_sequencer: Optional[GridSequencer] = None
-        self._sequencer_task: Optional[asyncio.Task] = None
+        self._column_sequencer: ColumnSequencer | None = None
+        self._grid_sequencer: GridSequencer | None = None
+        self._sequencer_task: asyncio.Task | None = None
 
         # Envelope manager for automation
         self._envelope_manager = EnvelopeManager(bpm=120)
@@ -57,10 +57,10 @@ class TemperaAdapter:
         self._last_sent_values: dict[str, int] = {}
 
         # Callback for envelope position updates (for UI playhead)
-        self._envelope_position_callback: Optional[Callable[[float], None]] = None
+        self._envelope_position_callback: Callable[[float], None] | None = None
 
         # Feedback callback for status updates
-        self._status_callback: Optional[Callable[[str], None]] = None
+        self._status_callback: Callable[[str], None] | None = None
 
         # Setup debouncer callbacks
         self._setup_debouncer()
@@ -132,7 +132,7 @@ class TemperaAdapter:
         if self._status_callback:
             self._status_callback(message)
 
-    def set_envelope_position_callback(self, callback: Optional[Callable[[float], None]]):
+    def set_envelope_position_callback(self, callback: Callable[[float], None] | None):
         """Set callback for envelope position updates (for UI playhead).
 
         The callback receives the current position (0.0 to 1.0).
@@ -176,7 +176,7 @@ class TemperaAdapter:
                 self._last_sent_values[control_key] = modulated_value
                 asyncio.create_task(self._send_modulated_value(control_key, modulated_value))
 
-    def _get_base_value(self, control_key: str) -> Optional[int]:
+    def _get_base_value(self, control_key: str) -> int | None:
         """Get the base value for a control from state.
 
         Args:
@@ -245,7 +245,7 @@ class TemperaAdapter:
         return mido.get_output_names()
 
     @staticmethod
-    def find_tempera_port() -> Optional[str]:
+    def find_tempera_port() -> str | None:
         """Find Tempera MIDI port by scanning available ports.
 
         Returns:
@@ -263,11 +263,11 @@ class TemperaAdapter:
         return self._connected
 
     @property
-    def port_name(self) -> Optional[str]:
+    def port_name(self) -> str | None:
         """Get current MIDI port name."""
         return self._port_name
 
-    async def connect(self, port_name: Optional[str] = None) -> bool:
+    async def connect(self, port_name: str | None = None) -> bool:
         """
         Connect to Tempera.
 
@@ -495,7 +495,7 @@ class TemperaAdapter:
         except Exception as e:
             self._notify_status(f'Error: {e}')
 
-    def set_global_param(self, category: str, param: Optional[str], value: int,
+    def set_global_param(self, category: str, param: str | None, value: int,
                          immediate: bool = False):
         """Set a global parameter (debounced).
 
@@ -526,7 +526,7 @@ class TemperaAdapter:
 
     # --- Playback ---
 
-    async def play_note(self, emitter_nums: Optional[list[int]] = None,
+    async def play_note(self, emitter_nums: list[int] | None = None,
                         note: int = 60, velocity: int = 127, duration: float = 0.5):
         """Play a note on specified emitters.
 
