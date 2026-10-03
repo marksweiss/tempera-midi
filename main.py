@@ -284,15 +284,18 @@ async def play_test_sequencers(override_port: str = None):
 if __name__ == '__main__':
     # Comment this out to skip running the lightweight integration test
     # pass an argument for override_port or set env var TEMPERA_PORT to run against actual Tempera
-    asyncio.run(play_test())
+    try:
+        asyncio.run(play_test())
 
-    # Uncomment to run the EmitterPool test (tests all 4 emitters with async pool)
-    asyncio.run(play_test_emitter_pool())
+        # Uncomment to run the EmitterPool test (tests all 4 emitters with async pool)
+        asyncio.run(play_test_emitter_pool())
 
-    # Uncomment to run the Sequencer tests (tests all 4 emitters with in each type of sequencer)
-    asyncio.run(play_test_sequencers())
+        # Uncomment to run the Sequencer tests (tests all 4 emitters with in each type of sequencer)
+        asyncio.run(play_test_sequencers())
 
-    # Define list of mido Messages here. This is the sequencer which will be sent to the Tempera.
-    messages: list[Message] = []
-    # Pass them to the play() function
-    asyncio.run(play(messages))
+        # Define list of mido Messages here. This is the sequencer which will be sent to the Tempera.
+        messages: list[Message] = []
+        # Pass them to the play() function
+        asyncio.run(play(messages))
+    except OSError as e:
+        print(f"Exception: {e}. Is your Tempera connected via USB Midi to this device?")
