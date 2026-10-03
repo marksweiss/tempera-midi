@@ -83,7 +83,7 @@ Classes
 ### Class variables
 
 `DISPATCH_HANDLERS`
-:   
+:   The type of the None singleton.
 
 ### Methods
 
@@ -157,7 +157,7 @@ Classes
 ### Class variables
 
 `DISPATCH_HANDLERS`
-:   
+:   The type of the None singleton.
 
 ### Methods
 
