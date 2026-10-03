@@ -1,5 +1,7 @@
 # Tempera MIDI
 
+![tempera-midi GUI](resources/tempera-midi.jpg)
+
 ## Overview
 
 A Python library for controlling the Tempera granular sampler. This client supports the entire
