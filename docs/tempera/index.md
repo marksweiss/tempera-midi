@@ -5,6 +5,7 @@ Tempera MIDI control library.
 Sub-modules
 -----------
 * tempera.constants
+* tempera.display_map
 * tempera.emitter
 * tempera.emitter_pool
 * tempera.tempera_global
