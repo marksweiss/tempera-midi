@@ -1,6 +1,6 @@
 # Tempera MIDI
 
-![tempera-midi GUI](resources/tempera-midi.jpg)
+![tempera-midi GUI](resources/tempera-midi.png)
 
 ## Overview
 
@@ -109,7 +109,7 @@ TEMPERA_PORT='Tempera' uv run python -m main
 
 ## GUI Control Surface
 
-![tempera-midi GUI](resources/tempera-midi.jpg)
+![tempera-midi GUI](resources/tempera-midi.png)
 
 The project includes a full GUI control surface for the Tempera. It provides real-time control over every
 MIDI-controllable parameter on the device, organized in an intuitive layout that eliminates the menu-diving required
