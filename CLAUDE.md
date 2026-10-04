@@ -115,6 +115,9 @@ uv run python -m unittest discover test
 # Run hardware integration tests
 RUN_HARDWARE_TESTS=1 TEMPERA_PORT='Tempera' uv run python -m unittest discover test -v
 
+# Sample a parameter's display curve from the device (--list shows params and status)
+TEMPERA_PORT='Tempera' uv run python -m tools.sample_cc spray_x
+
 # List available MIDI ports
 uv run python -c "import mido; print(mido.get_output_names())"
 
@@ -132,7 +135,7 @@ uv run pdoc3 --force --template templates -o docs tempera midi sequencer
 
 4. **Cell index calculation**: For 64-cell grid, `value = ((column - 1) * 8) + (cell - 1)` converts to 0-63 range.
 
-5. **CC value non-linearity**: MIDI CC 0-127 does not map linearly to Tempera parameter ranges. See `docs/midi_to_tempera_cc_ranges.md` for documented mappings (incomplete).
+5. **CC value non-linearity**: MIDI CC 0-127 does not map linearly to Tempera parameter ranges. Only the emitter params in `SAMPLED_PARAMS` (`tempera/display_map.py`: density, grain length cell (CC 41), relative/spray X/Y) are non-linear; their sampled (cc, displayed value) breakpoints live in `tempera/display_maps.json` and are interpolated. `STEPPED_PARAMS` (grain length note, CC 42: musical intervals 16/1..1/64) need no sampling: the labels are spread evenly across CC 0-127. Params in `LINEAR_PARAMS` scale over a fixed 0.0-1.0 range. GUI sliders whose param dict has a `display` key show the mapped value (raw CC in the tooltip). Collect samples with `tools/sample_cc.py`. Tempera does not transmit CC values, so samples must be read off the device screen.
 
 6. **EmitterPool modes**: By default all emitters on Channel 2 (single note_on triggers all). With `emitters_on_own_channels=True`, each gets own channel (2-5) for independent note control.
 

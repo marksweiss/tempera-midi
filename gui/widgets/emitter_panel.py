@@ -18,29 +18,29 @@ from gui.styles import (
 BASIC_PARAMS = [
     {'name': 'volume', 'label': 'Volume', 'default': 100},
     {'name': 'octave', 'label': 'Octave', 'default': 64},
-    {'name': 'effects_send', 'label': 'Effects Send', 'default': 0},
+    {'name': 'effects_send', 'label': 'Effects Send', 'default': 0, 'display': 'effects_send'},
 ]
 
 GRAIN_PARAMS = [
-    {'name': 'grain_length_cell', 'label': 'Length Cell', 'default': 64},
-    {'name': 'grain_length_note', 'label': 'Length Note', 'default': 64},
-    {'name': 'grain_density', 'label': 'Density', 'default': 64},
-    {'name': 'grain_shape', 'label': 'Shape', 'default': 64},
-    {'name': 'grain_shape_attack', 'label': 'Shape Attack', 'default': 64},
-    {'name': 'grain_pan', 'label': 'Pan', 'default': 64},
-    {'name': 'grain_tune_spread', 'label': 'Tune Spread', 'default': 64},
+    {'name': 'grain_length_cell', 'label': 'Length Cell', 'default': 64, 'display': 'grain_length_cell'},
+    {'name': 'grain_length_note', 'label': 'Length Note', 'default': 64, 'display': 'grain_length_note'},
+    {'name': 'grain_density', 'label': 'Density', 'default': 64, 'display': 'grain_density'},
+    {'name': 'grain_shape', 'label': 'Shape', 'default': 64, 'display': 'grain_shape'},
+    {'name': 'grain_shape_attack', 'label': 'Shape Attack', 'default': 64, 'display': 'grain_shape_attack'},
+    {'name': 'grain_pan', 'label': 'Pan', 'default': 64, 'display': 'grain_pan'},
+    {'name': 'grain_tune_spread', 'label': 'Tune Spread', 'default': 64, 'display': 'grain_tune_spread'},
 ]
 
 POSITION_PARAMS = [
-    {'name': 'relative_x', 'label': 'Position X', 'default': 64},
-    {'name': 'relative_y', 'label': 'Position Y', 'default': 64},
-    {'name': 'spray_x', 'label': 'Spray X', 'default': 0},
-    {'name': 'spray_y', 'label': 'Spray Y', 'default': 0},
+    {'name': 'relative_x', 'label': 'Position X', 'default': 64, 'display': 'relative_x'},
+    {'name': 'relative_y', 'label': 'Position Y', 'default': 64, 'display': 'relative_y'},
+    {'name': 'spray_x', 'label': 'Spray X', 'default': 0, 'display': 'spray_x'},
+    {'name': 'spray_y', 'label': 'Spray Y', 'default': 0, 'display': 'spray_y'},
 ]
 
 FILTER_PARAMS = [
-    {'name': 'tone_filter_width', 'label': 'Filter Width', 'default': 127},
-    {'name': 'tone_filter_center', 'label': 'Filter Center', 'default': 64},
+    {'name': 'tone_filter_width', 'label': 'Filter Width', 'default': 127, 'display': 'tone_filter_width'},
+    {'name': 'tone_filter_center', 'label': 'Filter Center', 'default': 64, 'display': 'tone_filter_center'},
 ]
 
 

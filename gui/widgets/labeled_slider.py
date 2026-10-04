@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QSlider
 
 from gui.styles import get_slider_focus_style
+from tempera.display_map import AnyDisplayMap
 
 
 class LabeledSlider(QWidget):
@@ -30,6 +31,7 @@ class LabeledSlider(QWidget):
         initial_value: int = 64,
         label_width: int = 100,
         value_width: int = 35,
+        display_map: AnyDisplayMap | None = None,
         parent: QWidget = None
     ):
         """
@@ -42,11 +44,14 @@ class LabeledSlider(QWidget):
             initial_value: Starting value
             label_width: Fixed width for label
             value_width: Fixed width for value display
+            display_map: Optional mapping from CC value to the value Tempera displays.
+                When set, the value label shows the mapped value and the raw CC is in its tooltip.
             parent: Parent widget
         """
         super().__init__(parent)
 
         self._label_text = label
+        self._display_map = display_map
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 1, 0, 1)
@@ -67,8 +72,9 @@ class LabeledSlider(QWidget):
         layout.addWidget(self._slider, stretch=1)
 
         # Value display
-        self._value_label = QLabel(str(initial_value))
+        self._value_label = QLabel()
         self._value_label.setFixedWidth(value_width)
+        self._update_value_label(initial_value)
         self._value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self._value_label)
 
@@ -79,9 +85,17 @@ class LabeledSlider(QWidget):
         # Install event filter to detect clicks on the internal slider
         self._slider.installEventFilter(self)
 
+    def _update_value_label(self, value: int):
+        """Show the value as Tempera displays it, or the raw CC value if unmapped."""
+        if self._display_map:
+            self._value_label.setText(self._display_map.format(value))
+            self._value_label.setToolTip(f'CC {value}')
+        else:
+            self._value_label.setText(str(value))
+
     def _on_value_changed(self, value: int):
         """Handle continuous value changes during drag."""
-        self._value_label.setText(str(value))
+        self._update_value_label(value)
         self.valueChanged.emit(value)
 
     def _on_slider_released(self):
@@ -96,7 +110,7 @@ class LabeledSlider(QWidget):
         """Set slider value without emitting signals."""
         self._slider.blockSignals(True)
         self._slider.setValue(value)
-        self._value_label.setText(str(value))
+        self._update_value_label(value)
         self._slider.blockSignals(False)
 
     def setRange(self, min_value: int, max_value: int):
@@ -151,7 +165,7 @@ class LabeledSlider(QWidget):
         new_value = max(self._slider.minimum(), min(self._slider.maximum(), new_value))
         if new_value != self._slider.value():
             self._slider.setValue(new_value)
-            self._value_label.setText(str(new_value))
+            self._update_value_label(new_value)
             self.valueChanged.emit(new_value)
             self.valueSet.emit(new_value)
 
@@ -169,7 +183,7 @@ class LabeledSlider(QWidget):
         default = self.get_default_value()
         if self._slider.value() != default:
             self._slider.setValue(default)
-            self._value_label.setText(str(default))
+            self._update_value_label(default)
             self.valueChanged.emit(default)
             self.valueSet.emit(default)
 

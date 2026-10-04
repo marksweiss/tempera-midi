@@ -8,6 +8,11 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSizePolicy
 
 from gui.widgets.labeled_slider import LabeledSlider
 from gui.styles import get_section_focus_style
+from tempera.display_map import get_display_map
+
+# Value label widths: raw CC values need 3 digits; mapped values like '0.2222' or '100.00' need more
+RAW_VALUE_WIDTH = 35
+MAPPED_VALUE_WIDTH = 50
 
 
 class SliderGroup(QGroupBox):
@@ -47,6 +52,9 @@ class SliderGroup(QGroupBox):
                 - min: Minimum value (int, default 0)
                 - max: Maximum value (int, default 127)
                 - default: Initial value (int, default 64)
+                - display: Qualified parameter name for looking up a display map
+                  (str, optional). Sliders with a sampled map show Tempera's value
+                  instead of the raw CC value. See tempera/display_map.py.
             label_width: Fixed width for all labels
             parent: Parent widget
         """
@@ -82,6 +90,10 @@ class SliderGroup(QGroupBox):
         layout.setSpacing(2)
         layout.setContentsMargins(4, 4, 4, 4)
 
+        display_maps = {p['name']: get_display_map(p.get('display')) for p in parameters}
+        # Keep value columns aligned within the group
+        value_width = MAPPED_VALUE_WIDTH if any(display_maps.values()) else RAW_VALUE_WIDTH
+
         for param in parameters:
             name = param['name']
             label = param.get('label', name.replace('_', ' ').title())
@@ -94,7 +106,9 @@ class SliderGroup(QGroupBox):
                 min_value=min_val,
                 max_value=max_val,
                 initial_value=default,
-                label_width=label_width
+                label_width=label_width,
+                value_width=value_width,
+                display_map=display_maps[name]
             )
             slider.set_default_value(default)
 
